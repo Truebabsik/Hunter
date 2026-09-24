@@ -233,8 +233,23 @@ func effective_resist_rules() -> Array:
 ## --- Записи уязвимостей и резистов (D23, GDD 12.3.1) -----------------------
 
 ## Срабатывает ли запись по этой координате удара. Пустое множество = «любой».
+## Список строк из поля записи («types» или «ranges»). Не-массив читается как
+## ПУСТОЙ список: поле приходит из .tres руками, и скаляр в нём ронял расчёт
+## SCRIPT ERROR'ом. Пустой список — это «любое», то есть самое широкое чтение;
+## назвать форму поля обязан валидатор, а бой и показ падать не имеют права.
+static func rule_strings(rule: Dictionary, key: String) -> PackedStringArray:
+	var raw: Variant = rule.get(key, [])
+	var out := PackedStringArray()
+	if not (raw is Array):
+		return out
+	for v in (raw as Array):
+		if v is String or v is StringName:
+			out.append(String(v))
+	return out
+
+
 static func rule_applies(rule: Dictionary, type_id: StringName, range_id: StringName) -> bool:
-	var types := PackedStringArray(rule.get("types", []))
+	var types := rule_strings(rule, "types")
 	if types.size() > 0:
 		var hit := false
 		for t in types:
@@ -243,7 +258,7 @@ static func rule_applies(rule: Dictionary, type_id: StringName, range_id: String
 				break
 		if not hit:
 			return false
-	var ranges := PackedStringArray(rule.get("ranges", []))
+	var ranges := rule_strings(rule, "ranges")
 	if ranges.size() > 0:
 		if not ranges.has(String(range_id)):
 			return false
@@ -261,7 +276,7 @@ static func _type_matches(recorded: StringName, hit: StringName) -> bool:
 ## Типы записи, переведённые в читаемые названия («лёд»), для текстов.
 static func rule_types_ru(rule: Dictionary) -> PackedStringArray:
 	var out := PackedStringArray()
-	for t in PackedStringArray(rule.get("types", [])):
+	for t in rule_strings(rule, "types"):
 		out.append(CityData.type_ru(StringName(t)))
 	return out
 
@@ -272,8 +287,9 @@ static func rule_types_ru(rule: Dictionary) -> PackedStringArray:
 ##
 ## Не-массив читается как пустой список — назвать это обязан валидатор.
 ##
-## Читается через `has`, а не `get(k, [])`: `get` подменяет запасным значением
-## в том числе ЯВНЫЙ null, и тогда «в ключе мусор» неотличимо от «ключа нет».
+## Читается через `has`, а не `get(k, [])`: нам важно РАЗЛИЧАТЬ «ключа нет»
+## (законно: фаза уязвимостей не задаёт) и «ключ есть, но значение не массив»
+## (ошибка контента). `has` называет это прямо, без догадок о поведении `get`.
 static func phase_weak_rules(phase: Dictionary) -> Array:
 	var raw: Variant = phase["weak_rules"] if phase.has("weak_rules") else []
 	if not (raw is Array):
@@ -369,7 +385,7 @@ func _hit_label(type_id: StringName, types_hit: Array) -> String:
 ## причины (см. DamageCalc.player_damage), поэтому «схлопнуть» их в одну
 ## строку «дальний −2» нельзя — число разошлось бы с разбором.
 func _rule_label(rule: Dictionary, rtype: StringName, types_hit: Array, range_id: StringName) -> String:
-	if PackedStringArray(rule.get("types", [])).size() == 0:
+	if rule_strings(rule, "types").size() == 0:
 		return CityData.range_ru(range_id) if range_id != &"" else _hit_label(rtype, types_hit)
 	return _hit_label(rtype, types_hit)
 
@@ -401,7 +417,7 @@ static func rule_lines(rules: Array) -> PackedStringArray:
 			continue
 		var rule := rule_v as Dictionary
 		var parts := rule_types_ru(rule)
-		for r in PackedStringArray(rule.get("ranges", [])):
+		for r in rule_strings(rule, "ranges"):
 			parts.append(CityData.range_ru(StringName(r)))
 		out.append(" + ".join(parts))
 	return out

@@ -115,6 +115,33 @@ foreach ($mode in $Modes) {
         Write-Host ("NO REPORT: {0}" -f $report) -ForegroundColor Red
     }
 
+    # A GREEN VERDICT OVER A FAILED CHECK -- the same hole as "SKIP" in stage 1.
+    # Until this fix the script looked only at whether the report EXISTED, at
+    # script errors and at the exit code; it never read the report itself. So a
+    # mode that ran fine and honestly wrote "VALIDATION FAILED" counted as a
+    # success, and "ALL MODES OK" said nothing about the validator's verdict.
+    #
+    # "PROVALOV: 0 of 6" is a SUCCESS line, so the rule matches the start of a
+    # line with the failure word followed by a NON-letter (space, colon or end of
+    # line): the summary counter escapes it, the failures themselves do not.
+    #
+    # The word is built from code points on purpose: this file must stay pure
+    # ASCII (Windows PowerShell 5.1 reads a .ps1 without a BOM as code page 1251),
+    # while the marker inside the report is Russian.
+    $failWord = [string]([char]0x041F + [char]0x0420 + [char]0x041E + [char]0x0412 + [char]0x0410 + [char]0x041B)
+    $failRegex = "^\s*" + [regex]::Escape($failWord) + "(\s|:|$)"
+    $reportFails = @()
+    if (Test-Path $report) {
+        $reportFails = @(Get-Content -Path $report -Encoding UTF8 | Where-Object {
+            $_ -match $failRegex -or $_ -match "VALIDATION FAILED"
+        })
+    }
+    if ($reportFails.Count -gt 0) {
+        Write-Host ("FAILED REPORT LINES: {0}" -f $reportFails.Count) -ForegroundColor Red
+        $reportFails | Select-Object -First 5 | ForEach-Object { Write-Host ("  " + $_.Trim()) -ForegroundColor Red }
+        $failed++
+    }
+
     if ($scriptErrors.Count -gt 0) {
         Write-Host ("SCRIPT ERRORS: {0}" -f $scriptErrors.Count) -ForegroundColor Red
         $scriptErrors | Select-Object -First 10 | ForEach-Object { Write-Host ("  " + $_.Line.Trim()) -ForegroundColor Red }

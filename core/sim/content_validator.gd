@@ -545,9 +545,16 @@ func _check_monster(mon: MonsterData) -> Array:
 	# старых списков, и у него пустая запись получиться не может в принципе —
 	# проверка действующих записей не покраснела бы никогда.
 	#
-	# Запись, которая не словарь, и поле, которое не массив, называются отдельно и
-	# ДО разбора полей: иначе `rule.get(...)` на строке даёт SCRIPT ERROR, а
-	# валидатор — назначенный проверяющий структуры, он обязан назвать это сам.
+	# Форма записи проверяется ДО разбора её полей: скаляр в «types» или «ranges»
+	# роняет расчёт SCRIPT ERROR'ом, а запись-не-словарь — тем более. Валидатор
+	# назначен проверяющим структуры, он обязан назвать это сам, а не упасть.
+	#
+	# Поле вида, которое не является массивом, — СТРАХОВКА, а не рабочая проверка:
+	# `weakness_rules`/`resist_rules` объявлены как `Array`, и тип держит значение
+	# на всех входах (проверено: `set("weakness_rules", "oops")` оставляет массив,
+	# `.tres` с `weakness_rules = "oops"` тоже). Назвать такое состояние движок
+	# сегодня не даёт создать; проверка оставлена на случай, если поле перестанет
+	# быть типизированным.
 	for field_v in [[&"weakness_rules", mon.weakness_rules], [&"resist_rules", mon.resist_rules]]:
 		var field_name := String(field_v[0])
 		var field_rules: Variant = field_v[1]
@@ -560,8 +567,10 @@ func _check_monster(mon: MonsterData) -> Array:
 					label, str(rule_v)])
 				continue
 			var rule := rule_v as Dictionary
-			if PackedStringArray(rule.get("types", [])).size() == 0 \
-					and PackedStringArray(rule.get("ranges", [])).size() == 0:
+			if not _fields_are_arrays(rule, label, out):
+				continue
+			if MonsterData.rule_strings(rule, "types").size() == 0 \
+					and MonsterData.rule_strings(rule, "ranges").size() == 0:
 				out.append("%s: запись без types и ranges сработала бы на любой удар" % label)
 
 	# Фазы задают ТЕ ЖЕ записи уязвимостей (спека §2.2), значит и запрет на них
@@ -569,25 +578,56 @@ func _check_monster(mon: MonsterData) -> Array:
 	# Ключ фазы читает модель, поэтому не-массив называется здесь, а не молча
 	# пропускается: пропустить — значит не проверить ровно то, что сломано.
 	for ph in mon.phases:
-		# Читается через `has`: `get(k, [])` подменяет запасным значением в том
-		# числе явный null, и тогда «в ключе мусор» неотличимо от «ключа нет».
+		var phase_title := str(ph.get("title", ""))
+		# Читается через `has`, а не `get(k, [])`: нам важно РАЗЛИЧАТЬ «ключа нет»
+		# (законно: фаза уязвимостей не задаёт) и «ключ есть, но значение не
+		# массив» (ошибка контента) — второе обязан назвать валидатор.
 		var raw_rules: Variant = ph["weak_rules"] if ph.has("weak_rules") else []
 		if not (raw_rules is Array):
 			out.append("%s: weak_rules фазы «%s» не является массивом: %s" % [
-				label, str(ph.get("title", "")), str(raw_rules)])
+				label, phase_title, str(raw_rules)])
 			continue
 		for rule_v in (raw_rules as Array):
 			if not (rule_v is Dictionary):
 				out.append("%s: запись фазы «%s» не является словарём: %s" % [
-					label, str(ph.get("title", "")), str(rule_v)])
+					label, phase_title, str(rule_v)])
 				continue
 			var rule := rule_v as Dictionary
-			if PackedStringArray(rule.get("types", [])).size() == 0 \
-					and PackedStringArray(rule.get("ranges", [])).size() == 0:
+			if not _fields_are_arrays(rule, "%s, фаза «%s»" % [label, phase_title], out):
+				continue
+			if MonsterData.rule_strings(rule, "types").size() == 0 \
+					and MonsterData.rule_strings(rule, "ranges").size() == 0:
 				out.append("%s: запись фазы «%s» без types и ranges сработала бы на любой удар" % [
-					label, str(ph.get("title", ""))])
+					label, phase_title])
 
 	return out
+
+
+## Поля «types» и «ranges» обязаны быть массивами строк. Возвращает true, если
+## форма цела; иначе дописывает в `out` по сообщению на каждую поломку.
+##
+## Читается через `has`: отсутствие ключа — это пустое множество («любое»), а вот
+## ЯВНЫЙ не-массив (строка, число, null) — ошибка авторинга, и её надо назвать.
+##
+## Проверяются и ЭЛЕМЕНТЫ: `types: [7]` — не список типов, а мусор. Модель такой
+## элемент отбрасывает (MonsterData.rule_strings), то есть запись молча
+## превратилась бы в «любой тип», и без этой проверки игрок получал бы +1 на всё
+## без единого сообщения. `where` — куда относится запись (вид, поле, фаза).
+func _fields_are_arrays(rule: Dictionary, where: String, out: Array) -> bool:
+	var ok := true
+	for field in ["types", "ranges"]:
+		var raw: Variant = rule[field] if rule.has(field) else []
+		if not (raw is Array):
+			out.append("%s: у записи поле «%s» не является массивом: %s" % [
+				where, field, str(raw)])
+			ok = false
+			continue
+		for v in (raw as Array):
+			if not (v is String or v is StringName):
+				out.append("%s: у записи поле «%s» содержит не строку: %s" % [
+					where, field, str(v)])
+				ok = false
+	return ok
 
 
 ## Достаёт ли до этой записи хоть какое-то оружие: существует ли пара «тип удара ×
