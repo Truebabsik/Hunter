@@ -307,12 +307,12 @@ func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary 
 		var rule := rule_v as Dictionary
 		var rtype := _matching_type(rule, types_hit, range_id)
 		if rtype != &"":
-			out.append("слабость: %s +1" % _hit_label(rtype, types_hit))
+			out.append("слабость: %s +1" % _rule_label(rule, rtype, types_hit, range_id))
 	for rule_v in effective_resist_rules():
 		var rule := rule_v as Dictionary
 		var rtype := _matching_type(rule, types_hit, range_id)
 		if rtype != &"":
-			out.append("резист: %s −1" % _hit_label(rtype, types_hit))
+			out.append("резист: %s −1" % _rule_label(rule, rtype, types_hit, range_id))
 	return out
 
 
@@ -333,6 +333,19 @@ func _hit_label(type_id: StringName, types_hit: Array) -> String:
 	var is_base := types_hit.size() > 0 and StringName(types_hit[0]) == type_id
 	var ru := CityData.type_ru(type_id)
 	return ru if is_base else "%s (руна)" % ru
+
+
+## Короткая подпись записи для разбора. Называет координату, которая запись
+## ОГРАНИЧИВАЕТ: у записи без types это дистанция, а не тип удара — иначе игрок
+## видит «резист: колющий −1» там, где сработала дальность (GDD 12.1).
+##
+## Две записи остаются ДВУМЯ строками: ядро берёт знак слагаемого из текста
+## причины (см. DamageCalc.player_damage), поэтому «схлопнуть» их в одну
+## строку «дальний −2» нельзя — число разошлось бы с разбором.
+func _rule_label(rule: Dictionary, rtype: StringName, types_hit: Array, range_id: StringName) -> String:
+	if PackedStringArray(rule.get("types", [])).size() == 0:
+		return CityData.range_ru(range_id) if range_id != &"" else _hit_label(rtype, types_hit)
+	return _hit_label(rtype, types_hit)
 
 
 ## Уязвимости строками для досье и совета: одна строка на запись.

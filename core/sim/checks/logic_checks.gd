@@ -1041,26 +1041,48 @@ static func _status_mechanics() -> Array[String]:
 			empty_hits += 1
 	out.append("D23 пустая запись: сработала на %d из %d физических подтипов" % [
 		empty_hits, MonsterData.PHYSICAL_TYPES.size()])
+	# (д) Запись срабатывает НЕ БОЛЕЕ ОДНАЖДЫ на удар, даже когда ей подходят обе
+	# координаты (пустые types плюс дистанция). Иначе одна запись давала бы −2,
+	# а игрок видел бы две строки за одно и то же.
+	var once_mon := MonsterData.new()
+	once_mon.id = &"d23_once"
+	once_mon.resist_rules = [{"types": [], "ranges": ["melee"]}]
+	var once_reasons := once_mon.modifier_reasons(
+		[MonsterData.TYPE_CRUSH, MonsterData.TYPE_FIRE], MonsterData.RANGE_MELEE)
+	# `resist_modifier` возвращает ЧИСЛО сработавших записей (знак живёт в тексте
+	# причины: «резист: ближний −1»), поэтому печатаем обе величины: причин
+	# должно быть 1 и сработать запись должна тоже 1.
+	var once_fired := once_mon.resist_modifier(MonsterData.TYPE_CRUSH, MonsterData.RANGE_MELEE)
+	out.append("D23 однократность: причин %d, сработавших записей %d (ждали 1 и 1), разбор [%s]" % [
+		once_reasons.size(), once_fired, ", ".join(once_reasons)])
 	# (а) связка даёт ровно +1 и НЕ срабатывает, если совпала одна координата;
 	# (б) запись без ranges работает на любой дистанции;
 	# (в) запись без types работает на любой тип, но только в своей дистанции;
 	# (г) пустая запись срабатывает на ВСЕ физические подтипы — доказательство,
 	# что допускать её нельзя (запрет на контенте — валидатор, Task 3).
+	# (д) запись срабатывает один раз, даже когда подходят обе координаты.
 	if w_coupled == 1 and w_type_only == 0 and w_range_only == 0 \
 			and w_any_range == 1 and r_any_type == 1 and r_wrong_range == 0 \
 			and r_coupled == 1 and r_wrong_type == 0 \
-			and empty_hits == MonsterData.PHYSICAL_TYPES.size():
+			and empty_hits == MonsterData.PHYSICAL_TYPES.size() \
+			and once_reasons.size() == 1 and once_fired == 1:
 		out.append("ок D23: связка «тип И дистанция» и пустые множества работают")
 	else:
-		out.append("ПРОВАЛ D23: связка %d (ждали 1), одна координата %d/%d (ждали 0), любая дистанция %d (ждали 1), любой тип %d (ждали 1), чужая дистанция %d (ждали 0), резист-связка %d (ждали 1), чужой тип %d (ждали 0), пустая %d (ждали все)" % [
+		out.append("ПРОВАЛ D23: связка %d (ждали 1), одна координата %d/%d (ждали 0), любая дистанция %d (ждали 1), любой тип %d (ждали 1), чужая дистанция %d (ждали 0), резист-связка %d (ждали 1), чужой тип %d (ждали 0), пустая %d (ждали все), однократность %d/%d (ждали 1 и 1)" % [
 			w_coupled, w_type_only, w_range_only, w_any_range, r_any_type, r_wrong_range,
-			r_coupled, r_wrong_type, empty_hits])
+			r_coupled, r_wrong_type, empty_hits, once_reasons.size(), once_fired])
 
 	# D23, добор: связка проверяется на КАЖДОМ виде, а не на синтетической пробе.
 	# Проверяем два свойства, которые старый код ломал:
 	#   (а) запись с двумя ограничениями даёт ровно +1/−1, не удваивается;
-	#   (б) запись без types срабатывает на любой тип в этой дистанции.
+	#   (б) запись без types срабатывает на любой тип в СВОЕЙ дистанции.
+	#
+	# Действующие записи, а не сырое поле: до Task 4 данные ещё лежат старыми
+	# списками, и обход `m.resist_rules` был бы вакуумным (пустой список — ноль
+	# замеров). Число проверенных записей печатается: ноль здесь значил бы, что
+	# сторож ничего не мерит.
 	var d23_fail: Array[String] = []
+	var d23_range_rules := 0
 	for mon_id in Database.monsters.keys():
 		var m: MonsterData = Database.monsters[mon_id]
 		# (а) одна координата не должна давать больше +1: если запись с двумя
@@ -1071,21 +1093,27 @@ static func _status_mechanics() -> Array[String]:
 			if melee_w > 1 or ranged_w > 1:
 				d23_fail.append("%s: уязвимость %s даёт +%d" % [
 					m.id, CityData.type_ru(t), maxi(melee_w, ranged_w)])
-		# (б) запись «ближний бой» обязана закрывать физику в упор, если она есть.
-		for rule_v in m.resist_rules:
+		# (б) запись без types обязана закрывать физику в СВОЕЙ дистанции —
+		# и в упор, и на дальней: целевые записи §2.3 бывают обеих.
+		for rule_v in m.effective_resist_rules():
 			var rule := rule_v as Dictionary
 			if PackedStringArray(rule.get("types", [])).size() > 0:
 				continue
-			var ranges := PackedStringArray(rule.get("ranges", []))
-			if not ranges.has(String(MonsterData.RANGE_MELEE)):
+			var rule_ranges := PackedStringArray(rule.get("ranges", []))
+			if not (rule_ranges.has(String(MonsterData.RANGE_MELEE)) \
+					or rule_ranges.has(String(MonsterData.RANGE_RANGED))):
 				continue
-			for t in MonsterData.PHYSICAL_TYPES:
-				if m.resist_modifier(t, MonsterData.RANGE_MELEE) < 1:
-					d23_fail.append("%s: запись «ближний бой» не сработала на %s" % [
-						m.id, CityData.type_ru(t)])
-					break
+			d23_range_rules += 1
+			for rng in [MonsterData.RANGE_MELEE, MonsterData.RANGE_RANGED]:
+				if not rule_ranges.has(String(rng)):
+					continue
+				for t in MonsterData.PHYSICAL_TYPES:
+					if m.resist_modifier(t, StringName(rng)) < 1:
+						d23_fail.append("%s: запись «%s» не сработала на %s" % [
+							m.id, CityData.range_ru(StringName(rng)), CityData.type_ru(t)])
+						break
 	if d23_fail.is_empty():
-		out.append("ок D23 видов: связка «тип И дистанция» работает на всех видах")
+		out.append("ок D23 видов: связка «тип И дистанция» работает на всех видах (записей без types проверено: %d)" % d23_range_rules)
 	else:
 		out.append("ПРОВАЛ D23 видов: %s" % "; ".join(d23_fail))
 	return out
