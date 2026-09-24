@@ -117,11 +117,10 @@ func _check_physical_subtypes() -> Array:
 
 		# Уязвимости, приходящие из фаз (Ламент в истощении), тоже обязаны быть
 		# достижимы: иначе фаза открывает слабость, которую нечем использовать.
-		# Читаются те же записи, что и у базовых уязвимостей, — ключ weak_rules.
+		# Ключ читает модель (MonsterData.phase_weak_rules): не-массив она отдаёт
+		# пустым списком, а называет это проверка структуры в _check_monster.
 		for ph in mon.phases:
-			if not (ph.get("weak_rules") is Array):
-				continue
-			for rule_v in (ph.get("weak_rules", []) as Array):
+			for rule_v in MonsterData.phase_weak_rules(ph):
 				if not (rule_v is Dictionary):
 					continue
 				if _reachable_by_weapon(rule_v as Dictionary).is_empty():
@@ -546,11 +545,16 @@ func _check_monster(mon: MonsterData) -> Array:
 	# старых списков, и у него пустая запись получиться не может в принципе —
 	# проверка действующих записей не покраснела бы никогда.
 	#
-	# Запись, которая не словарь, называется отдельно и ДО разбора полей: иначе
-	# `rule.get(...)` на строке даёт SCRIPT ERROR, а валидатор — назначенный
-	# проверяющий структуры, он обязан назвать это сам, а не падать.
-	for rules in [mon.weakness_rules, mon.resist_rules]:
-		for rule_v in rules:
+	# Запись, которая не словарь, и поле, которое не массив, называются отдельно и
+	# ДО разбора полей: иначе `rule.get(...)` на строке даёт SCRIPT ERROR, а
+	# валидатор — назначенный проверяющий структуры, он обязан назвать это сам.
+	for field_v in [[&"weakness_rules", mon.weakness_rules], [&"resist_rules", mon.resist_rules]]:
+		var field_name := String(field_v[0])
+		var field_rules: Variant = field_v[1]
+		if not (field_rules is Array):
+			out.append("%s: %s не является массивом: %s" % [label, field_name, str(field_rules)])
+			continue
+		for rule_v in (field_rules as Array):
 			if not (rule_v is Dictionary):
 				out.append("%s: запись уязвимости/резиста не является словарём: %s" % [
 					label, str(rule_v)])
@@ -562,10 +566,17 @@ func _check_monster(mon: MonsterData) -> Array:
 
 	# Фазы задают ТЕ ЖЕ записи уязвимостей (спека §2.2), значит и запрет на них
 	# тот же: пустая запись фазы — скрытое «+1 на любой удар в этой фазе».
+	# Ключ фазы читает модель, поэтому не-массив называется здесь, а не молча
+	# пропускается: пропустить — значит не проверить ровно то, что сломано.
 	for ph in mon.phases:
-		if not (ph.get("weak_rules") is Array):
+		# Читается через `has`: `get(k, [])` подменяет запасным значением в том
+		# числе явный null, и тогда «в ключе мусор» неотличимо от «ключа нет».
+		var raw_rules: Variant = ph["weak_rules"] if ph.has("weak_rules") else []
+		if not (raw_rules is Array):
+			out.append("%s: weak_rules фазы «%s» не является массивом: %s" % [
+				label, str(ph.get("title", "")), str(raw_rules)])
 			continue
-		for rule_v in (ph.get("weak_rules", []) as Array):
+		for rule_v in (raw_rules as Array):
 			if not (rule_v is Dictionary):
 				out.append("%s: запись фазы «%s» не является словарём: %s" % [
 					label, str(ph.get("title", "")), str(rule_v)])

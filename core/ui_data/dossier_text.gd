@@ -261,8 +261,9 @@ static func _signal_texts(signals: Array[SignalData]) -> PackedStringArray:
 ## записи стоит «+» (см. MonsterData.rule_lines).
 static func _phase_text(phase: Dictionary) -> String:
 	# Разметку записи делает МОДЕЛЬ: обход структуры («types», «ranges») живёт
-	# только в MonsterData, и второго места ему быть не должно.
-	var weak: PackedStringArray = MonsterData.rule_lines(Array(phase.get("weak_rules", [])))
+	# только в MonsterData, и второго места ему быть не должно. Ключ фазы читает
+	# она же: не-массив отдаётся пустым списком, а не роняет экран.
+	var weak: PackedStringArray = MonsterData.rule_lines(MonsterData.phase_weak_rules(phase))
 	var bits := PackedStringArray()
 	var note := str(phase.get("note", ""))
 	if not note.is_empty():

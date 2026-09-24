@@ -266,6 +266,21 @@ static func rule_types_ru(rule: Dictionary) -> PackedStringArray:
 	return out
 
 
+## Записи уязвимостей фазы. Ключ читает МОДЕЛЬ: во-первых, структуру записи
+## разбирает только она; во-вторых, ключ приходит из .tres и может оказаться чем
+## угодно, а падать на чужой ошибке контента экран не имеет права.
+##
+## Не-массив читается как пустой список — назвать это обязан валидатор.
+##
+## Читается через `has`, а не `get(k, [])`: `get` подменяет запасным значением
+## в том числе ЯВНЫЙ null, и тогда «в ключе мусор» неотличимо от «ключа нет».
+static func phase_weak_rules(phase: Dictionary) -> Array:
+	var raw: Variant = phase["weak_rules"] if phase.has("weak_rules") else []
+	if not (raw is Array):
+		return []
+	return raw
+
+
 ## Сумма уязвимостей по координате удара. Фаза ЗАМЕНЯЕТ базовые уязвимости,
 ## если у неё задан weak_rules (GDD 4.8: «в истощении он открыт»).
 ##
@@ -274,7 +289,7 @@ static func rule_types_ru(rule: Dictionary) -> PackedStringArray:
 func weakness_modifier(type_id: StringName, range_id: StringName, phase: Dictionary = {}) -> int:
 	var rules: Array = effective_weakness_rules()
 	if phase.has("weak_rules"):
-		rules = phase["weak_rules"]
+		rules = phase_weak_rules(phase)
 	var sum := 0
 	for r in rules:
 		if not (r is Dictionary):
@@ -309,7 +324,7 @@ func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary 
 	var out: Array[String] = []
 	var weak_rules_used: Array = effective_weakness_rules()
 	if phase.has("weak_rules"):
-		weak_rules_used = phase["weak_rules"]
+		weak_rules_used = phase_weak_rules(phase)
 	for rule_v in weak_rules_used:
 		if not (rule_v is Dictionary):
 			continue
