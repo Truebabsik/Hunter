@@ -66,8 +66,8 @@ static func is_physical_subtype(type_id: StringName) -> bool:
 ## Записи резистов — та же форма; каждая даёт −1.
 @export var resist_rules: Array = []
 
-## ВРЕМЕННО до Task 2: старые независимые списки. Удаляются, когда все
-## читатели перейдут на записи. Новый контент писать только в *_rules.
+## ВРЕМЕННО до Task 4: старые независимые списки. Удаляются, когда записи
+## появятся во всех .tres. Новый контент писать только в *_rules.
 ## Типы урона, которые дают +1 к урону игрока.
 @export var weakness_types: PackedStringArray = PackedStringArray()
 ## Дальности, которые дают +1.
@@ -188,7 +188,7 @@ func is_weak_to_type(type_id: StringName, range_id: StringName = &"") -> bool:
 	return weakness_modifier(type_id, range_id) > 0
 
 
-## ВРЕМЕННО до Task 2: уязвимость по старому списку типов, без дистанции.
+## ВРЕМЕННО до Task 4: уязвимость по старому списку типов, без дистанции.
 ## Контент ещё пишет списки, и старый валидатор спрашивает только про тип.
 func _legacy_weak_to_type(type_id: StringName) -> bool:
 	if weakness_types.has(String(type_id)):
@@ -198,6 +198,36 @@ func _legacy_weak_to_type(type_id: StringName) -> bool:
 
 func is_weak_to_range(range_id: StringName) -> bool:
 	return weakness_ranges.has(String(range_id))
+
+
+## --- Переходник старых списков в записи (ВРЕМЕННО до Task 4) ---------------
+
+## Действующие записи уязвимостей. ВРЕМЕННО до Task 4: если записей нет, а старые
+## списки заполнены, строим записи из них декартовым произведением — ровно то, что
+## делал старый код. Снимается, когда записи появятся во всех .tres.
+func effective_weakness_rules() -> Array:
+	if weakness_rules.size() > 0 or weakness_types.size() == 0:
+		return weakness_rules
+	var out: Array = []
+	for t in weakness_types:
+		out.append({"types": [String(t)], "ranges": Array(weakness_ranges)})
+	return out
+
+
+## То же для резистов. Словарь «тип → количество» разворачивается в записи
+## повторением, поэтому прежний −2 (дальний бой у Громунa) сохраняется: две записи
+## по −1 дают тот же итог.
+func effective_resist_rules() -> Array:
+	if resist_rules.size() > 0 or (type_resist.is_empty() and range_resist.is_empty()):
+		return resist_rules
+	var out: Array = []
+	for key in type_resist.keys():
+		for _i in range(int(type_resist[key])):
+			out.append({"types": [String(key)], "ranges": []})
+	for key in range_resist.keys():
+		for _i in range(int(range_resist[key])):
+			out.append({"types": [], "ranges": [String(key)]})
+	return out
 
 
 ## --- Записи уязвимостей и резистов (D23, GDD 12.3.1) -----------------------
@@ -239,7 +269,7 @@ static func rule_types_ru(rule: Dictionary) -> PackedStringArray:
 ## Сумма уязвимостей по координате удара. Фаза ЗАМЕНЯЕТ базовые уязвимости,
 ## если у неё задан weak_rules (GDD 4.8: «в истощении он открыт»).
 func weakness_modifier(type_id: StringName, range_id: StringName, phase: Dictionary = {}) -> int:
-	var rules: Array = weakness_rules
+	var rules: Array = effective_weakness_rules()
 	if phase.has("weak_rules"):
 		rules = phase["weak_rules"]
 	var sum := 0
@@ -254,7 +284,7 @@ func weakness_modifier(type_id: StringName, range_id: StringName, phase: Diction
 ## резистов не имеет вовсе.
 func resist_modifier(type_id: StringName, range_id: StringName) -> int:
 	var sum := 0
-	for r in resist_rules:
+	for r in effective_resist_rules():
 		if rule_applies(r as Dictionary, type_id, range_id):
 			sum += 1
 	return sum
@@ -270,7 +300,7 @@ func resist_modifier(type_id: StringName, range_id: StringName) -> int:
 ## совпадение, а причину добавляем одну.
 func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary = {}) -> Array[String]:
 	var out: Array[String] = []
-	var weak_rules_used: Array = weakness_rules
+	var weak_rules_used: Array = effective_weakness_rules()
 	if phase.has("weak_rules"):
 		weak_rules_used = phase["weak_rules"]
 	for rule_v in weak_rules_used:
@@ -278,7 +308,7 @@ func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary 
 		var rtype := _matching_type(rule, types_hit, range_id)
 		if rtype != &"":
 			out.append("слабость: %s +1" % _hit_label(rtype, types_hit))
-	for rule_v in resist_rules:
+	for rule_v in effective_resist_rules():
 		var rule := rule_v as Dictionary
 		var rtype := _matching_type(rule, types_hit, range_id)
 		if rtype != &"":
@@ -307,12 +337,12 @@ func _hit_label(type_id: StringName, types_hit: Array) -> String:
 
 ## Уязвимости строками для досье и совета: одна строка на запись.
 func weakness_lines() -> PackedStringArray:
-	return _rule_lines(weakness_rules)
+	return _rule_lines(effective_weakness_rules())
 
 
 ## Резисты строками для досье и совета: одна строка на запись.
 func resist_lines() -> PackedStringArray:
-	return _rule_lines(resist_rules)
+	return _rule_lines(effective_resist_rules())
 
 
 func _rule_lines(rules: Array) -> PackedStringArray:

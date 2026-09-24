@@ -409,7 +409,7 @@ static func probe() -> String:
 	sig.label = "припадает к земле"
 	scn.signals.append(sig)
 	mon.scenarios.append(scn)
-	mon.type_resist = {"fire": 1, "physical": 1}
+	mon.resist_rules = [{"types": ["fire"], "ranges": []}, {"types": ["physical"], "ranges": []}]
 
 	var temp := "res://_probe.tres"
 	var err := ResourceSaver.save(mon, temp)
@@ -832,8 +832,9 @@ static func _status_mechanics() -> Array[String]:
 	# D04: у огня нет привилегии. «+1» даёт руна любого элемента, и он
 	# ПРОВЕРЯЕТСЯ на уязвимость и резист так же, как базовый тип.
 	#
-	# Проверка смотрит не итог, а структуру разбора: при безусловном +1 и резисте
-	# −2 итог совпадает (4+1−2 и 4+1−2), и по числу отличить правила невозможно.
+	# Проверка смотрит не итог, а структуру разбора: безусловный «+1» руны и «+1»,
+	# проверенный на уязвимость, дают одинаковый итог, и по числу отличить правила
+	# невозможно.
 	var sword := WeaponData.new()
 	sword.id = &"d04_sword"
 	sword.range_id = MonsterData.RANGE_MELEE
@@ -845,16 +846,26 @@ static func _status_mechanics() -> Array[String]:
 	fire_eater.title = "Проба огня"
 	fire_eater.max_hp = 20
 	fire_eater.armor = 0
-	fire_eater.type_resist = {"fire": 2}
-	fire_eater.weakness_types = PackedStringArray(["slash"])
+	# Записи, а не старые словари: одна запись даёт ровно −1 (не −2).
+	fire_eater.resist_rules = [{"types": ["fire"], "ranges": []}]
+	fire_eater.weakness_rules = [{"types": ["slash"], "ranges": []}]
 	var d04 := DamageCalc.player_damage(
 		sword, fire_eater, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
 	var reasons := ", ".join(d04.type_reasons)
 	out.append("D04 руна огня: урон %d, разбор [%s]" % [d04.total, reasons])
-	if not ("огонь +1" in reasons) and "слабость: режущий +1" in reasons:
+	# Строка резиста обязана кончаться на «−1»: запись даёт ровно −1, а прежний
+	# словарь `type_resist = {"fire": 2}` давал −2. Метку «(руна)» модель ставит
+	# сама (слабость сработала по типу руны) — здесь проверяется величина, а не
+	# точная форма строки.
+	var resist_named := false
+	for reason in d04.type_reasons:
+		if reason.begins_with("резист: огонь") and reason.ends_with("−1"):
+			resist_named = true
+	if not ("огонь +1" in reasons) and "слабость: режущий +1" in reasons \
+			and resist_named:
 		out.append("ок D04: руна даёт базовый +1 без привилегии огня")
 	else:
-		out.append("ПРОВАЛ D04: разбор «%s» (ждали слабость режущего и никакого «огонь +1»)" % reasons)
+		out.append("ПРОВАЛ D04: разбор «%s» (ждали слабость режущего, резист огня −1 и никакого «огонь +1»)" % reasons)
 
 	# D04, добор: проверка выше сторожит возврат привилегии ОГНЯ, но не потерю
 	# «+1» у льда и яда. Правило говорит «стихии симметричны», значит сторожить
@@ -862,9 +873,9 @@ static func _status_mechanics() -> Array[String]:
 	#
 	# «+1» измеряется ЧИСЛОМ, а не строкой разбора. Первая редакция этой
 	# проверки искала в разборе «слабость: лёд +1» — и не краснела, когда «+1»
-	# руны отнимали: строка слабости живёт ОТДЕЛЬНОЙ веткой формулы (по
-	# `weakness_types` вида) и уцелевает без бонуса руны. Поэтому здесь две
-	# пробы: (1) на звере БЕЗ уязвимостей и резистов разница между ударом с
+	# руны отнимали: строка слабости живёт ОТДЕЛЬНОЙ веткой формулы (по записям
+	# вида через `modifier_reasons`) и уцелевает без бонуса руны. Поэтому здесь
+	# две пробы: (1) на звере БЕЗ уязвимостей и резистов разница между ударом с
 	# руной и без неё — это ровно «+1», и только он; (2) разбор обязан назвать
 	# стихию, если зверь уязвим к типу руны.
 	var element_cases := [
@@ -908,13 +919,22 @@ static func _status_mechanics() -> Array[String]:
 		thin_skin.title = "Проба стихии"
 		thin_skin.max_hp = 20
 		thin_skin.armor = 0
-		thin_skin.weakness_types = PackedStringArray([String(element_type)])
+		thin_skin.weakness_rules = [{"types": [String(element_type)], "ranges": []}]
 		var element_hit := DamageCalc.player_damage(
 			runed, thin_skin, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
 		var element_reasons := ", ".join(element_hit.type_reasons)
 		out.append("D04 слабость %s: урон %d, разбор [%s]" % [
 			element_name, element_hit.total, element_reasons])
-		if not ("слабость: %s +1" % element_name in element_reasons):
+		# Проверяется, что стихия НАЗВАНА слабостью с «+1», а не точная форма
+		# строки: слабость, сработавшая по типу руны, у модели помечена
+		# «огонь (руна) +1», и прежний поиск точной подстроки «слабость: огонь +1»
+		# краснел бы на верном разборе.
+		var element_weak_named := false
+		for reason in element_hit.type_reasons:
+			if reason.begins_with("слабость:") and element_name in reason \
+					and reason.ends_with("+1"):
+				element_weak_named = true
+		if not element_weak_named:
 			d04_missing.append(element_name)
 	if d04_missing.is_empty():
 		out.append("ок D04 стихий: все три стихии дают «+1» и названы в разборе")
@@ -1035,6 +1055,39 @@ static func _status_mechanics() -> Array[String]:
 		out.append("ПРОВАЛ D23: связка %d (ждали 1), одна координата %d/%d (ждали 0), любая дистанция %d (ждали 1), любой тип %d (ждали 1), чужая дистанция %d (ждали 0), резист-связка %d (ждали 1), чужой тип %d (ждали 0), пустая %d (ждали все)" % [
 			w_coupled, w_type_only, w_range_only, w_any_range, r_any_type, r_wrong_range,
 			r_coupled, r_wrong_type, empty_hits])
+
+	# D23, добор: связка проверяется на КАЖДОМ виде, а не на синтетической пробе.
+	# Проверяем два свойства, которые старый код ломал:
+	#   (а) запись с двумя ограничениями даёт ровно +1/−1, не удваивается;
+	#   (б) запись без types срабатывает на любой тип в этой дистанции.
+	var d23_fail: Array[String] = []
+	for mon_id in Database.monsters.keys():
+		var m: MonsterData = Database.monsters[mon_id]
+		# (а) одна координата не должна давать больше +1: если запись с двумя
+		# ограничениями удвоится, здесь окажется 2 или больше.
+		for t in MonsterData.PHYSICAL_TYPES:
+			var melee_w := m.weakness_modifier(t, MonsterData.RANGE_MELEE)
+			var ranged_w := m.weakness_modifier(t, MonsterData.RANGE_RANGED)
+			if melee_w > 1 or ranged_w > 1:
+				d23_fail.append("%s: уязвимость %s даёт +%d" % [
+					m.id, CityData.type_ru(t), maxi(melee_w, ranged_w)])
+		# (б) запись «ближний бой» обязана закрывать физику в упор, если она есть.
+		for rule_v in m.resist_rules:
+			var rule := rule_v as Dictionary
+			if PackedStringArray(rule.get("types", [])).size() > 0:
+				continue
+			var ranges := PackedStringArray(rule.get("ranges", []))
+			if not ranges.has(String(MonsterData.RANGE_MELEE)):
+				continue
+			for t in MonsterData.PHYSICAL_TYPES:
+				if m.resist_modifier(t, MonsterData.RANGE_MELEE) < 1:
+					d23_fail.append("%s: запись «ближний бой» не сработала на %s" % [
+						m.id, CityData.type_ru(t)])
+					break
+	if d23_fail.is_empty():
+		out.append("ок D23 видов: связка «тип И дистанция» работает на всех видах")
+	else:
+		out.append("ПРОВАЛ D23 видов: %s" % "; ".join(d23_fail))
 	return out
 
 

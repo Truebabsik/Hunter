@@ -7,13 +7,16 @@ enum Reading { MISS, PARTIAL, COUNTER, PERFECT }
 
 
 ## Урон игрока (GDD 12.5):
-##   оружие + модификатор + чтение + комбо − панцирь зверя − резист
-## где «модификатор + резист» сведены в type_multiplier:
-##   руна +1 (стихии симметричны, D04); уязвимость +1; резист по типу −N;
-##   резист по дальности −N.
+##   оружие + модификатор + чтение + комбо − панцирь зверя
+## где типовая часть («модификатор») собрана в type_multiplier:
+##   безусловный «+1» за руну (стихии симметричны, D04) плюс причины, названные
+##   MonsterData.modifier_reasons: каждая запись уязвимости даёт +1, каждая запись
+##   резиста −1, и срабатывает запись только когда И тип удара, И дистанция попали
+##   в её множества (D23, GDD 12.3.1). Числа модификаторов здесь НЕ считаются:
+##   единственный источник правила — модель вида.
 ##
-## phase — активная фаза зверя (GDD 4.8). Фаза может давать уязвимость
-## и снимать резист: «в истощении он открыт».
+## phase — активная фаза зверя (GDD 4.8). Фаза ЗАМЕНЯЕТ уязвимости, если у неё
+## задан weak_rules; резисты база держит все фазы одинаково (D21.E).
 ##
 ## `target_open` — на звере статус «открыт» (комбо Тлеуна «Гашение»): любой удар
 ## проходит на 1 глубже, независимо от типа. Это НЕ уязвимость: она не привязана
@@ -51,63 +54,41 @@ static func player_damage(
 		r.crit = true
 		r.crit_bonus = maxi(1, int(round(float(weapon.base_damage) * 0.5)))
 
-	# --- типовой множитель: уязвимости и резисты вида по БАЗОВОМУ типу и по руне
+	# --- типовой множитель: уязвимости и резисты вида по ОБЕИМ координатам удара
+	# (базовый тип оружия и элемент руны) и с учётом дистанции. Вся арифметика и
+	# тексты причин — в MonsterData.modifier_reasons: один источник на правило
+	# (D23, GDD 12.3.1).
 	r.type_multiplier = 0
 
-	var weak_types := monster.weakness_types
-	var weak_ranges := monster.weakness_ranges
-	# Фаза переопределяет уязвимости, если они у неё заданы.
-	if phase.has("weak_types"):
-		weak_types = PackedStringArray(phase["weak_types"])
-		weak_ranges = PackedStringArray(phase.get("weak_ranges", []))
-		r.type_reasons.append("фаза: %s" % str(phase.get("title", "")))
-
-	# Руна ДОБАВЛЯЕТ второй тип, а не заменяет базовый (GDD 12.3): удар несёт
-	# и базовый тип оружия, и тип руны, а уязвимости с резистами считаются
-	# по ОБОИМ. Иначе руна могла бы сделать хуже — снять физическую уязвимость
-	# и добавить ледяной резист.
-	var hit_types: Array[StringName] = [weapon.damage_type]
+	var hit_types: Array = [weapon.damage_type]
 	if weapon.rune_type != &"" and weapon.rune_type != weapon.damage_type:
 		hit_types.append(weapon.rune_type)
 
-	var phase_has_resist := phase.has("resist_types") or phase.has("resist_ranges")
+	# «+1 элемента руны» остаётся ОТДЕЛЬНЫМ слагаемым и не входит в сумму причин.
+	# Он безусловен (D04: стихии симметричны, +1 даёт любая руна) и лишь потом
+	# сам проверяется на уязвимость и резист — вторым проходом ниже.
+	var element_bonus := 0
 	for hit_type in hit_types:
-		var is_rune := hit_type != weapon.damage_type
-		var mark := " (руна)" if is_rune else ""
+		if hit_type != weapon.damage_type:
+			element_bonus += 1
 
-		# Руна даёт базовый +1 и тип элемента (§12.3, D04). Никакой привилегии у
-		# огня нет: стихии симметричны. +1 входит в слагаемое «элемент_руны» и
-		# потому сам подвержен уязвимости и резисту — как в примере §12.5.
-		if is_rune:
-			r.type_multiplier += 1
+	if phase.has("weak_rules"):
+		r.type_reasons.append("фаза: %s" % str(phase.get("title", "")))
 
-		if weak_types.has(String(hit_type)):
-			r.type_multiplier += 1
-			r.type_reasons.append("слабость: %s +1%s" % [CityData.type_ru(hit_type), mark])
+	var phase_reason_count := r.type_reasons.size()
+	r.type_reasons.append_array(
+		monster.modifier_reasons(hit_types, weapon.range_id, phase))
 
-		# Резисты фазы заменяют резисты вида целиком: в истощении зверь теряет защиту.
-		var type_res := 0
-		if phase_has_resist:
-			type_res = int((phase.get("resist_types", {}) as Dictionary).get(String(hit_type), 0))
+	# Число обязано сходиться с суммой слагаемых: если разбор называет причины,
+	# их сумма плюс элемент руны и есть множитель. Это защита от расхождения
+	# текста и числа — и от потери «+1 руны» при будущих правках.
+	var summed := element_bonus
+	for i in range(phase_reason_count, r.type_reasons.size()):
+		if "+1" in r.type_reasons[i]:
+			summed += 1
 		else:
-			type_res = monster.type_resist_for(hit_type)
-		if type_res > 0:
-			r.type_multiplier -= type_res
-			r.type_reasons.append("резист: %s −%d%s" % [CityData.type_ru(hit_type), type_res, mark])
-
-	# Дальность — свойство оружия, руна её не меняет, поэтому проверяется один раз.
-	if weak_ranges.has(String(weapon.range_id)):
-		r.type_multiplier += 1
-		r.type_reasons.append("слабость: %s +1" % CityData.range_ru(weapon.range_id))
-
-	var range_res := 0
-	if phase_has_resist:
-		range_res = int((phase.get("resist_ranges", {}) as Dictionary).get(String(weapon.range_id), 0))
-	else:
-		range_res = monster.range_resist_for(weapon.range_id)
-	if range_res > 0:
-		r.type_multiplier -= range_res
-		r.type_reasons.append("резист: %s −%d" % [CityData.range_ru(weapon.range_id), range_res])
+			summed -= 1
+	r.type_multiplier = summed
 
 	r.monster_armor = monster.armor
 
