@@ -964,39 +964,50 @@ static func _status_mechanics() -> Array[String]:
 		out.append("ПРОВАЛ D20: оружие «%s», поле %s, инициатива %d (ждали 5)" % [
 			d20_spear.title, str(has_field), d20_hunter.initiative()])
 
-	# D23: запись уязвимости/резиста — пара множеств {types, ranges}. Связка
-	# «тип И дистанция» обязана работать: при старом коде (два независимых
-	# списка) «лёд (дальний)» давал +2, потому что срабатывали обе координаты.
+	# D23: запись уязвимости/резиста — пара множеств {types, ranges}. Проверяем
+	# САМО ПРАВИЛО через API модели, а не через формулу урона: формула до Task 2
+	# ещё читает старые списки, и проверка через неё была бы красной по посторонней
+	# причине — она не отличала бы старую модель от новой.
 	#
-	# Достижимое состояние: Хруз, праща (дробящее, дальняя) с руной льда.
-	# Цель D21 — +1; старый код давал +2.
+	# Три правила §2.1 спеки, каждое своим замером:
+	#   (а) связка: срабатывает только когда И тип, И дистанция попали в запись;
+	#   (б) пустое ranges = «любая дистанция»;
+	#   (в) пустое types = «любой тип».
 	var d23_mon := MonsterData.new()
-	d23_mon.id = &"d23_hruz_probe"
-	d23_mon.title = "Проба связки"
+	d23_mon.id = &"d23_probe"
+	d23_mon.title = "Проба записей"
 	d23_mon.max_hp = 12
 	d23_mon.armor = 0
 	d23_mon.weakness_rules = [
 		{"types": ["ice"], "ranges": ["ranged"]},
 		{"types": ["poison"], "ranges": []},
 	]
-	d23_mon.resist_rules = []
-	var d23_sling := WeaponData.new()
-	d23_sling.id = &"d23_sling"
-	d23_sling.range_id = MonsterData.RANGE_RANGED
-	d23_sling.damage_type = MonsterData.TYPE_CRUSH
-	d23_sling.base_damage = 3
-	d23_sling.rune_type = MonsterData.TYPE_ICE
-	var d23_hit := DamageCalc.player_damage(
-		d23_sling, d23_mon, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
-	var d23_reasons := ", ".join(d23_hit.type_reasons)
-	out.append("D23 связка: урон %d, разбор [%s]" % [d23_hit.total, d23_reasons])
-	# Три требования сразу: связка даёт ровно +1, запись без ranges работает
-	# на любой дистанции, и разбор называет «лёд (дальний)» один раз.
-	if d23_hit.type_multiplier == 1 and d23_reasons.count("лёд") == 1:
-		out.append("ок D23 связки: «тип И дистанция» даёт +1, а не +2")
+	d23_mon.resist_rules = [{"types": [], "ranges": ["melee"]}]
+	var w_coupled := d23_mon.weakness_modifier(
+		MonsterData.TYPE_ICE, MonsterData.RANGE_RANGED)
+	var w_type_only := d23_mon.weakness_modifier(
+		MonsterData.TYPE_ICE, MonsterData.RANGE_MELEE)
+	var w_range_only := d23_mon.weakness_modifier(
+		MonsterData.TYPE_CRUSH, MonsterData.RANGE_RANGED)
+	var w_any_range := d23_mon.weakness_modifier(
+		MonsterData.TYPE_POISON, MonsterData.RANGE_MELEE)
+	var r_any_type := d23_mon.resist_modifier(
+		MonsterData.TYPE_SLASH, MonsterData.RANGE_MELEE)
+	var r_wrong_range := d23_mon.resist_modifier(
+		MonsterData.TYPE_SLASH, MonsterData.RANGE_RANGED)
+	out.append("D23 связка: лёд+дальний %d, лёд+упор %d, дробящее+дальний %d" % [
+		w_coupled, w_type_only, w_range_only])
+	out.append("D23 стихии: яд в упор %d; резист «любой тип в упор» %d, на дальней %d" % [
+		w_any_range, r_any_type, r_wrong_range])
+	# (а) связка даёт ровно +1 и НЕ срабатывает, если совпала одна координата;
+	# (б) запись без ranges работает на любой дистанции;
+	# (в) запись без types работает на любой тип, но только в своей дистанции.
+	if w_coupled == 1 and w_type_only == 0 and w_range_only == 0 \
+			and w_any_range == 1 and r_any_type == 1 and r_wrong_range == 0:
+		out.append("ок D23: связка «тип И дистанция» и пустые множества работают")
 	else:
-		out.append("ПРОВАЛ D23 связки: множитель %d (ждали +1), разбор «%s»" % [
-			d23_hit.type_multiplier, d23_reasons])
+		out.append("ПРОВАЛ D23: связка %d (ждали 1), одна координата %d/%d (ждали 0), любая дистанция %d (ждали 1), любой тип %d (ждали 1), чужая дистанция %d (ждали 0)" % [
+			w_coupled, w_type_only, w_range_only, w_any_range, r_any_type, r_wrong_range])
 	return out
 
 
