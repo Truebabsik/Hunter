@@ -855,6 +855,91 @@ static func _status_mechanics() -> Array[String]:
 		out.append("ок D04: руна даёт базовый +1 без привилегии огня")
 	else:
 		out.append("ПРОВАЛ D04: разбор «%s» (ждали слабость режущего и никакого «огонь +1»)" % reasons)
+
+	# D04, добор: проверка выше сторожит возврат привилегии ОГНЯ, но не потерю
+	# «+1» у льда и яда. Правило говорит «стихии симметричны», значит сторожить
+	# надо все три, иначе потеря бонуса у двух из них пройдёт незамеченной.
+	#
+	# «+1» измеряется ЧИСЛОМ, а не строкой разбора. Первая редакция этой
+	# проверки искала в разборе «слабость: лёд +1» — и не краснела, когда «+1»
+	# руны отнимали: строка слабости живёт ОТДЕЛЬНОЙ веткой формулы (по
+	# `weakness_types` вида) и уцелевает без бонуса руны. Поэтому здесь две
+	# пробы: (1) на звере БЕЗ уязвимостей и резистов разница между ударом с
+	# руной и без неё — это ровно «+1», и только он; (2) разбор обязан назвать
+	# стихию, если зверь уязвим к типу руны.
+	var element_cases := [
+		[MonsterData.TYPE_FIRE, "огонь"],
+		[MonsterData.TYPE_ICE, "лёд"],
+		[MonsterData.TYPE_POISON, "яд"],
+	]
+	var d04_missing: Array[String] = []
+	for element_case in element_cases:
+		var element_type: StringName = element_case[0]
+		var element_name: String = element_case[1]
+
+		# (1) Сам бонус руны. Голый зверь: ни уязвимостей, ни резистов — тогда
+		# единственное отличие руны от её отсутствия и есть «+1».
+		var bare := MonsterData.new()
+		bare.id = &"d04_bare"
+		bare.title = "Проба стихии"
+		bare.max_hp = 20
+		bare.armor = 0
+		var runed := WeaponData.new()
+		runed.id = &"d04_staff"
+		runed.range_id = MonsterData.RANGE_MELEE
+		runed.damage_type = MonsterData.TYPE_CRUSH
+		runed.base_damage = 4
+		runed.rune_type = element_type
+		var no_rune: WeaponData = runed.duplicate()
+		no_rune.rune_type = &""
+		var with_rune := DamageCalc.player_damage(
+			runed, bare, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		var without_rune := DamageCalc.player_damage(
+			no_rune, bare, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		var rune_bonus := with_rune.total - without_rune.total
+		out.append("D04 стихия %s: «+1» руны = %d (урон %d с руной, %d без)" % [
+			element_name, rune_bonus, with_rune.total, without_rune.total])
+		if rune_bonus != 1:
+			d04_missing.append(element_name)
+
+		# (2) Зверь уязвим к САМОМУ типу руны — разбор обязан назвать стихию.
+		var thin_skin := MonsterData.new()
+		thin_skin.id = &"d04_thin"
+		thin_skin.title = "Проба стихии"
+		thin_skin.max_hp = 20
+		thin_skin.armor = 0
+		thin_skin.weakness_types = PackedStringArray([String(element_type)])
+		var element_hit := DamageCalc.player_damage(
+			runed, thin_skin, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		var element_reasons := ", ".join(element_hit.type_reasons)
+		out.append("D04 слабость %s: урон %d, разбор [%s]" % [
+			element_name, element_hit.total, element_reasons])
+		if not ("слабость: %s +1" % element_name in element_reasons):
+			d04_missing.append(element_name)
+	if d04_missing.is_empty():
+		out.append("ок D04 стихий: все три стихии дают «+1» и названы в разборе")
+	else:
+		out.append("ПРОВАЛ D04 стихий: «+1» потерян у %s" % ", ".join(d04_missing))
+
+	# D02: фазы Ламента — 12/16/12 при 40 HP. Заданы порогами 0.3 и 0.7, значит
+	# проверяем ГРАНИЦЫ, а не промежуточные значения: ошибка в них сдвигает фазу
+	# на ход-два, и заметить это по одному замеру нельзя.
+	var lam: MonsterData = Database.monster(&"lament")
+	if lam != null:
+		var at40 := StringName(lam.phase_for_hp(40).get("id", ""))
+		var at29 := StringName(lam.phase_for_hp(29).get("id", ""))
+		var at28 := StringName(lam.phase_for_hp(28).get("id", ""))
+		var at13 := StringName(lam.phase_for_hp(13).get("id", ""))
+		var at12 := StringName(lam.phase_for_hp(12).get("id", ""))
+		var at1 := StringName(lam.phase_for_hp(1).get("id", ""))
+		out.append("фазы Ламента: 40→%s, 29→%s, 28→%s, 13→%s, 12→%s, 1→%s" % [
+			at40, at29, at28, at13, at12, at1])
+		if at40 == &"calm" and at28 == &"rage" and at12 == &"worn" and at1 == &"worn":
+			out.append("ок фаз Ламента: 12 / 16 / 12 при 40 HP")
+		else:
+			out.append("ПРОВАЛ фаз Ламента: границы сдвинуты (28→%s, 12→%s)" % [at28, at12])
+	else:
+		out.append("ПРОВАЛ фаз Ламента: вид не загружен")
 	return out
 
 
