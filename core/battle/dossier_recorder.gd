@@ -89,12 +89,10 @@ func _scenario_label(scenario_id: String) -> String:
 	return s.card_label if s != null else scenario_id
 
 
+## Уязвимости вида строкой для досье. Строку собирает МОДЕЛЬ: уязвимость — это
+## запись «тип И дистанция» (D23), и склеивать её здесь из частей значило бы
+## записать в досье «лёд, дальний бой» как два отдельных факта.
 func _weakness_text() -> String:
 	if _monster == null:
 		return ""
-	var parts: PackedStringArray = PackedStringArray()
-	for t in _monster.weakness_types:
-		parts.append(CityData.type_ru(StringName(t)))
-	for r in _monster.weakness_ranges:
-		parts.append(CityData.range_ru(StringName(r)))
-	return ", ".join(parts)
+	return ", ".join(_monster.weakness_lines())

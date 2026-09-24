@@ -153,23 +153,12 @@ static func dossier_view(mon: MonsterData) -> Dictionary:
 
 	# Уязвимости и резисты — зеркала друг друга, и оба нужны вместе: без резистов
 	# окно обещало бы урон, которого не будет.
-	var weak := PackedStringArray()
-	for t in mon.weakness_types:
-		weak.append(CityData.type_ru(StringName(t)))
-	for r in mon.weakness_ranges:
-		weak.append(CityData.range_ru(StringName(r)))
-	view["weaknesses"] = weak
-
-	var res := PackedStringArray()
-	for t in mon.type_resist.keys():
-		var amount := int(mon.type_resist[t])
-		if amount > 0:
-			res.append("%s −%d" % [CityData.type_ru(StringName(t)), amount])
-	for r in mon.range_resist.keys():
-		var ramount := int(mon.range_resist[r])
-		if ramount > 0:
-			res.append("%s −%d" % [CityData.range_ru(StringName(r)), ramount])
-	view["resists"] = res
+	#
+	# Обе строки собирает модель: уязвимость и резист — это ЗАПИСЬ «тип И дистанция»
+	# (D23), и разложить её на два независимых списка значило бы показать игроку
+	# «лёд» и «дальний бой» как два отдельных совета там, где нужно попасть в оба.
+	view["weaknesses"] = mon.weakness_lines()
+	view["resists"] = mon.resist_lines()
 
 	for scn in mon.scenarios:
 		var mine := _signals_of(scn, known_signals)
@@ -265,20 +254,26 @@ static func _signal_texts(signals: Array[SignalData]) -> PackedStringArray:
 
 ## Фаза по доле HP. Список в данных идёт от низкого порога к высокому, поэтому
 ## пересказываем его как «при каком HP что меняется», а не как сырые доли.
+##
+## Уязвимости фазы — те же записи «тип И дистанция», что и базовые (D23), поэтому
+## «открыт» называет запись целиком: «яд, дальний бой» значит «нужно попасть и
+## ядом, И на дальней», а не два независимых совета.
 static func _phase_text(phase: Dictionary) -> String:
-	var weak_types := PackedStringArray()
-	for t in (phase.get("weak_types", PackedStringArray()) as PackedStringArray):
-		weak_types.append(CityData.type_ru(StringName(t)))
-	for r in (phase.get("weak_ranges", PackedStringArray()) as PackedStringArray):
-		weak_types.append(CityData.range_ru(StringName(r)))
+	# Разметку записи делает МОДЕЛЬ: обход структуры («types», «ranges») живёт
+	# только в MonsterData, и второго места ему быть не должно. Отдельного вида не
+	# заводим — записи фазы кладутся в пустую модель, к ним применяется та же
+	# разметка, что и к базовым уязвимостям.
+	var holder := MonsterData.new()
+	holder.weakness_rules = Array(phase.get("weak_rules", []))
+	var weak: PackedStringArray = holder.weakness_lines()
 	var bits := PackedStringArray()
 	var note := str(phase.get("note", ""))
 	if not note.is_empty():
 		bits.append(note)
-	if weak_types.is_empty():
+	if weak.is_empty():
 		bits.append("Уязвимостей в этой фазе нет.")
 	else:
-		bits.append("Открыт для: %s." % ", ".join(weak_types))
+		bits.append("Открыт для: %s." % ", ".join(weak))
 	var noise := float(phase.get("noise", 1.0))
 	if not is_equal_approx(noise, 1.0):
 		bits.append("Шум ×%.1f." % noise)

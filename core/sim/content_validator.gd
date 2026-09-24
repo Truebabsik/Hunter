@@ -35,12 +35,14 @@ func validate_all() -> Array:
 ## Физический урон разделён на три подтипа (дробящий / режущий / колющий), и это
 ## обязано быть ПОЛЕЗНО, а не просто названо.
 ##
-## Здесь ловятся четыре тихие поломки:
-##  1. тип в таблице вида или в комбо, которым НЕЧЕМ ударить (опечатка или забытый
-##     источник типа: физику даёт оружие, магию — руна на нём);
-##  2. тип закрыт у вида по ВСЕМ дистанциям: тогда слабость есть, а использовать
-##     её нечем — в упор бьют, издалека нет, и наоборот;
-##  3. у вида закрыты все три физических подтипа: выбор оружия упирается в тупик;
+## С D23 уязвимость и резист — пара «тип И дистанция», поэтому и проверяются они
+## парой, а не координатами порознь. Здесь ловятся четыре тихие поломки:
+##  1. уязвимость, недостижимая НИ ОДНОЙ парой (тип, дистанция) из арсенала, и тип
+##     в комбо, которым нечем ударить (опечатка или забытый источник типа: физику
+##     даёт оружие, магию — руна на нём);
+##  2. ни одна пара «тип × дистанция» из арсенала не проходит без резиста: тогда
+##     выбор оружия ничего не решает — слабость есть, а использовать её нечем;
+##  3. фаза открывает уязвимость, недостижимую ни одним оружием;
 ##  4. оружие, которое не нужно НИ ОДНОМУ виду: позиция в магазине, которую
 ##     незачем покупать.
 func _check_physical_subtypes() -> Array:
@@ -50,16 +52,10 @@ func _check_physical_subtypes() -> Array:
 	# ТОЛЬКО руна, поэтому без рун в этот список её включать нельзя — иначе
 	# проверка объявит недостижимыми все комбо на огонь, лёд и яд.
 	var reachable := {}
-	var reachable_melee := {}
-	var reachable_ranged := {}
 	for id in Database.weapons.keys():
 		var w: WeaponData = Database.weapons[id]
 		for t in CityData.damage_types(w):
 			reachable[t] = true
-			if w.range_id == MonsterData.RANGE_MELEE:
-				reachable_melee[t] = true
-			else:
-				reachable_ranged[t] = true
 	for skill_id in SkillsData.RUNE_SKILLS.keys():
 		reachable[StringName(SkillsData.RUNE_SKILLS[skill_id])] = true
 
@@ -67,35 +63,52 @@ func _check_physical_subtypes() -> Array:
 		var mon: MonsterData = Database.monsters[id]
 		var label := "%s (%s)" % [mon.title, mon.id]
 
-		var shut: Array = []
-		for t in MonsterData.PHYSICAL_TYPES:
-			var res := mon.type_resist_for(t)
-			var weak := mon.is_weak_to_type(t)
-			if weak and res > 0:
-				out.append("подтипы: %s — «%s» одновременно уязвимость и резист" % [label, t])
-			# Полезность: уязвимость обязана быть достижима ХОТЯ БЫ одной
-			# дистанцией. Требовать обе нельзя: Громун уязвим к дробящему только
-			# в упор и устойчив к дальней дистанции — это его природа, а не
-			# ошибка контента. Ошибка — когда нечем ударить ВООБЩЕ.
-			if weak:
-				if not reachable.has(t):
-					out.append("подтипы: %s — уязвим к «%s», но такого урона нет в игре" % [label, t])
-				elif not reachable_melee.has(t) and not reachable_ranged.has(t):
-					out.append("подтипы: %s — уязвим к «%s», но ни одним оружием этого типа не ударить" % [label, t])
-			if res > 0:
-				shut.append(t)
+		# Полезность уязвимости (D23): уязвимость — это пара «тип И дистанция»,
+		# поэтому проверять её по одному типу нельзя: у Громунa дробящее работает
+		# только в упор, и «уязвим к дробящему» без дистанции — половина правды.
+		# Ошибка контента — когда уязвимость недостижима НИ ОДНОЙ парой
+		# (тип, дистанция) из существующего оружия.
+		#
+		# Действующие записи, а не сырое поле: до Task 4 данные лежат старыми
+		# списками, и обход `mon.weakness_rules` был бы вакуумным — проверка
+		# молчала бы, ничего не проверив.
+		for rule_v in mon.effective_weakness_rules():
+			if _reachable_by_weapon(rule_v as Dictionary).is_empty():
+				out.append("уязвимость: %s — запись «%s» недостижима ни одним оружием" % [
+					label, ", ".join(MonsterData.rule_types_ru(rule_v as Dictionary))])
 
-		if shut.size() == MonsterData.PHYSICAL_TYPES.size():
-			out.append("подтипы: %s — закрыты ВСЕ физические подтипы, выбор оружия тупиковый" % label)
+		# Тупик — когда НИ ОДНА пара «тип × дистанция» из арсенала не проходит без
+		# резиста: тогда выбор оружия действительно ничего не решает. Так эта
+		# проверка и обобщает прежнюю «закрыты все три физических подтипа» на
+		# модель записей.
+		#
+		# Считать её по ОДНОЙ дистанции нельзя: закрытая дальняя дистанция —
+		# законный замысел, а не дефект. Громун резистит на дальней всё, что игра
+		# туда доставляет (запись без types закрывает любой тип), и берут его в
+		# упор — проверка «вся физика закрыта на дальней» называла бы дефектом
+		# дизайн. Проверено: она краснела на Громунe.
+		var checked_pairs := 0
+		var any_open := false
+		for range_id in [MonsterData.RANGE_MELEE, MonsterData.RANGE_RANGED]:
+			for t in _deliverable_types(StringName(range_id)):
+				checked_pairs += 1
+				if mon.resist_modifier(t, StringName(range_id)) < 1:
+					any_open = true
+					break
+			if any_open:
+				break
+		if checked_pairs > 0 and not any_open:
+			out.append("подтипы: %s — ни одна пара «тип × дистанция» из арсенала не проходит без резиста: выбор оружия тупиковый" % label)
 
 		# Уязвимости, приходящие из фаз (Ламент в истощении), тоже обязаны быть
 		# достижимы: иначе фаза открывает слабость, которую нечем использовать.
+		# Читаются те же записи, что и у базовых уязвимостей, — ключ weak_rules.
 		for ph in mon.phases:
-			for wt in (ph.get("weak_types", PackedStringArray()) as PackedStringArray):
-				var t := StringName(wt)
-				if not reachable.has(t):
-					out.append("подтипы: %s — фаза «%s» открывает тип «%s», которым нечем ударить" % [
-						label, str(ph.get("title", "")), t])
+			for rule_v in (ph.get("weak_rules", []) as Array):
+				if _reachable_by_weapon(rule_v as Dictionary).is_empty():
+					out.append("подтипы: %s — фаза «%s» открывает запись «%s», недостижимую ни одним оружием" % [
+						label, str(ph.get("title", "")),
+						", ".join(MonsterData.rule_types_ru(rule_v as Dictionary))])
 
 		# Комбо тоже требует конкретный тип: он должен существовать.
 		for c in mon.combos:
@@ -107,25 +120,20 @@ func _check_physical_subtypes() -> Array:
 
 	# Обратная сторона: каждое оружие обязано быть КОМУ-ТО нужно. Иначе в магазине
 	# лежит позиция, которую незачем покупать, — а игрок узнаёт об этом, только
-	# потратив монеты. Тип оружия считается полезным, если хотя бы один вид к нему
-	# уязвим: без уязвимости любой подтип проходит одинаково.
+	# потратив монеты. Оружие считается полезным, если уязвимость хотя бы одного
+	# вида срабатывает ровно по его паре «тип × дистанция»: без уязвимости в этой
+	# паре любой подтип проходит одинаково.
 	for id in Database.weapons.keys():
 		var w: WeaponData = Database.weapons[id]
 		var useful := false
 		for monster_id in Database.monsters.keys():
 			var m: MonsterData = Database.monsters[monster_id]
-			# Уязвимость может открыться фазой (Ламент), поэтому смотрим и фазы.
-			if m.is_weak_to_type(w.damage_type):
+			# Полезность считается по ПАРЕ «тип × дистанция»: без уязвимости в
+			# этой самой паре любой подтип проходит одинаково. Фазы здесь не
+			# смотрим: фаза переопределяет уязвимости, а не создаёт спрос — если
+			# оружие не нужно виду в его обычном состоянии, покупать его незачем.
+			if m.weakness_modifier(w.damage_type, w.range_id) > 0:
 				useful = true
-				break
-			for ph in m.phases:
-				for wt in (ph.get("weak_types", PackedStringArray()) as PackedStringArray):
-					if StringName(wt) == w.damage_type:
-						useful = true
-						break
-				if useful:
-					break
-			if useful:
 				break
 		if not useful:
 			out.append("подтипы: оружие «%s» (%s) не нужно ни одному виду — нет ни слабости, ни одной атаки такого типа" % [
@@ -283,17 +291,17 @@ func _check_runes() -> Array:
 ## Подставной вид для проверки зачарования: уязвим ко льду, устойчив к дробящему,
 ## без панциря. Так разница урона объясняется ТОЛЬКО типами урона.
 ##
-## Запись «physical» здесь не опечатка: она проверяет СТАРЫЙ способ записи.
-## Общая физика обязана покрывать все три подтипа (MonsterData.type_resist_for),
-## иначе старые таблицы молча перестали бы защищать зверя.
+## Тип «physical» в записи резиста здесь не опечатка: он проверяет ЛЕГАСИ-КЛЮЧ,
+## покрывающий все три физических подтипа. Общая физика обязана по-прежнему
+## защищать зверя, иначе старые таблицы молча перестали бы работать.
 func _probe_monster() -> MonsterData:
 	var mon := MonsterData.new()
 	mon.id = &"rune_probe"
 	mon.title = "Проба руны"
 	mon.max_hp = 20
 	mon.armor = 0
-	mon.weakness_types = PackedStringArray(["ice"])
-	mon.type_resist = {"physical": 1, "ice": 0}
+	mon.weakness_rules = [{"types": ["ice"], "ranges": []}]
+	mon.resist_rules = [{"types": ["physical"], "ranges": []}]
 	return mon
 
 
@@ -505,14 +513,65 @@ func _check_monster(mon: MonsterData) -> Array:
 			out.append("%s: комбо «%s» накладывает статус «%s», которого движок не обрабатывает (умеет: %s)" % [
 				label, c.title, st, ", ".join(_status_names())])
 
-	# Инвариант 4: уязвимости и резисты не должны противоречить друг другу.
-	var weak_t := mon.weakness_types
-	for t in mon.type_resist.keys():
-		if weak_t.has(String(t)):
-			out.append("%s: тип «%s» одновременно уязвимость и резист — правило неоднозначно" % [label, t])
-	var weak_r := mon.weakness_ranges
-	for r in mon.range_resist.keys():
-		if weak_r.has(String(r)):
-			out.append("%s: дальность «%s» одновременно уязвимость и резист" % [label, r])
+	# Инвариант 4 (D23): запись обязана ограничивать хотя бы одну координату.
+	# Пустая запись сработала бы на ЛЮБОЙ удар — это скрытый «резист ко всему»,
+	# и увидеть его в таблице было бы нечем.
+	#
+	# Проверяются СЫРЫЕ поля, а не действующие записи: переходник строит записи из
+	# старых списков, и у него пустая запись получиться не может в принципе —
+	# проверка действующих записей не покраснела бы никогда.
+	for rules in [mon.weakness_rules, mon.resist_rules]:
+		for rule_v in rules:
+			var rule := rule_v as Dictionary
+			if PackedStringArray(rule.get("types", [])).size() == 0 \
+					and PackedStringArray(rule.get("ranges", [])).size() == 0:
+				out.append("%s: запись без types и ranges сработала бы на любой удар" % label)
 
+	return out
+
+
+## Достаёт ли до этой записи хоть какое-то оружие: существует ли пара «тип удара ×
+## дистанция», при которой запись срабатывает. Возвращает название оружия, а
+## пустая строка значит «недостижима».
+##
+## Проверка идёт по ПАРЕ, а не по координатам порознь: у Громунa дробящее работает
+## только в упор, поэтому «уязвим к дробящему на дальней» — недостижимая
+## уязвимость, хотя и молот, и лук в игре есть.
+##
+## Тип даёт базовое оружие ИЛИ руна, наложенная на него: магию в игре даёт только
+## руна, а наложить её можно на любое оружие (дистанцию руна не меняет).
+func _reachable_by_weapon(rule: Dictionary) -> String:
+	for id in Database.weapons.keys():
+		var w: WeaponData = Database.weapons[id]
+		for t in _hittable_types(w):
+			if MonsterData.rule_applies(rule, t, w.range_id):
+				return w.title
+	return ""
+
+
+## Типы, которыми можно ударить ЭТИМ оружием: его собственный (вместе с уже
+## наложенной руной) плюс каждая руна, которую игрок способен наложить.
+func _hittable_types(w: WeaponData) -> Array:
+	var out: Array = []
+	for t in CityData.damage_types(w):
+		if not out.has(t):
+			out.append(t)
+	for skill_id in SkillsData.RUNE_SKILLS.keys():
+		var rune_type := StringName(SkillsData.RUNE_SKILLS[skill_id])
+		if not out.has(rune_type):
+			out.append(rune_type)
+	return out
+
+
+## Типы, которые игра способна доставить на эту дистанцию: всё, чем бьёт оружие
+## этой дистанции, вместе с любой наложенной руной.
+func _deliverable_types(range_id: StringName) -> Array:
+	var out: Array = []
+	for id in Database.weapons.keys():
+		var w: WeaponData = Database.weapons[id]
+		if w.range_id != range_id:
+			continue
+		for t in _hittable_types(w):
+			if not out.has(t):
+				out.append(t)
 	return out

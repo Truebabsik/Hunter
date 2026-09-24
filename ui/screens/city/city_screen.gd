@@ -634,14 +634,13 @@ func _ask_advice(monster_id: StringName, price: int) -> void:
 
 ## Совет — это опыт, а не подсказка (GDD 9.3): он называет опорные сигналы
 ## и слабость, но не даёт частот сценариев и не пишется в досье.
+##
+## Слабость называется ЗАПИСЯМИ («лёд, дальний бой») — строку собирает модель:
+## это одна запись «тип И дистанция» (D23), а не два независимых совета.
 func _advice_text(mon: MonsterData) -> String:
 	if mon == null:
 		return ""
-	var weak_parts: PackedStringArray = PackedStringArray()
-	for t in mon.weakness_types:
-		weak_parts.append(CityData.type_ru(StringName(t)))
-	for r in mon.weakness_ranges:
-		weak_parts.append(CityData.range_ru(StringName(r)))
+	var weak_parts: PackedStringArray = mon.weakness_lines()
 	var lines: PackedStringArray = PackedStringArray()
 	lines.append("[b]«%s. %s.»[/b]" % [mon.title, mon.epithet])
 	for scn in mon.scenarios:
