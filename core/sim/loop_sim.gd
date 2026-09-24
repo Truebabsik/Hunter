@@ -87,19 +87,24 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	var run_overs := 0
 	var rank_history: Array[String] = []
 	var reached_legend_at := -1
+	## Сколько раз бот ходил на каждый вид. Нужен для ротации заказов: без неё
+	## прогон всегда бьёт одного и того же зверя и не меряет игру (см. _pick_order).
+	var order_seen: Dictionary = {}
 	## День, в который достигнута Легенда: главное число для срока богини.
 	var legend_day := 0
 
 	while hunt_no < max_hunts and GameState.rank < 5:
 		hunt_no += 1
 		_milestone(out, "охота %d: выбор заказа" % hunt_no)
-		var order := _pick_order()
+		var order := _pick_order(order_seen)
 		if order.is_empty():
 			out.append("нет доступных заказов — тупик прогрессии")
 			break
 		var mon: MonsterData = Database.monster(StringName(order["monster_id"]))
 		if mon == null:
 			break
+		var mon_key := String(mon.id)
+		order_seen[mon_key] = int(order_seen.get(mon_key, 0)) + 1
 
 		# --- След (нарратив; проверяем, что он вообще собирается)
 		var is_repeat := GameState.kill_counts(mon.id) > 0
@@ -300,10 +305,28 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		out.append("  " + rank_history[i])
 
 
-## Какой заказ берём: самый дорогой из доступных, у которого вид РЕАЛЬНО загружен.
-## Фильтр обязателен: в таблице заказов есть виды, чьи файлы ещё не написаны или
-## временно убраны, и выбор «пустого» заказа молча обрывал прогон.
-func _pick_order() -> Dictionary:
+## Какой заказ берём: самый дорогой, но с РОТАЦИЕЙ видов внутри тира.
+##
+## Почему не «первый из максимального тира», как было. Раньше бот брал `usable[0]`
+## среди заказов высшего доступного тира, то есть вид, который в таблице идёт
+## первым. Это дало за прогон 4 Скорба подряд и 3 Ламента при том, что Пепел-Мать
+## (тот же тир 2) не встретилась ни разу: 907 монет против 767 в кривой спеки.
+##
+## Расхождение было не в ценах, а в ТОМ, ЧТО МЫ МЕРИЛИ. Кривая §12.12 описывает
+## путь с ротацией видов — 1 Хруз, 3 Шипуна, 3 Громуна, 1 Тлеун, 2 Скорба,
+## 2 Пепел-Матери, 1 Ламент. Бот же всегда брал самый дорогой заказ, и три
+## Ламента по 180 монет дали больше, чем весь спекулятивный бюджет.
+##
+## Ротация нужна и по второй причине: без неё бот НИКОГДА не встречает новый вид,
+## а значит не наполняет досье и не проходит через «первую встречу» — то есть
+## прогон не касается половины механик. Проверка, которая всегда ходит на одного
+## и того же зверя, меряет не игру, а одну арену.
+##
+## Правило: среди заказов высшего доступного тира берём тот вид, на которого
+## ходили РЕЖЕ ВСЕГО. При равенстве — первый по таблице (устойчиво между прогонами).
+## Фильтр по загруженности обязателен: в таблице есть виды без файлов, и выбор
+## «пустого» заказа молча обрывал прогон.
+func _pick_order(order_seen: Dictionary) -> Dictionary:
 	var orders := CityData.available_monsters(GameState.rank)
 	var usable: Array = []
 	for o in orders:
@@ -311,10 +334,18 @@ func _pick_order() -> Dictionary:
 			usable.append(o)
 	if usable.is_empty():
 		return {}
-	var best: Dictionary = usable[0]
+	var best_tier := 0
 	for o in usable:
-		if int(o["tier"]) > int(best["tier"]):
+		best_tier = maxi(best_tier, int(o["tier"]))
+	var best: Dictionary = {}
+	var best_seen := -1
+	for o in usable:
+		if int(o["tier"]) != best_tier:
+			continue
+		var seen := int(order_seen.get(String(o["monster_id"]), 0))
+		if best.is_empty() or seen < best_seen:
 			best = o
+			best_seen = seen
 	return best
 
 
