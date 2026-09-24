@@ -13,7 +13,7 @@ class_name UiChecks
 const PREP_REPORT := "_prep_out.txt"
 const SMOKE_REPORT := "_smoke_out.txt"
 const UI_REPORT := "_ui_out.txt"
-const SHOTS_DIR := "F:/WORK/hunter/_shots"
+const SHOTS_DIR := "res://_shots"
 
 
 ## Проверка экрана подготовки: он обязан МЕНЯТЬ состояние забега, а не только

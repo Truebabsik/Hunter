@@ -32,7 +32,7 @@ func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
 ## Веха: пишется в отчёт и в отдельный файл, чтобы при зависании было видно шаг.
 func _milestone(out: Array[String], text: String) -> void:
 	out.append("   · " + text)
-	var f := FileAccess.open("F:/WORK/hunter/_loop_progress.txt", FileAccess.WRITE)
+	var f := FileAccess.open("res://_loop_progress.txt", FileAccess.WRITE)
 	if f != null:
 		f.store_string("\n".join(out))
 		f.close()
@@ -41,9 +41,9 @@ func _milestone(out: Array[String], text: String) -> void:
 ## Диагностическая трасса: пишется в отдельный файл, чтобы обрыв прогона был виден
 ## как последняя дошедшая строка, а не как «отчёт просто короткий».
 func _trace(text: String) -> void:
-	var f := FileAccess.open("F:/WORK/hunter/_loop_trace2.txt", FileAccess.READ_WRITE)
+	var f := FileAccess.open("res://_loop_trace2.txt", FileAccess.READ_WRITE)
 	if f == null:
-		f = FileAccess.open("F:/WORK/hunter/_loop_trace2.txt", FileAccess.WRITE)
+		f = FileAccess.open("res://_loop_trace2.txt", FileAccess.WRITE)
 	if f == null:
 		return
 	f.seek_end()

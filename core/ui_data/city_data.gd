@@ -243,7 +243,7 @@ static func debug_orders() -> void:
 			names.append("%s(t%d)" % [m["monster_id"], m["tier"]])
 		out.append("ранг %d: %d заказов — %s" % [r, ms.size(), ", ".join(names)])
 	out.append("ключи ORDER_RANKS: %s" % str(ORDER_RANKS.keys()))
-	var f := FileAccess.open("F:/WORK/hunter/_orders.txt", FileAccess.WRITE)
+	var f := FileAccess.open("res://_orders.txt", FileAccess.WRITE)
 	if f != null:
 		f.store_string("\n".join(out))
 		f.close()
