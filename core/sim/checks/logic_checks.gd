@@ -723,9 +723,10 @@ static func _second_wind_preemptive() -> Array[String]:
 	return out
 
 
-## Ожидаемые записи семи видов — ФАКТ состояния 2а, снятый с `content/monsters/*.tres`
-## после Task 4. Это вторая половина сторожа D23: выше проверяется СВЯЗНОСТЬ записи
-## (сработала ли она по своим же множествам), здесь — её СОДЕРЖАНИЕ.
+## Ожидаемые записи семи видов — ФАКТ состояния 2б, снятый с `content/monsters/*.tres`
+## после Task 5 (числа §2.3 спеки переноса). Это вторая половина сторожа D23: выше
+## проверяется СВЯЗНОСТЬ записи (сработала ли она по своим же множествам), здесь —
+## её СОДЕРЖАНИЕ.
 ##
 ## ПОЧЕМУ ЭТО НУЖНО. Сторож выше краснеет, только когда запись противоречит СВОИМ ЖЕ
 ## объявленным множествам. Замер ревью: подмена у Громунa `[ranged]` на `[melee]`
@@ -733,8 +734,8 @@ static func _second_wind_preemptive() -> Array[String]:
 ##
 ## ПОЧЕМУ ТАБЛИЦА, А НЕ ПРАВИЛО. «Правильного» вида записей не существует: §2.3 спеки
 ## задаёт конкретные числа, и они меняются этапами. Поэтому ожидание записано фактом —
-## и таблица ОБЯЗАНА меняться вместе с данными: этап 2б (Task 5) переписывает все
-## числа §2.3 и обновляет её здесь. Расхождение «данные ушли, таблица осталась» будет
+## и таблица ОБЯЗАНА меняться вместе с данными: этап 2б (Task 5) переписал все числа
+## §2.3 и обновил её здесь. Расхождение «данные ушли, таблица осталась» будет
 ## названо, а не пройдёт молча.
 ##
 ## Форма: id вида → `weak`/`resist` (записи полей) и `phase_weak` (фазовые записи по
@@ -744,33 +745,31 @@ const D23_CONTENT := {
 	"hruz": {
 		"weak": [
 			{"types": ["ice"], "ranges": ["ranged"]},
-			{"types": ["poison"], "ranges": ["ranged"]},
+			{"types": ["poison"], "ranges": []},
 		],
 		"resist": [
 			{"types": ["fire"], "ranges": []},
-			{"types": ["slash"], "ranges": []},
-			{"types": ["pierce"], "ranges": []},
 		],
 		"phase_weak": {},
 	},
 	"shipun": {
 		"weak": [
-			{"types": ["poison"], "ranges": ["ranged"]},
+			{"types": ["poison"], "ranges": []},
+			{"types": ["fire"], "ranges": ["ranged"]},
 		],
 		"resist": [
-			{"types": ["ice"], "ranges": []},
-			{"types": ["slash"], "ranges": []},
-			{"types": ["pierce"], "ranges": []},
+			{"types": [], "ranges": ["melee"]},
 		],
 		"phase_weak": {},
 	},
 	"gromun": {
 		"weak": [
-			{"types": ["crush"], "ranges": ["melee"]},
+			{"types": [], "ranges": ["melee"]},
+			{"types": ["fire"], "ranges": []},
 		],
 		"resist": [
-			{"types": ["ice"], "ranges": []},
 			{"types": [], "ranges": ["ranged"]},
+			{"types": ["ice"], "ranges": []},
 		],
 		"phase_weak": {},
 	},
@@ -778,22 +777,19 @@ const D23_CONTENT := {
 		"weak": [
 			{"types": ["poison"], "ranges": []},
 			{"types": ["ice"], "ranges": []},
-			{"types": ["pierce"], "ranges": []},
 		],
 		"resist": [
 			{"types": ["fire"], "ranges": []},
-			{"types": ["crush"], "ranges": []},
-			{"types": ["slash"], "ranges": []},
+			{"types": [], "ranges": ["melee"]},
 		],
 		"phase_weak": {},
 	},
 	"skorb": {
 		"weak": [
-			{"types": ["fire"], "ranges": ["ranged"]},
+			{"types": ["fire"], "ranges": []},
 		],
 		"resist": [
-			{"types": ["slash"], "ranges": []},
-			{"types": ["pierce"], "ranges": []},
+			{"types": [], "ranges": ["melee"]},
 			{"types": ["ice"], "ranges": []},
 			{"types": ["poison"], "ranges": []},
 		],
@@ -802,10 +798,10 @@ const D23_CONTENT := {
 	"ashmother": {
 		"weak": [
 			{"types": ["fire"], "ranges": []},
-			{"types": ["poison"], "ranges": []},
-			{"types": ["slash"], "ranges": []},
 		],
 		"resist": [
+			{"types": ["pierce"], "ranges": []},
+			{"types": ["slash"], "ranges": []},
 			{"types": ["crush"], "ranges": []},
 			{"types": ["ice"], "ranges": []},
 		],
@@ -813,7 +809,12 @@ const D23_CONTENT := {
 	},
 	"lament": {
 		"weak": [],
-		"resist": [],
+		"resist": [
+			{"types": [], "ranges": ["melee"]},
+			{"types": [], "ranges": ["ranged"]},
+			{"types": ["ice"], "ranges": []},
+			{"types": ["poison"], "ranges": []},
+		],
 		# Все три фазы перечислены явно, в том числе пустые: «в фазе «Бешенство»
 		# записей нет» — такое же ожидание, как и наличие записей, и если 2б
 		# добавит их туда, таблица обязана это заметить.
@@ -1230,9 +1231,9 @@ static func _status_mechanics() -> Array[String]:
 	# Число проверенных записей печатается, и НОЛЬ здесь — НЕ провал: состояние
 	# «записей без types нет вовсе» законно, и порог-минимум был бы подгонкой под
 	# сегодняшние данные (ноль честно говорит «предмета проверки не было»).
-	# Сколько их сегодня: в 2а такая запись ОДНА — громунова `(—,ranged)`. На
-	# числах §2.3 этапа 2б их ожидается шесть (Шипун, Громун, Тлеун, Скорб и две
-	# у Ламанта), и тогда ноль означал бы уже потерю данных, а не их отсутствие.
+	# Сколько их сегодня: в 2а такая запись была ОДНА — громунова `(—,ranged)`. На
+	# числах §2.3 этапа 2б их стало шесть (Шипун, Громун, Тлеун, Скорб и две
+	# у Ламанта), и теперь ноль означал бы потерю данных, а не их отсутствие.
 	# За содержание записей отвечает отдельная сверка ниже («D23 содержание»).
 	var d23_fail: Array[String] = []
 	var d23_range_rules := 0
@@ -1349,7 +1350,7 @@ static func _status_mechanics() -> Array[String]:
 		content_fail.append("сверено видов %d, а в таблице ожиданий %d — вид пропал из данных" % [
 			content_species, D23_CONTENT.size()])
 	if content_fail.is_empty():
-		out.append("ок D23 содержание: записи совпали с ожидаемой таблицей 2а (видов %d, записей %d)" % [
+		out.append("ок D23 содержание: записи совпали с ожидаемой таблицей 2б (видов %d, записей %d)" % [
 			content_species, content_rules])
 	else:
 		out.append("ПРОВАЛ D23 содержание: %s" % "; ".join(content_fail))

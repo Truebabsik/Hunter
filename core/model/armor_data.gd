@@ -12,8 +12,11 @@ class_name ArmorData
 
 @export_range(0, 10, 1) var absorption: int = 0
 
-## Штраф инициативы (GDD 12.9).
-@export_range(-3, 0, 1) var initiative_penalty: int = 0
+## Штраф инициативы (GDD 12.9). ЗНАК: положительное число — это ШТРАФ, потому что
+## формула `HunterState.initiative()` его ВЫЧИТАЕТ (`5 + бонус − штраф`). Так что
+## тяжёлая броня хранит `1` и даёт `5 − 1 = 4`, как требует дизайн (§2.6, §12.8,
+## §12.9). Отрицательное значение повышало бы инициативу — дефект Д1 спеки §7.8.
+@export_range(-3, 3, 1) var initiative_penalty: int = 0
 
 @export_range(0, 200, 1) var price: int = 0
 

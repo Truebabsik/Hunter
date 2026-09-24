@@ -8,5 +8,5 @@ id = &"heavy"
 title = "Тяжёлая броня"
 slot = &"heavy"
 absorption = 3
-initiative_penalty = -1
+initiative_penalty = 1
 price = 40
