@@ -145,32 +145,6 @@ func total_weight() -> int:
 	return sum
 
 
-## Уязвим ли вид к этому типу на этой дистанции. Нужно валидатору.
-## Пустая дистанция значит «любая»: так зовут читатели, которым дистанция
-## неизвестна (досье спрашивает только тип).
-func is_weak_to_type(type_id: StringName, range_id: StringName = &"") -> bool:
-	if range_id == &"":
-		return weakness_modifier(type_id, RANGE_MELEE) > 0 \
-			or weakness_modifier(type_id, RANGE_RANGED) > 0
-	return weakness_modifier(type_id, range_id) > 0
-
-
-## Первый тип уязвимости — подсказка для бота, когда точной пары нет.
-## Пустая строка, если уязвимостей нет.
-##
-## Поля записи разбирает модель (rule_strings), а не сама эта функция: скаляр
-## в поле приходит из .tres руками, и PackedStringArray() на нём уронил бы
-## выбор инструмента SCRIPT ERROR'ом. Назвать форму поля обязан валидатор.
-func weakness_type_hint() -> StringName:
-	for rule_v in weakness_rules:
-		if not (rule_v is Dictionary):
-			continue
-		var types := rule_strings(rule_v as Dictionary, "types")
-		if types.size() > 0:
-			return StringName(types[0])
-	return &""
-
-
 ## --- Записи уязвимостей и резистов (D23, GDD 12.3.1) -----------------------
 
 ## Срабатывает ли запись по этой координате удара. Пустое множество = «любой».

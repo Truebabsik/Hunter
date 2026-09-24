@@ -723,6 +723,154 @@ static func _second_wind_preemptive() -> Array[String]:
 	return out
 
 
+## Ожидаемые записи семи видов — ФАКТ состояния 2а, снятый с `content/monsters/*.tres`
+## после Task 4. Это вторая половина сторожа D23: выше проверяется СВЯЗНОСТЬ записи
+## (сработала ли она по своим же множествам), здесь — её СОДЕРЖАНИЕ.
+##
+## ПОЧЕМУ ЭТО НУЖНО. Сторож выше краснеет, только когда запись противоречит СВОИМ ЖЕ
+## объявленным множествам. Замер ревью: подмена у Громунa `[ranged]` на `[melee]`
+## оставляла `ок D23 видов` ЗЕЛЁНЫМ — запись цела, а замысел данных уже другой.
+##
+## ПОЧЕМУ ТАБЛИЦА, А НЕ ПРАВИЛО. «Правильного» вида записей не существует: §2.3 спеки
+## задаёт конкретные числа, и они меняются этапами. Поэтому ожидание записано фактом —
+## и таблица ОБЯЗАНА меняться вместе с данными: этап 2б (Task 5) переписывает все
+## числа §2.3 и обновляет её здесь. Расхождение «данные ушли, таблица осталась» будет
+## названо, а не пройдёт молча.
+##
+## Форма: id вида → `weak`/`resist` (записи полей) и `phase_weak` (фазовые записи по
+## id фазы: у Ламанта уязвимости живут ТОЛЬКО там, и без них он в таблице пуст).
+## Порядок записей и порядок строк внутри записи не значим — сравнение по множествам.
+const D23_CONTENT := {
+	"hruz": {
+		"weak": [
+			{"types": ["ice"], "ranges": ["ranged"]},
+			{"types": ["poison"], "ranges": ["ranged"]},
+		],
+		"resist": [
+			{"types": ["fire"], "ranges": []},
+			{"types": ["slash"], "ranges": []},
+			{"types": ["pierce"], "ranges": []},
+		],
+		"phase_weak": {},
+	},
+	"shipun": {
+		"weak": [
+			{"types": ["poison"], "ranges": ["ranged"]},
+		],
+		"resist": [
+			{"types": ["ice"], "ranges": []},
+			{"types": ["slash"], "ranges": []},
+			{"types": ["pierce"], "ranges": []},
+		],
+		"phase_weak": {},
+	},
+	"gromun": {
+		"weak": [
+			{"types": ["crush"], "ranges": ["melee"]},
+		],
+		"resist": [
+			{"types": ["ice"], "ranges": []},
+			{"types": [], "ranges": ["ranged"]},
+		],
+		"phase_weak": {},
+	},
+	"tleun": {
+		"weak": [
+			{"types": ["poison"], "ranges": []},
+			{"types": ["ice"], "ranges": []},
+			{"types": ["pierce"], "ranges": []},
+		],
+		"resist": [
+			{"types": ["fire"], "ranges": []},
+			{"types": ["crush"], "ranges": []},
+			{"types": ["slash"], "ranges": []},
+		],
+		"phase_weak": {},
+	},
+	"skorb": {
+		"weak": [
+			{"types": ["fire"], "ranges": ["ranged"]},
+		],
+		"resist": [
+			{"types": ["slash"], "ranges": []},
+			{"types": ["pierce"], "ranges": []},
+			{"types": ["ice"], "ranges": []},
+			{"types": ["poison"], "ranges": []},
+		],
+		"phase_weak": {},
+	},
+	"ashmother": {
+		"weak": [
+			{"types": ["fire"], "ranges": []},
+			{"types": ["poison"], "ranges": []},
+			{"types": ["slash"], "ranges": []},
+		],
+		"resist": [
+			{"types": ["crush"], "ranges": []},
+			{"types": ["ice"], "ranges": []},
+		],
+		"phase_weak": {},
+	},
+	"lament": {
+		"weak": [],
+		"resist": [],
+		# Все три фазы перечислены явно, в том числе пустые: «в фазе «Бешенство»
+		# записей нет» — такое же ожидание, как и наличие записей, и если 2б
+		# добавит их туда, таблица обязана это заметить.
+		"phase_weak": {
+			"worn": [
+				{"types": [], "ranges": ["melee"]},
+				{"types": ["poison"], "ranges": []},
+			],
+			"rage": [],
+			"calm": [],
+		},
+	},
+}
+
+
+## Совпадают ли записи как МНОЖЕСТВА. Порядок записей и порядок строк внутри записи
+## не значит ничего: значение имеет только состав. Дубликат записи сравнение ломает,
+## и это правильно — двух одинаковых записей в замысле нет.
+static func _same_rules(got: Array, want: Array) -> bool:
+	return _rule_set(got) == _rule_set(want)
+
+
+## Канонический набор строк для списка записей: «types|ranges», отсортировано.
+static func _rule_set(rules: Array) -> PackedStringArray:
+	var keys := PackedStringArray()
+	for rule_v in rules:
+		# Не-словарь — не запись: пропускаем, как пропускает её модель и сторож
+		# связности. Форму записи называет валидатор (`_check_monster`), а не сверка
+		# содержания: иначе один и тот же мусор назывался бы дважды и по-разному.
+		if not (rule_v is Dictionary):
+			continue
+		var types := MonsterData.rule_strings(rule_v as Dictionary, "types")
+		var ranges := MonsterData.rule_strings(rule_v as Dictionary, "ranges")
+		types.sort()
+		ranges.sort()
+		keys.append("%s|%s" % [",".join(types), ",".join(ranges)])
+	keys.sort()
+	return keys
+
+
+## Записи одной строкой для сообщения о расхождении: «лёд + дальний; яд».
+## Порядок здесь исходный — читать глазами удобнее, чем сортированный.
+static func _rules_text(rules: Array) -> String:
+	var lines := MonsterData.rule_lines(rules)
+	if lines.is_empty():
+		return "пусто"
+	return "; ".join(lines)
+
+
+## Фаза вида по её id. Пустой словарь — фазы с таким id у вида нет.
+static func _phase_by_id(m: MonsterData, phase_id: String) -> Dictionary:
+	for ph in m.phases:
+		if String(ph.get("id", "")) == phase_id:
+			return ph
+	return {}
+
+
 ## Механики статусов «слепота» и «открыт» — прямой проверкой свойств.
 ##
 ## Зачем отдельная проверка. Оба статуса жили в контенте как ОБЕЩАНИЕ: комбо
@@ -1078,8 +1226,14 @@ static func _status_mechanics() -> Array[String]:
 	#   (б) запись без types срабатывает на любой тип в СВОЕЙ дистанции.
 	#
 	# Записи читаются из ПОЛЯ напрямую: переходник `effective_*` снят в Task 4.
-	# Число проверенных записей печатается: ноль здесь значил бы, что сторож
-	# ничего не мерит.
+	#
+	# Число проверенных записей печатается, и НОЛЬ здесь — НЕ провал: состояние
+	# «записей без types нет вовсе» законно, и порог-минимум был бы подгонкой под
+	# сегодняшние данные (ноль честно говорит «предмета проверки не было»).
+	# Сколько их сегодня: в 2а такая запись ОДНА — громунова `(—,ranged)`. На
+	# числах §2.3 этапа 2б их ожидается шесть (Шипун, Громун, Тлеун, Скорб и две
+	# у Ламанта), и тогда ноль означал бы уже потерю данных, а не их отсутствие.
+	# За содержание записей отвечает отдельная сверка ниже («D23 содержание»).
 	var d23_fail: Array[String] = []
 	var d23_range_rules := 0
 	for mon_id in Database.monsters.keys():
@@ -1100,6 +1254,18 @@ static func _status_mechanics() -> Array[String]:
 		# SCRIPT ERROR'ом — отчёт пробы обрывался на этом месте, а хвостовые
 		# строки D23 просто не появлялись.
 		for rule_v in m.resist_rules:
+			# Запись-не-словарь (число, строка, null) — мусор в контенте, и разбирать
+			# её поля нельзя: `as Dictionary` на ней роняет ВЕСЬ сторож SCRIPT
+			# ERROR'ом, и проба пишет отчёт БЕЗ блока D23 (замер: 56 строк вместо
+			# 64, ни одной строки D23) — то есть вердикт сторожа пропадает молча.
+			# Замер на `7` в resist_rules Громунa: «Invalid cast: could not convert
+			# value to 'Dictionary'».
+			#
+			# Пропускаем — как пропускают её модель (`weakness_modifier`) и
+			# валидатор (`_check_monster` называет форму записи). Сторож механики
+			# отвечает за правило, а не за форму контента.
+			if not (rule_v is Dictionary):
+				continue
 			var rule := rule_v as Dictionary
 			if MonsterData.rule_strings(rule, "types").size() > 0:
 				continue
@@ -1120,6 +1286,54 @@ static func _status_mechanics() -> Array[String]:
 		out.append("ок D23 видов: связка «тип И дистанция» работает на всех видах (записей без types проверено: %d)" % d23_range_rules)
 	else:
 		out.append("ПРОВАЛ D23 видов: %s" % "; ".join(d23_fail))
+
+	# D23, содержание: сторож выше проверяет согласованность записи с её же
+	# объявленными множествами, но НЕ соответствие замыслу данных. Замер: подмена
+	# у Громунa `[ranged]` на `[melee]` оставляла всё зелёным. Здесь — сверка с
+	# таблицей, и таблица обязана меняться вместе с данными (Task 5 её обновит).
+	#
+	# Идём по базе видов, а не по таблице: вид, которого в таблице нет, — это тоже
+	# расхождение (данные завели, ожидание не описали), и молча пропустить его
+	# значило бы оставить новый контент без сторожа вовсе.
+	var content_fail: Array[String] = []
+	var content_species := 0
+	var content_rules := 0
+	for mon_id in Database.monsters.keys():
+		var cm: MonsterData = Database.monsters[mon_id]
+		if not D23_CONTENT.has(mon_id):
+			content_fail.append("%s: вида нет в таблице ожиданий — данные завели, таблицу нет" % mon_id)
+			continue
+		var want: Dictionary = D23_CONTENT[mon_id]
+		content_species += 1
+		var want_weak: Array = want["weak"]
+		var want_resist: Array = want["resist"]
+		content_rules += want_weak.size() + want_resist.size()
+		if not _same_rules(cm.weakness_rules, want_weak):
+			content_fail.append("%s: уязвимости %s, ждали %s" % [
+				mon_id, _rules_text(cm.weakness_rules), _rules_text(want_weak)])
+		if not _same_rules(cm.resist_rules, want_resist):
+			content_fail.append("%s: резисты %s, ждали %s" % [
+				mon_id, _rules_text(cm.resist_rules), _rules_text(want_resist)])
+		# Фазовые записи — те же записи вида (Ламант: его уязвимости живут только
+		# в фазе), поэтому и ждут их в той же таблице, ключом по id фазы.
+		var want_phases: Dictionary = want["phase_weak"]
+		for phase_id in want_phases.keys():
+			var want_phase: Array = want_phases[phase_id]
+			content_rules += want_phase.size()
+			var phase := _phase_by_id(cm, String(phase_id))
+			if phase.is_empty():
+				content_fail.append("%s: фазы «%s» у вида нет, а таблица её ждёт" % [
+					mon_id, phase_id])
+				continue
+			var got_phase: Array = MonsterData.phase_weak_rules(phase)
+			if not _same_rules(got_phase, want_phase):
+				content_fail.append("%s: фаза «%s» — уязвимости %s, ждали %s" % [
+					mon_id, phase_id, _rules_text(got_phase), _rules_text(want_phase)])
+	if content_fail.is_empty():
+		out.append("ок D23 содержание: записи совпали с ожидаемой таблицей 2а (видов %d, записей %d)" % [
+			content_species, content_rules])
+	else:
+		out.append("ПРОВАЛ D23 содержание: %s" % "; ".join(content_fail))
 	return out
 
 
