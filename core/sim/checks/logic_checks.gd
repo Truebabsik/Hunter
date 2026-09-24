@@ -1095,11 +1095,16 @@ static func _status_mechanics() -> Array[String]:
 					m.id, CityData.type_ru(t), maxi(melee_w, ranged_w)])
 		# (б) запись без types обязана закрывать физику в СВОЕЙ дистанции —
 		# и в упор, и на дальней: целевые записи §2.3 бывают обеих.
+		#
+		# Поля записи разбирает МОДЕЛЬ (MonsterData.rule_strings): здесь стоял
+		# `PackedStringArray(rule.get(...))`, и скаляр в поле ронял сторож
+		# SCRIPT ERROR'ом — отчёт пробы обрывался на этом месте, а хвостовые
+		# строки D23 просто не появлялись.
 		for rule_v in m.effective_resist_rules():
 			var rule := rule_v as Dictionary
-			if PackedStringArray(rule.get("types", [])).size() > 0:
+			if MonsterData.rule_strings(rule, "types").size() > 0:
 				continue
-			var rule_ranges := PackedStringArray(rule.get("ranges", []))
+			var rule_ranges := MonsterData.rule_strings(rule, "ranges")
 			if not (rule_ranges.has(String(MonsterData.RANGE_MELEE)) \
 					or rule_ranges.has(String(MonsterData.RANGE_RANGED))):
 				continue

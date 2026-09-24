@@ -121,19 +121,30 @@ foreach ($mode in $Modes) {
     # mode that ran fine and honestly wrote "VALIDATION FAILED" counted as a
     # success, and "ALL MODES OK" said nothing about the validator's verdict.
     #
-    # "PROVALOV: 0 of 6" is a SUCCESS line, so the rule matches the start of a
-    # line with the failure word followed by a NON-letter (space, colon or end of
-    # line): the summary counter escapes it, the failures themselves do not.
+    # THE MARKER LIST IS FINITE AND LIVES HERE. A new mode that reports failure
+    # some other way MUST add its marker to $failMarkers below, or its report
+    # will keep passing silently.
+    #
+    # Matching is CASE-SENSITIVE (-cmatch): "--prose" prints the game's fiction,
+    # and a sentence starting with the same letters in lower case (a capitalised
+    # first letter only, e.g. "Proval pamyati: ...") must not turn a healthy run
+    # red. All real markers are upper case.
+    #
+    # "PROVALOV: 0 of 6" is a SUCCESS line, so the word rule requires a NON-LETTER
+    # right after the word (or the end of the line): the summary counter escapes
+    # it, the failures themselves ("PROVAL: ...", "PROVAL(ny): ...") do not.
     #
     # The word is built from code points on purpose: this file must stay pure
     # ASCII (Windows PowerShell 5.1 reads a .ps1 without a BOM as code page 1251),
     # while the marker inside the report is Russian.
     $failWord = [string]([char]0x041F + [char]0x0420 + [char]0x041E + [char]0x0412 + [char]0x0410 + [char]0x041B)
-    $failRegex = "^\s*" + [regex]::Escape($failWord) + "(\s|:|$)"
+    $failRegex = "^\s*" + [regex]::Escape($failWord) + "([^\p{L}]|$)"
+    $failMarkers = @($failRegex, "VALIDATION FAILED", "SMOKE FAILED", "LOAD FAILED")
     $reportFails = @()
     if (Test-Path $report) {
         $reportFails = @(Get-Content -Path $report -Encoding UTF8 | Where-Object {
-            $_ -match $failRegex -or $_ -match "VALIDATION FAILED"
+            $line = $_
+            @($failMarkers | Where-Object { $line -cmatch $_ }).Count -gt 0
         })
     }
     if ($reportFails.Count -gt 0) {
