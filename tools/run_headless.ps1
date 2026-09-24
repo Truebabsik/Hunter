@@ -61,8 +61,14 @@ if (-not (Test-Path $Godot)) { throw "Godot not found: $Godot" }
 
 $failed = 0
 foreach ($mode in $Modes) {
+    # An unknown mode is a FAILURE, not a harmless skip. It used to print "SKIP"
+    # and count as nothing, so a mode missing from $Reports -- exactly how --probe
+    # stayed out of the all-modes run -- ended with "ALL MODES OK" while nothing
+    # ran at all. A check that never started cannot vouch for anything, so this
+    # path must break the verdict.
     if (-not $Reports.Contains($mode)) {
         Write-Host ("SKIP: {0} -- unknown mode. Known: {1}" -f $mode, ($Reports.Keys -join ", ")) -ForegroundColor Yellow
+        $failed++
         continue
     }
 

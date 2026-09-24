@@ -943,19 +943,26 @@ static func _status_mechanics() -> Array[String]:
 
 	# D20: концепт скорости оружия снят. Инициативу дают только знаки ранга,
 	# а оружие на неё не влияет вовсе.
-	var fast := WeaponData.new()
-	fast.id = &"d20_probe"
-	fast.range_id = MonsterData.RANGE_MELEE
-	fast.damage_type = MonsterData.TYPE_CRUSH
-	fast.base_damage = 5
-	var d20_hunter := SkillEffects.build_hunter(fast, Database.armor(&"light"))
-	var has_field := "initiative_bonus" in fast
-	out.append("D20 инициатива: поле у оружия %s, инициатива охотника %d (ждали 5)" % [
-		str(has_field), d20_hunter.initiative()])
+	#
+	# Оружие берётся НАСТОЯЩЕЕ — копьё из каталога, а не `WeaponData.new()`.
+	# У синтетического ресурса `initiative_bonus` был бы равен дефолтному нулю, и
+	# вторая половина условия (`initiative() == 5`) выполнялась бы САМА СОБОЙ:
+	# проверка выродилась бы в проверку существования поля и не покраснела бы,
+	# если оружие снова начнёт влиять на инициативу. У копья прежний бонус был 2 —
+	# самое заметное расхождение: с ним инициатива равна 7. Краснота усиленной
+	# проверки измерена обходом `hunter.initiative_bonus_total = 2`; на том же
+	# состоянии прежняя формулировка с синтетическим оружием осталась ЗЕЛЁНОЙ
+	# (замер в отчёте Task 4b).
+	var d20_spear: WeaponData = Database.weapon(&"spear")
+	var d20_hunter := SkillEffects.build_hunter(d20_spear, Database.armor(&"light"))
+	var has_field := "initiative_bonus" in d20_spear
+	out.append("D20 инициатива: оружие «%s» (прежний бонус к инициативе 2), поле у оружия %s, инициатива охотника %d (ждали 5)" % [
+		d20_spear.title, str(has_field), d20_hunter.initiative()])
 	if not has_field and d20_hunter.initiative() == 5:
 		out.append("ок D20: оружие на инициативу не влияет")
 	else:
-		out.append("ПРОВАЛ D20: поле %s, инициатива %d" % [str(has_field), d20_hunter.initiative()])
+		out.append("ПРОВАЛ D20: оружие «%s», поле %s, инициатива %d (ждали 5)" % [
+			d20_spear.title, str(has_field), d20_hunter.initiative()])
 	return out
 
 
