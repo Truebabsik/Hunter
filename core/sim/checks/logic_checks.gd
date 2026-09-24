@@ -963,6 +963,40 @@ static func _status_mechanics() -> Array[String]:
 	else:
 		out.append("ПРОВАЛ D20: оружие «%s», поле %s, инициатива %d (ждали 5)" % [
 			d20_spear.title, str(has_field), d20_hunter.initiative()])
+
+	# D23: запись уязвимости/резиста — пара множеств {types, ranges}. Связка
+	# «тип И дистанция» обязана работать: при старом коде (два независимых
+	# списка) «лёд (дальний)» давал +2, потому что срабатывали обе координаты.
+	#
+	# Достижимое состояние: Хруз, праща (дробящее, дальняя) с руной льда.
+	# Цель D21 — +1; старый код давал +2.
+	var d23_mon := MonsterData.new()
+	d23_mon.id = &"d23_hruz_probe"
+	d23_mon.title = "Проба связки"
+	d23_mon.max_hp = 12
+	d23_mon.armor = 0
+	d23_mon.weakness_rules = [
+		{"types": ["ice"], "ranges": ["ranged"]},
+		{"types": ["poison"], "ranges": []},
+	]
+	d23_mon.resist_rules = []
+	var d23_sling := WeaponData.new()
+	d23_sling.id = &"d23_sling"
+	d23_sling.range_id = MonsterData.RANGE_RANGED
+	d23_sling.damage_type = MonsterData.TYPE_CRUSH
+	d23_sling.base_damage = 3
+	d23_sling.rune_type = MonsterData.TYPE_ICE
+	var d23_hit := DamageCalc.player_damage(
+		d23_sling, d23_mon, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	var d23_reasons := ", ".join(d23_hit.type_reasons)
+	out.append("D23 связка: урон %d, разбор [%s]" % [d23_hit.total, d23_reasons])
+	# Три требования сразу: связка даёт ровно +1, запись без ranges работает
+	# на любой дистанции, и разбор называет «лёд (дальний)» один раз.
+	if d23_hit.type_multiplier == 1 and d23_reasons.count("лёд") == 1:
+		out.append("ок D23 связки: «тип И дистанция» даёт +1, а не +2")
+	else:
+		out.append("ПРОВАЛ D23 связки: множитель %d (ждали +1), разбор «%s»" % [
+			d23_hit.type_multiplier, d23_reasons])
 	return out
 
 

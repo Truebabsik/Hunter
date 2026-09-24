@@ -345,31 +345,28 @@ phases = Array[Dictionary]([{
 "hp_below": 0.3,
 "id": &"worn",
 "note": "Он выдохся: тьма отошла, блок больше не держит.",
-"resist_ranges": {},
-"resist_types": {},
 "title": "Истощение",
-"weak_ranges": PackedStringArray("melee"),
-"weak_types": PackedStringArray("crush", "poison")
+"weak_rules": [{
+"ranges": ["melee"],
+"types": []
+}, {
+"ranges": [],
+"types": ["poison"]
+}]
 }, {
 "hp_below": 0.7,
 "id": &"rage",
 "note": "Он перестал считаться с собой.",
 "noise": 2.0,
-"resist_ranges": {},
-"resist_types": {},
 "title": "Бешенство",
-"weak_ranges": PackedStringArray(),
-"weak_types": PackedStringArray()
+"weak_rules": []
 }, {
 "hp_below": 1.0,
 "id": &"calm",
 "note": "Он ещё играет с тобой.",
 "noise": 1.0,
-"resist_ranges": {},
-"resist_types": {},
 "title": "Спокойствие",
-"weak_ranges": PackedStringArray(),
-"weak_types": PackedStringArray()
+"weak_rules": []
 }])
 adaptations = Array[Dictionary]([{
 "after_round": 5,

@@ -58,6 +58,16 @@ static func is_physical_subtype(type_id: StringName) -> bool:
 @export_range(0, 20, 1) var initiative: int = 4
 
 @export_group("Уязвимости")
+## Записи уязвимостей: [{"types": ["ice"], "ranges": ["ranged"]}].
+## Пустое множество = «любой». Запись срабатывает, когда ТИП удара входит
+## в types И дистанция входит в ranges (D23, GDD 12.3.1).
+## Каждая запись даёт ровно +1.
+@export var weakness_rules: Array = []
+## Записи резистов — та же форма; каждая даёт −1.
+@export var resist_rules: Array = []
+
+## ВРЕМЕННО до Task 2: старые независимые списки. Удаляются, когда все
+## читатели перейдут на записи. Новый контент писать только в *_rules.
 ## Типы урона, которые дают +1 к урону игрока.
 @export var weakness_types: PackedStringArray = PackedStringArray()
 ## Дальности, которые дают +1.
@@ -95,7 +105,9 @@ static func is_physical_subtype(type_id: StringName) -> bool:
 
 ## Фазы босса по долям HP (GDD 4.8). Список словарей:
 ##   {"id": "rage", "title": "Бешенство", "hp_below": 0.7, "noise": 2.0,
-##    "weak_types": ["crush"], "weak_ranges": ["melee"], "note": "..."}
+##    "weak_rules": [{"types": [], "ranges": ["melee"]}], "note": "..."}
+## Фаза переопределяет ТОЛЬКО уязвимости: ключа резистов у неё нет вовсе
+## (D21.E — резист действует все три фазы одинаково).
 @export var phases: Array[Dictionary] = []
 
 ## Адаптация: после N раундов вес сценария умножается (GDD 6.4).
@@ -164,9 +176,21 @@ func type_resist_for(type_id: StringName) -> int:
 	return 0
 
 
-## Уязвим ли вид к этому типу. Общая запись «physical» покрывает все три
-## физических подтипа, как и в type_resist_for.
-func is_weak_to_type(type_id: StringName) -> bool:
+## Уязвим ли вид к этому типу на этой дистанции. Нужно валидатору.
+## Пустая дистанция значит «любая»: так зовут старые читатели, пока их не
+## перевели на пару координат (Task 3).
+func is_weak_to_type(type_id: StringName, range_id: StringName = &"") -> bool:
+	if weakness_rules.is_empty():
+		return _legacy_weak_to_type(type_id)
+	if range_id == &"":
+		return weakness_modifier(type_id, RANGE_MELEE) > 0 \
+			or weakness_modifier(type_id, RANGE_RANGED) > 0
+	return weakness_modifier(type_id, range_id) > 0
+
+
+## ВРЕМЕННО до Task 2: уязвимость по старому списку типов, без дистанции.
+## Контент ещё пишет списки, и старый валидатор спрашивает только про тип.
+func _legacy_weak_to_type(type_id: StringName) -> bool:
 	if weakness_types.has(String(type_id)):
 		return true
 	return is_physical_subtype(type_id) and weakness_types.has(String(TYPE_PHYSICAL))
@@ -174,6 +198,131 @@ func is_weak_to_type(type_id: StringName) -> bool:
 
 func is_weak_to_range(range_id: StringName) -> bool:
 	return weakness_ranges.has(String(range_id))
+
+
+## --- Записи уязвимостей и резистов (D23, GDD 12.3.1) -----------------------
+
+## Срабатывает ли запись по этой координате удара. Пустое множество = «любой».
+static func rule_applies(rule: Dictionary, type_id: StringName, range_id: StringName) -> bool:
+	var types := PackedStringArray(rule.get("types", []))
+	if types.size() > 0:
+		var hit := false
+		for t in types:
+			if _type_matches(StringName(t), type_id):
+				hit = true
+				break
+		if not hit:
+			return false
+	var ranges := PackedStringArray(rule.get("ranges", []))
+	if ranges.size() > 0:
+		if not ranges.has(String(range_id)):
+			return false
+	return true
+
+
+## Совпадает ли записанный тип с типом удара. Легаси-ключ "physical"
+## покрывает все три физических подтипа — на нём держатся старые таблицы.
+static func _type_matches(recorded: StringName, hit: StringName) -> bool:
+	if recorded == hit:
+		return true
+	return recorded == TYPE_PHYSICAL and is_physical_subtype(hit)
+
+
+## Типы записи, переведённые в читаемые названия («лёд»), для текстов.
+static func rule_types_ru(rule: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	for t in PackedStringArray(rule.get("types", [])):
+		out.append(CityData.type_ru(StringName(t)))
+	return out
+
+
+## Сумма уязвимостей по координате удара. Фаза ЗАМЕНЯЕТ базовые уязвимости,
+## если у неё задан weak_rules (GDD 4.8: «в истощении он открыт»).
+func weakness_modifier(type_id: StringName, range_id: StringName, phase: Dictionary = {}) -> int:
+	var rules: Array = weakness_rules
+	if phase.has("weak_rules"):
+		rules = phase["weak_rules"]
+	var sum := 0
+	for r in rules:
+		if rule_applies(r as Dictionary, type_id, range_id):
+			sum += 1
+	return sum
+
+
+## Сумма резистов по координате удара. Резисты фаза НЕ меняет: D21.E говорит,
+## что резист действует все три фазы одинаково, а таблица фаз §4.8 колонки
+## резистов не имеет вовсе.
+func resist_modifier(type_id: StringName, range_id: StringName) -> int:
+	var sum := 0
+	for r in resist_rules:
+		if rule_applies(r as Dictionary, type_id, range_id):
+			sum += 1
+	return sum
+
+
+## Модификатор по всем типам одного удара (базовый тип оружия и элемент руны)
+## плюс причины для разбора. Один источник правила: и число, и текст.
+##
+## КЛЮЧЕВОЕ: каждая запись срабатывает НЕ БОЛЕЕ ОДНАЖДЫ на удар. Если запись
+## покрывает и физический тип, и элемент руны (`types:[physical]` плюс удар
+## дробящим с руной огня), наивный перебор по типам выдал бы две строки и +2 —
+## ровно тот дефект, ради которого вводится модель. Поэтому по типам ищем
+## совпадение, а причину добавляем одну.
+func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary = {}) -> Array[String]:
+	var out: Array[String] = []
+	var weak_rules_used: Array = weakness_rules
+	if phase.has("weak_rules"):
+		weak_rules_used = phase["weak_rules"]
+	for rule_v in weak_rules_used:
+		var rule := rule_v as Dictionary
+		var rtype := _matching_type(rule, types_hit, range_id)
+		if rtype != &"":
+			out.append("слабость: %s +1" % _hit_label(rtype, types_hit))
+	for rule_v in resist_rules:
+		var rule := rule_v as Dictionary
+		var rtype := _matching_type(rule, types_hit, range_id)
+		if rtype != &"":
+			out.append("резист: %s −1" % _hit_label(rtype, types_hit))
+	return out
+
+
+## Первый тип удара (в порядке перебора), на котором запись срабатывает.
+## Пустая строка, если запись не срабатывает вовсе. Нужна, чтобы запись
+## срабатывала один раз, а не по разу на каждый совпавший тип.
+func _matching_type(rule: Dictionary, types_hit: Array, range_id: StringName) -> StringName:
+	for type_v in types_hit:
+		var type_id := StringName(type_v)
+		if rule_applies(rule, type_id, range_id):
+			return type_id
+	return &""
+
+
+## Короткая подпись координаты для разбора: у руны помечаем «(руна)».
+## Руна — всё, что не первый тип удара: первый всегда базовый тип оружия.
+func _hit_label(type_id: StringName, types_hit: Array) -> String:
+	var is_base := types_hit.size() > 0 and StringName(types_hit[0]) == type_id
+	var ru := CityData.type_ru(type_id)
+	return ru if is_base else "%s (руна)" % ru
+
+
+## Уязвимости строками для досье и совета: одна строка на запись.
+func weakness_lines() -> PackedStringArray:
+	return _rule_lines(weakness_rules)
+
+
+## Резисты строками для досье и совета: одна строка на запись.
+func resist_lines() -> PackedStringArray:
+	return _rule_lines(resist_rules)
+
+
+func _rule_lines(rules: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for rule_v in rules:
+		var parts := rule_types_ru(rule_v as Dictionary)
+		for r in PackedStringArray((rule_v as Dictionary).get("ranges", [])):
+			parts.append(CityData.range_ru(StringName(r)))
+		out.append(", ".join(parts))
+	return out
 
 
 ## --- Фазы (GDD 4.8). Возвращает фазу по текущей доле HP или пустой словарь.
