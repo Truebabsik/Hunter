@@ -365,7 +365,7 @@ func _fill_weak() -> void:
 		bits.append("Резистов нет.")
 	else:
 		bits.append("[b]Резист:[/b] %s." % "; ".join(res))
-	bits.append("[color=#8d8578]Огонь всегда +1 к урону.[/color]")
+	bits.append("Любая стихийная руна даёт +1 к урону.")
 	_weak.text = "\n".join(bits)
 
 

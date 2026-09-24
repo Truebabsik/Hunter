@@ -95,7 +95,33 @@ func _scenario_label(scenario_id: String) -> String:
 ##
 ## Разделитель между записями — «; », внутри записи — «+» (MonsterData.rule_lines):
 ## «лёд + дальний; яд» читается как ДВЕ записи, а не как четыре совета.
+##
+## ФАЗОВЫЕ ЗАПИСИ ВХОДЯТ СЮДА, и это не украшение. У Ламанта базовых уязвимостей
+## нет вовсе: все его уязвимости открываются фазой «Истощение» (GDD 4.8). Пока
+## функция читала только `weakness_lines()`, факт «уязвимость узнана» было нельзя
+## записать, а без него недостижим уровень досье 2: `GameState._refresh_dossier_level`
+## требует и три сигнала, И непустой список уязвимостей. Уровень 2 открывает блок
+## особых правил, где печатается «Открыт для: ближний; яд» — то есть обещание
+## дизайна не доходило до игрока вовсе.
+##
+## Пометка фазы обязательна и стоит перед записями: без неё «Истощение» неотличимо
+## от постоянной уязвимости, и игрок прочитал бы «ближний; яд» как свойство вида,
+## а не как то, что открывается в фазе.
 func _weakness_text() -> String:
 	if _monster == null:
 		return ""
-	return "; ".join(_monster.weakness_lines())
+	var parts: Array[String] = []
+	var base := _monster.weakness_lines()
+	if not base.is_empty():
+		parts.append("; ".join(base))
+	for phase in _monster.phases:
+		if not (phase is Dictionary):
+			continue
+		var phase_rules := MonsterData.phase_weak_rules(phase as Dictionary)
+		if phase_rules.is_empty():
+			continue
+		var title := str((phase as Dictionary).get("title", "")).strip_edges()
+		if title.is_empty():
+			title = "фаза"
+		parts.append("%s: %s" % [title.to_lower(), "; ".join(MonsterData.rule_lines(phase_rules))])
+	return "; ".join(parts)
