@@ -1255,9 +1255,11 @@ static func _status_mechanics() -> Array[String]:
 		# строки D23 просто не появлялись.
 		for rule_v in m.resist_rules:
 			# Запись-не-словарь (число, строка, null) — мусор в контенте, и разбирать
-			# её поля нельзя: `as Dictionary` на ней роняет ВЕСЬ сторож SCRIPT
-			# ERROR'ом, и проба пишет отчёт БЕЗ блока D23 (замер: 56 строк вместо
-			# 64, ни одной строки D23) — то есть вердикт сторожа пропадает молча.
+			# её поля нельзя: `as Dictionary` на ней роняет SCRIPT ERROR'ом весь
+			# вызов `_status_mechanics()`, поэтому проба пишет отчёт БЕЗ ВСЕГО его
+			# блока. Замер: 56 строк вместо 83 — теряются 27 строк (весь блок
+			# статусов, D04, фаз, D20 и D23), а не одни лишь строки D23. Вердикт
+			# сторожа пропадает молча: видно это только по SCRIPT ERROR в stderr.
 			# Замер на `7` в resist_rules Громунa: «Invalid cast: could not convert
 			# value to 'Dictionary'».
 			#
@@ -1329,6 +1331,23 @@ static func _status_mechanics() -> Array[String]:
 			if not _same_rules(got_phase, want_phase):
 				content_fail.append("%s: фаза «%s» — уязвимости %s, ждали %s" % [
 					mon_id, phase_id, _rules_text(got_phase), _rules_text(want_phase)])
+		# Каждая фаза вида обязана быть названа в таблице: отсутствие ключа значит
+		# «уязвимостей нет». Иначе лишняя фаза с записями проходит молча — замер
+		# ревью: четвёртая фаза Ламанта давала зелёное при живых записях.
+		for ph in cm.phases:
+			var pid := String(ph.get("id", ""))
+			if want_phases.has(pid):
+				continue
+			var extra: Array = MonsterData.phase_weak_rules(ph)
+			if extra.size() > 0:
+				content_fail.append("%s: фаза «%s» не названа в таблице, а уязвимости есть: %s" % [
+					mon_id, pid, _rules_text(extra)])
+	# Обратный случай к «вида нет в таблице»: вид ПРОПАЛ из данных. Тогда обход идёт
+	# на вид меньше и молчит, а счётчик просто тихо падает (замер ревью: «видов 6,
+	# записей 25»). Число сверенных видов обязано совпасть с таблицей.
+	if content_species != D23_CONTENT.size():
+		content_fail.append("сверено видов %d, а в таблице ожиданий %d — вид пропал из данных" % [
+			content_species, D23_CONTENT.size()])
 	if content_fail.is_empty():
 		out.append("ок D23 содержание: записи совпали с ожидаемой таблицей 2а (видов %d, записей %d)" % [
 			content_species, content_rules])
