@@ -349,6 +349,9 @@ func _fill_special() -> void:
 
 
 func _fill_weak() -> void:
+	# Границы записей видны: «+» внутри записи («лёд + дальний»), «; » между
+	# записями. Иначе игрок читает «лёд, дальний, яд, дальний» как четыре
+	# независимых совета — ровно то, ради чего вводилась модель D23.
 	var bits := PackedStringArray()
 	# Явный тип обязателен: `_view.get()` возвращает Variant, и вывод типа из него
 	# здесь приравнен к ошибке парсинга (предупреждения = ошибки).
@@ -356,12 +359,12 @@ func _fill_weak() -> void:
 	if weak.is_empty():
 		bits.append("Уязвимостей нет.")
 	else:
-		bits.append("[b]Уязвим:[/b] %s." % ", ".join(weak))
+		bits.append("[b]Уязвим:[/b] %s." % "; ".join(weak))
 	var res: PackedStringArray = _view.get("resists", PackedStringArray())
 	if res.is_empty():
 		bits.append("Резистов нет.")
 	else:
-		bits.append("[b]Резист:[/b] %s." % ", ".join(res))
+		bits.append("[b]Резист:[/b] %s." % "; ".join(res))
 	bits.append("[color=#8d8578]Огонь всегда +1 к урону.[/color]")
 	_weak.text = "\n".join(bits)
 

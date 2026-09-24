@@ -36,14 +36,16 @@ func validate_all() -> Array:
 ## обязано быть ПОЛЕЗНО, а не просто названо.
 ##
 ## С D23 уязвимость и резист — пара «тип И дистанция», поэтому и проверяются они
-## парой, а не координатами порознь. Здесь ловятся четыре тихие поломки:
+## парой, а не координатами порознь. Здесь ловятся пять тихих поломок:
 ##  1. уязвимость, недостижимая НИ ОДНОЙ парой (тип, дистанция) из арсенала, и тип
 ##     в комбо, которым нечем ударить (опечатка или забытый источник типа: физику
 ##     даёт оружие, магию — руна на нём);
 ##  2. ни одна пара «тип × дистанция» из арсенала не проходит без резиста: тогда
 ##     выбор оружия ничего не решает — слабость есть, а использовать её нечем;
-##  3. фаза открывает уязвимость, недостижимую ни одним оружием;
-##  4. оружие, которое не нужно НИ ОДНОМУ виду: позиция в магазине, которую
+##  3. запись уязвимости (своя или фазовая) полностью перекрыта резистами: на
+##     каждой паре арсенала, где она срабатывает, итог нулевой или минусовой;
+##  4. фаза открывает уязвимость, недостижимую ни одним оружием;
+##  5. оружие, которое не нужно НИ ОДНОМУ виду: позиция в магазине, которую
 ##     незачем покупать.
 func _check_physical_subtypes() -> Array:
 	var out: Array = []
@@ -73,9 +75,22 @@ func _check_physical_subtypes() -> Array:
 		# списками, и обход `mon.weakness_rules` был бы вакуумным — проверка
 		# молчала бы, ничего не проверив.
 		for rule_v in mon.effective_weakness_rules():
+			if not (rule_v is Dictionary):
+				continue
 			if _reachable_by_weapon(rule_v as Dictionary).is_empty():
 				out.append("уязвимость: %s — запись «%s» недостижима ни одним оружием" % [
-					label, ", ".join(MonsterData.rule_types_ru(rule_v as Dictionary))])
+					label, ", ".join(MonsterData.rule_lines([rule_v as Dictionary]))])
+
+		# Уязвимость обязана быть ЧЕМ-ТО использована: иначе вид открыт на бумаге.
+		# Частичные пересечения с резистами — замысел (§2.3: у Шипуна яд в упор даёт
+		# +1−1 = 0), полное перекрытие — нет: игрок видит слабость, которой нельзя
+		# воспользоваться ни одной парой «тип × дистанция».
+		for rule_v in mon.effective_weakness_rules():
+			if not (rule_v is Dictionary):
+				continue
+			if not _rule_pays_off(mon, rule_v as Dictionary, {}):
+				out.append("%s: запись уязвимости «%s» полностью перекрыта резистами — ни одной пары с плюсом" % [
+					label, ", ".join(MonsterData.rule_lines([rule_v as Dictionary]))])
 
 		# Тупик — когда НИ ОДНА пара «тип × дистанция» из арсенала не проходит без
 		# резиста: тогда выбор оружия действительно ничего не решает. Так эта
@@ -104,11 +119,21 @@ func _check_physical_subtypes() -> Array:
 		# достижимы: иначе фаза открывает слабость, которую нечем использовать.
 		# Читаются те же записи, что и у базовых уязвимостей, — ключ weak_rules.
 		for ph in mon.phases:
+			if not (ph.get("weak_rules") is Array):
+				continue
 			for rule_v in (ph.get("weak_rules", []) as Array):
+				if not (rule_v is Dictionary):
+					continue
 				if _reachable_by_weapon(rule_v as Dictionary).is_empty():
 					out.append("подтипы: %s — фаза «%s» открывает запись «%s», недостижимую ни одним оружием" % [
 						label, str(ph.get("title", "")),
-						", ".join(MonsterData.rule_types_ru(rule_v as Dictionary))])
+						", ".join(MonsterData.rule_lines([rule_v as Dictionary]))])
+				# И перекрыть её резистами можно так же, как базовую. Резистов фаза
+				# не задаёт (D21.E), поэтому считаются базовые резисты вида.
+				elif not _rule_pays_off(mon, rule_v as Dictionary, ph):
+					out.append("подтипы: %s — запись фазы «%s» «%s» полностью перекрыта резистами — ни одной пары с плюсом" % [
+						label, str(ph.get("title", "")),
+						", ".join(MonsterData.rule_lines([rule_v as Dictionary]))])
 
 		# Комбо тоже требует конкретный тип: он должен существовать.
 		for c in mon.combos:
@@ -520,12 +545,36 @@ func _check_monster(mon: MonsterData) -> Array:
 	# Проверяются СЫРЫЕ поля, а не действующие записи: переходник строит записи из
 	# старых списков, и у него пустая запись получиться не может в принципе —
 	# проверка действующих записей не покраснела бы никогда.
+	#
+	# Запись, которая не словарь, называется отдельно и ДО разбора полей: иначе
+	# `rule.get(...)` на строке даёт SCRIPT ERROR, а валидатор — назначенный
+	# проверяющий структуры, он обязан назвать это сам, а не падать.
 	for rules in [mon.weakness_rules, mon.resist_rules]:
 		for rule_v in rules:
+			if not (rule_v is Dictionary):
+				out.append("%s: запись уязвимости/резиста не является словарём: %s" % [
+					label, str(rule_v)])
+				continue
 			var rule := rule_v as Dictionary
 			if PackedStringArray(rule.get("types", [])).size() == 0 \
 					and PackedStringArray(rule.get("ranges", [])).size() == 0:
 				out.append("%s: запись без types и ranges сработала бы на любой удар" % label)
+
+	# Фазы задают ТЕ ЖЕ записи уязвимостей (спека §2.2), значит и запрет на них
+	# тот же: пустая запись фазы — скрытое «+1 на любой удар в этой фазе».
+	for ph in mon.phases:
+		if not (ph.get("weak_rules") is Array):
+			continue
+		for rule_v in (ph.get("weak_rules", []) as Array):
+			if not (rule_v is Dictionary):
+				out.append("%s: запись фазы «%s» не является словарём: %s" % [
+					label, str(ph.get("title", "")), str(rule_v)])
+				continue
+			var rule := rule_v as Dictionary
+			if PackedStringArray(rule.get("types", [])).size() == 0 \
+					and PackedStringArray(rule.get("ranges", [])).size() == 0:
+				out.append("%s: запись фазы «%s» без types и ranges сработала бы на любой удар" % [
+					label, str(ph.get("title", ""))])
 
 	return out
 
@@ -547,6 +596,26 @@ func _reachable_by_weapon(rule: Dictionary) -> String:
 			if MonsterData.rule_applies(rule, t, w.range_id):
 				return w.title
 	return ""
+
+
+## Даёт ли эта запись уязвимости хоть один ПЛЮС: существует ли пара «тип ×
+## дистанция», на которой запись срабатывает и итог (уязвимости минус резисты)
+## положителен. Пустое множество записи — «любое», поэтому перебираются пары
+## арсенала: абстрактная комбинация типа и дистанции игре недоступна.
+##
+## `phase` — пустой словарь для базовой уязвимости и словарь фазы для weak_rules
+## фазы: фаза ЗАМЕНЯЕТ базовые уязвимости, поэтому и считать надо её записями.
+func _rule_pays_off(mon: MonsterData, rule: Dictionary, phase: Dictionary) -> bool:
+	for id in Database.weapons.keys():
+		var w: WeaponData = Database.weapons[id]
+		for h in _hittable_types(w):
+			var type_id := StringName(h)
+			if not MonsterData.rule_applies(rule, type_id, w.range_id):
+				continue
+			if mon.weakness_modifier(type_id, w.range_id, phase) \
+					- mon.resist_modifier(type_id, w.range_id) > 0:
+				return true
+	return false
 
 
 ## Типы, которыми можно ударить ЭТИМ оружием: его собственный (вместе с уже

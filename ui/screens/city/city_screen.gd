@@ -635,8 +635,9 @@ func _ask_advice(monster_id: StringName, price: int) -> void:
 ## Совет — это опыт, а не подсказка (GDD 9.3): он называет опорные сигналы
 ## и слабость, но не даёт частот сценариев и не пишется в досье.
 ##
-## Слабость называется ЗАПИСЯМИ («лёд, дальний бой») — строку собирает модель:
-## это одна запись «тип И дистанция» (D23), а не два независимых совета.
+## Слабость называется ЗАПИСЯМИ — строку собирает модель: это одна запись
+## «тип И дистанция» (D23), а не два независимых совета. Границы записей видны:
+## «+» внутри записи, «; » между записями (MonsterData.rule_lines).
 func _advice_text(mon: MonsterData) -> String:
 	if mon == null:
 		return ""
@@ -649,7 +650,7 @@ func _advice_text(mon: MonsterData) -> String:
 			sigs.append("«%s»" % sig.label)
 		lines.append("  %s — %s" % [scn.card_label, ", ".join(sigs)])
 	if not weak_parts.is_empty():
-		lines.append("Бей: %s. Понял?" % ", ".join(weak_parts))
+		lines.append("Бей: %s. Понял?" % "; ".join(weak_parts))
 	return "\n".join(lines)
 
 

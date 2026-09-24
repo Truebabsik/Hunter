@@ -256,16 +256,13 @@ static func _signal_texts(signals: Array[SignalData]) -> PackedStringArray:
 ## пересказываем его как «при каком HP что меняется», а не как сырые доли.
 ##
 ## Уязвимости фазы — те же записи «тип И дистанция», что и базовые (D23), поэтому
-## «открыт» называет запись целиком: «яд, дальний бой» значит «нужно попасть и
-## ядом, И на дальней», а не два независимых совета.
+## «открыт» называет запись целиком: «яд + дальний» значит «нужно попасть и ядом,
+## И на дальней», а не два независимых совета. Записи разделяются «; », внутри
+## записи стоит «+» (см. MonsterData.rule_lines).
 static func _phase_text(phase: Dictionary) -> String:
 	# Разметку записи делает МОДЕЛЬ: обход структуры («types», «ranges») живёт
-	# только в MonsterData, и второго места ему быть не должно. Отдельного вида не
-	# заводим — записи фазы кладутся в пустую модель, к ним применяется та же
-	# разметка, что и к базовым уязвимостям.
-	var holder := MonsterData.new()
-	holder.weakness_rules = Array(phase.get("weak_rules", []))
-	var weak: PackedStringArray = holder.weakness_lines()
+	# только в MonsterData, и второго места ему быть не должно.
+	var weak: PackedStringArray = MonsterData.rule_lines(Array(phase.get("weak_rules", [])))
 	var bits := PackedStringArray()
 	var note := str(phase.get("note", ""))
 	if not note.is_empty():
@@ -273,7 +270,7 @@ static func _phase_text(phase: Dictionary) -> String:
 	if weak.is_empty():
 		bits.append("Уязвимостей в этой фазе нет.")
 	else:
-		bits.append("Открыт для: %s." % ", ".join(weak))
+		bits.append("Открыт для: %s." % "; ".join(weak))
 	var noise := float(phase.get("noise", 1.0))
 	if not is_equal_approx(noise, 1.0):
 		bits.append("Шум ×%.1f." % noise)

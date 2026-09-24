@@ -268,12 +268,17 @@ static func rule_types_ru(rule: Dictionary) -> PackedStringArray:
 
 ## Сумма уязвимостей по координате удара. Фаза ЗАМЕНЯЕТ базовые уязвимости,
 ## если у неё задан weak_rules (GDD 4.8: «в истощении он открыт»).
+##
+## Записи, которые не являются словарями, пропускаются: это мусор в контенте, и
+## его обязан назвать валидатор — а бой падать из-за него не имеет права.
 func weakness_modifier(type_id: StringName, range_id: StringName, phase: Dictionary = {}) -> int:
 	var rules: Array = effective_weakness_rules()
 	if phase.has("weak_rules"):
 		rules = phase["weak_rules"]
 	var sum := 0
 	for r in rules:
+		if not (r is Dictionary):
+			continue
 		if rule_applies(r as Dictionary, type_id, range_id):
 			sum += 1
 	return sum
@@ -285,6 +290,8 @@ func weakness_modifier(type_id: StringName, range_id: StringName, phase: Diction
 func resist_modifier(type_id: StringName, range_id: StringName) -> int:
 	var sum := 0
 	for r in effective_resist_rules():
+		if not (r is Dictionary):
+			continue
 		if rule_applies(r as Dictionary, type_id, range_id):
 			sum += 1
 	return sum
@@ -304,11 +311,15 @@ func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary 
 	if phase.has("weak_rules"):
 		weak_rules_used = phase["weak_rules"]
 	for rule_v in weak_rules_used:
+		if not (rule_v is Dictionary):
+			continue
 		var rule := rule_v as Dictionary
 		var rtype := _matching_type(rule, types_hit, range_id)
 		if rtype != &"":
 			out.append("слабость: %s +1" % _rule_label(rule, rtype, types_hit, range_id))
 	for rule_v in effective_resist_rules():
+		if not (rule_v is Dictionary):
+			continue
 		var rule := rule_v as Dictionary
 		var rtype := _matching_type(rule, types_hit, range_id)
 		if rtype != &"":
@@ -350,21 +361,34 @@ func _rule_label(rule: Dictionary, rtype: StringName, types_hit: Array, range_id
 
 ## Уязвимости строками для досье и совета: одна строка на запись.
 func weakness_lines() -> PackedStringArray:
-	return _rule_lines(effective_weakness_rules())
+	return rule_lines(effective_weakness_rules())
 
 
 ## Резисты строками для досье и совета: одна строка на запись.
 func resist_lines() -> PackedStringArray:
-	return _rule_lines(effective_resist_rules())
+	return rule_lines(effective_resist_rules())
 
 
-func _rule_lines(rules: Array) -> PackedStringArray:
+## Строки записей для показа: одна строка на запись, внутри записи — «+».
+##
+## Разделитель ВНУТРИ записи — «+», а не запятая, и это не украшение. Запись
+## «лёд + дальний» значит «нужен И лёд, И дальний»; запятая читалась бы как два
+## независимых совета — ровно то, ради чего вводилась модель (D23).
+##
+## Статический, потому что разметку фаз зовут снаружи модели, а второй разбор
+## структуры записи в проекте запрещён: структуру читает только MonsterData.
+static func rule_lines(rules: Array) -> PackedStringArray:
 	var out := PackedStringArray()
 	for rule_v in rules:
-		var parts := rule_types_ru(rule_v as Dictionary)
-		for r in PackedStringArray((rule_v as Dictionary).get("ranges", [])):
+		# Запись, которая не словарь, — не запись. Молча пропускаем: назвать её
+		# обязан валидатор (проверка структуры), а показ падать не имеет права.
+		if not (rule_v is Dictionary):
+			continue
+		var rule := rule_v as Dictionary
+		var parts := rule_types_ru(rule)
+		for r in PackedStringArray(rule.get("ranges", [])):
 			parts.append(CityData.range_ru(StringName(r)))
-		out.append(", ".join(parts))
+		out.append(" + ".join(parts))
 	return out
 
 
