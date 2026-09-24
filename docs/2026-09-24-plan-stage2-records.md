@@ -534,6 +534,100 @@ Select-String -Path core\battle\damage_calc.gd -Pattern "weakness_types|weakness
 - в блоке D04: `fire_eater.type_resist = {"fire": 2}` → `fire_eater.resist_rules = [{"types": ["fire"], "ranges": []}]`, а `fire_eater.weakness_types = PackedStringArray(["slash"])` → `fire_eater.weakness_rules = [{"types": ["slash"], "ranges": []}]`; ожидание в тексте проверки поменять с «ожог −2» на «резист −1» (запись даёт −1, не −2);
 - в блоке тумана: `mon.type_resist = {"fire": 1, "physical": 1}` → `mon.resist_rules = [{"types": ["fire"], "ranges": []}, {"types": ["physical"], "ranges": []}]`.
 
+- [ ] **Step 5б: Починить текст разбора и закрыть два пробела сторожа (решения R10–R12)**
+
+Ревью Task 2 нашло три дефекта, и все три — мои. Каждый чинится здесь.
+
+### 5б.1. Метка записи должна называть **ограничивающую** координату (R10)
+
+**Дефект.** `modifier_reasons` подписывает запись типом удара (`_hit_label`). Для записи
+`{types:[], ranges:[ranged]}` совпала **дистанция**, а тип пуст — и игрок видит
+`резист: колющий −1` вместо `резист: дальний −1`. Замер ревью: лук без руны по Громунe
+даёт две неотличимые строки `резист: колющий −1, резист: колющий −1` вместо прежнего
+`резист: дальний −2`. Строки доходят до игрока: `type_reasons` → `DamageResult.breakdown()`
+→ `battle_engine.gd` → экран боя. Это ломает §12.1 (прозрачность разбора) и **не
+рассосётся** после 2б: целевые записи `(—, melee)` и `(—, ranged)` тоже без `types`,
+и таких видов пять из семи.
+
+**Правка.** В `monster_data.gd` добавить подпись по ограничению и применить её в обоих
+`out.append` внутри `modifier_reasons`:
+
+```gdscript
+## Короткая подпись записи для разбора. Называет координату, которая запись
+## ОГРАНИЧИВАЕТ: у записи без types это дистанция, а не тип удара — иначе игрок
+## видит «резист: колющий −1» там, где сработала дальность (GDD 12.1).
+func _rule_label(rule: Dictionary, rtype: StringName, types_hit: Array, range_id: StringName) -> String:
+	if PackedStringArray(rule.get("types", [])).size() == 0:
+		return CityData.range_ru(range_id)
+	return _hit_label(rtype, types_hit)
+```
+
+**Схлопывать две записи в «дальний −2» нельзя:** ядро берёт знак из текста
+(`damage_calc.gd`, разбор строки), поэтому две записи обязаны остаться двумя строками.
+Число от правки не меняется — она чисто текстовая, и `--loop 10` обязан совпасть.
+
+**Край.** `CityData.range_ru(&"")` вернёт «ближний» — предусмотреть пустой `range_id`
+(если дистанции нет, подпись брать из типа).
+
+### 5б.2. Правило «запись срабатывает не более раза на удар» не покрыто (R13)
+
+**Дефект.** Центральное правило модели (комментарий в `monster_data.gd`) не сторожит
+ни одна проба. Замер ревью: мутация «причина на каждый совпавший тип» даёт у Громунa
+с руной льда множитель **−4 вместо −2**, а вся проба остаётся **зелёной**.
+
+**Правка.** Добавить в блок D23 пробу, где **одна** запись покрывает **обе** координаты
+удара. Например запись `{types:[], ranges:[melee]}` и удар в упор любым типом:
+
+```gdscript
+	# (д) Запись срабатывает НЕ БОЛЕЕ ОДНАЖДЫ на удар, даже когда ей подходят обе
+	# координаты (пустые types плюс дистанция). Иначе одна запись давала бы −2,
+	# а игрок видел бы две строки за одно и то же.
+	var once_mon := MonsterData.new()
+	once_mon.id = &"d23_once"
+	once_mon.resist_rules = [{"types": [], "ranges": ["melee"]}]
+	var once_reasons := once_mon.modifier_reasons(
+		[MonsterData.TYPE_CRUSH, MonsterData.TYPE_FIRE], MonsterData.RANGE_MELEE)
+	out.append("D23 однократность: причин %d, множитель %d (ждали 1 и −1)" % [
+		once_reasons.size(),
+		once_mon.resist_modifier(MonsterData.TYPE_CRUSH, MonsterData.RANGE_MELEE)])
+```
+
+В условие «ок» добавить `once_reasons.size() == 1`, в текст `ПРОВАЛ` — `однократность %d (ждали 1)`.
+**Доказательство красноты:** мутация «причина на каждый совпавший тип» в `modifier_reasons`
+(убрать `_matching_type`, вернуть перебор по типам) обязана покраснеть — ожидается
+`причин 2`.
+
+### 5б.3. Сторож «D23 видов» должен видеть целевые записи (R11, продолжение)
+
+**Дефект.** Часть (б) итерирует **сырое** `m.resist_rules` (пусто до Task 4) и ищет
+только `ranges` с `melee`. Поэтому:
+
+- до Task 4 она вакуумна — ревью инструментировало и получило 0 пар;
+- целевая запись Громунa по §2.3 — `(—, ranged)`, и в фильтр с `melee` она **не попадёт
+  никогда**, а сообщение «работает на всех видах» останется завышенным.
+
+**Правка.** Искать по `effective_resist_rules()` и проверять **обе** дистанции:
+
+```gdscript
+	for rule_v in m.effective_resist_rules():
+		var rule := rule_v as Dictionary
+		if PackedStringArray(rule.get("types", [])).size() > 0:
+			continue
+		for rng in [MonsterData.RANGE_MELEE, MonsterData.RANGE_RANGED]:
+			if not PackedStringArray(rule.get("ranges", [])).has(String(rng)):
+				continue
+			for t in MonsterData.PHYSICAL_TYPES:
+				if m.resist_modifier(t, StringName(rng)) < 1:
+					d23_fail.append("%s: запись «%s» не сработала на %s" % [
+						m.id, CityData.range_ru(StringName(rng)), CityData.type_ru(t)])
+					break
+```
+
+### 5б.4. Поправить ложный комментарий
+
+`battle_engine.gd` обещает, что «фаза меняет шум, уязвимости **и резисты**». После Task 2
+фаза резисты не меняет (§2.1 правило 3). Поправить текст комментария по факту.
+
 - [ ] **Step 6: Прогнать и убедиться, что ЗЕЛЕНО**
 
 ```
@@ -658,10 +752,15 @@ git commit -m "Боевое ядро считает модификаторы ч�
 
 Цикл по `ph` с `weak_types` удалить целиком: фазы читаются тем же `weakness_modifier` (он принимает фазу), а для проверки «оружие кому-то нужно» достаточно базовых уязвимостей.
 
-- [ ] **Step 4: Три места показа — на `weakness_lines`/`resist_lines`**
+- [ ] **Step 4: Четыре места показа — на `weakness_lines`/`resist_lines`**
+
+Ревью Task 2 нашло **четвёртое** место, которого план не называл, и оно видно игроку:
+`core/battle/dossier_recorder.gd` строит weak-строку из старых полей и передаёт её в
+`core/ui_data/hunt_result.gd` (итог охоты на экране). Перевести и его.
 
 В `dossier_text.gd` (блок `view["weaknesses"]` и `view["resists"]`), `city_screen.gd`
-(`_advice_text`) и `dossier_recorder.gd` (`_weakness_text`) заменить построение строк на:
+(`_advice_text`), `dossier_recorder.gd` (`_weakness_text`) и везде, где строки строятся
+из `weakness_types`/`weakness_ranges`/`type_resist`/`range_resist`, заменить на:
 
 ```gdscript
 	view["weaknesses"] = mon.weakness_lines()
