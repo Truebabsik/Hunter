@@ -828,6 +828,33 @@ static func _status_mechanics() -> Array[String]:
 	else:
 		out.append("ПРОВАЛ минимума урона: обычный %d, непробиваемый %d (ждали ≥1)" % [
 			normal, unblockable])
+
+	# D04: у огня нет привилегии. «+1» даёт руна любого элемента, и он
+	# ПРОВЕРЯЕТСЯ на уязвимость и резист так же, как базовый тип.
+	#
+	# Проверка смотрит не итог, а структуру разбора: при безусловном +1 и резисте
+	# −2 итог совпадает (4+1−2 и 4+1−2), и по числу отличить правила невозможно.
+	var sword := WeaponData.new()
+	sword.id = &"d04_sword"
+	sword.range_id = MonsterData.RANGE_MELEE
+	sword.damage_type = MonsterData.TYPE_SLASH
+	sword.base_damage = 4
+	sword.rune_type = MonsterData.TYPE_FIRE
+	var fire_eater := MonsterData.new()
+	fire_eater.id = &"d04_mon"
+	fire_eater.title = "Проба огня"
+	fire_eater.max_hp = 20
+	fire_eater.armor = 0
+	fire_eater.type_resist = {"fire": 2}
+	fire_eater.weakness_types = PackedStringArray(["slash"])
+	var d04 := DamageCalc.player_damage(
+		sword, fire_eater, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	var reasons := ", ".join(d04.type_reasons)
+	out.append("D04 руна огня: урон %d, разбор [%s]" % [d04.total, reasons])
+	if not ("огонь +1" in reasons) and "слабость: режущий +1" in reasons:
+		out.append("ок D04: руна даёт базовый +1 без привилегии огня")
+	else:
+		out.append("ПРОВАЛ D04: разбор «%s» (ждали слабость режущего и никакого «огонь +1»)" % reasons)
 	return out
 
 
