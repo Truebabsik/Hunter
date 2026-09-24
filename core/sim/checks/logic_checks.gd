@@ -802,6 +802,32 @@ static func _status_mechanics() -> Array[String]:
 	else:
 		out.append("ПРОВАЛ статуса «слепота»: улики %s" % (
 			"не скрыты" if blind_signals.size() > 0 else "не было и у зрячего"))
+
+	# Минимум 1 урона у ЗВЕРЯ (D01/D12/D13). Инвариант распространяется на обоих:
+	# удар всегда наносит хотя бы 1. Проверяем два пути — обычный и непробиваемый,
+	# потому что они возвращают разное и правятся оба.
+	var thick := MonsterData.new()
+	thick.id = &"min_probe"
+	thick.title = "Проба минимума"
+	thick.max_hp = 20
+	thick.base_damage = 3
+	var armored := HunterState.new()
+	armored.max_hp = 20
+	armored.hp = 20
+	armored.absorption = 10        # заведомо больше урона зверя
+	var normal := DamageCalc.monster_damage(thick, null, armored, false)
+	var unblockable_scn := ScenarioData.new()
+	unblockable_scn.id = &"probe_unblockable"
+	unblockable_scn.card_label = "Непробиваемый"
+	unblockable_scn.unblockable = true
+	var unblockable := DamageCalc.monster_damage(thick, unblockable_scn, armored, false)
+	out.append("минимум урона зверя: обычный путь %d, непробиваемый %d при броне 10" % [
+		normal, unblockable])
+	if normal >= 1 and unblockable >= 1:
+		out.append("ок минимума урона: зверь наносит хотя бы 1 на обоих путях")
+	else:
+		out.append("ПРОВАЛ минимума урона: обычный %d, непробиваемый %d (ждали ≥1)" % [
+			normal, unblockable])
 	return out
 
 
