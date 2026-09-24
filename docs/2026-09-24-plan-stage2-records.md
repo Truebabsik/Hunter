@@ -368,6 +368,50 @@ git commit -m "Модель записей уязвимостей и резис�
 - Consumes: API Task 1 (`modifier_reasons`, `weakness_modifier`, `resist_modifier`).
 - Produces: `DamageCalc.player_damage` считает модификаторы только через модель; старых полей в `MonsterData` больше нет.
 
+- [ ] **Step 0: Рабочий переходник старых списков в записи (решение R4)**
+
+**Почему это здесь, а не в Task 1.** Task 1 оставлял старые поля «на месте», но
+ядро уже читает **записи**. Данные в `.tres` — ещё списки, поэтому записи пусты и
+игра уезжает: измерено на Task 1, что без этого шага новичок получает 4 победы
+вместо 3, славу 8 вместо 5 и доход 106 вместо 69.
+
+Добавить в `MonsterData` два метода и **перевести на них** `weakness_modifier`,
+`resist_modifier`, `modifier_reasons`, `weakness_lines` и `resist_lines`:
+
+```gdscript
+## Действующие записи уязвимостей. ВРЕМЕННО до Task 4: если записей нет, а старые
+## списки заполнены, строим записи из них декартовым произведением — ровно то, что
+## делал старый код. Снимается, когда записи появятся во всех .tres.
+func effective_weakness_rules() -> Array:
+	if weakness_rules.size() > 0 or weakness_types.size() == 0:
+		return weakness_rules
+	var out: Array = []
+	for t in weakness_types:
+		out.append({"types": [String(t)], "ranges": Array(weakness_ranges)})
+	return out
+
+
+## То же для резистов. Словарь «тип → количество» разворачивается в записи
+## повторением, поэтому прежний −2 (дальний бой у Громунa) сохраняется: две записи
+## по −1 дают тот же итог.
+func effective_resist_rules() -> Array:
+	if resist_rules.size() > 0 or (type_resist.is_empty() and range_resist.is_empty()):
+		return resist_rules
+	var out: Array = []
+	for key in type_resist.keys():
+		for _i in range(int(type_resist[key])):
+			out.append({"types": [String(key)], "ranges": []})
+	for key in range_resist.keys():
+		for _i in range(int(range_resist[key])):
+			out.append({"types": [], "ranges": [String(key)]})
+	return out
+```
+
+**Проверка шага:** `--probe` красный по `ок D23 видов` (записи ещё синтезируются из
+старых списков, и проверка из шага 1 этого не увидит), но `--loop 10` обязан совпасть
+с прежними числами: новичок 3/5/2, доход 69, слава 5; опытный 10/0/0, доход 1020,
+слава 91. Расхождение — провал шага.
+
 - [ ] **Step 1: Написать проверку связки по каждому из семи видов**
 
 Добавить в `_status_mechanics()` перед `return out`:
@@ -468,19 +512,21 @@ Select-String -Path core\battle\damage_calc.gd -Pattern "weakness_types|weakness
 
 Ожидается: пусто.
 
-- [ ] **Step 4: Снять переходник в `MonsterData`**
+- [ ] **Step 4: Снять переходник в `MonsterData` — НЕ в этой задаче**
 
-Удалить старые поля (`weakness_types`, `weakness_ranges`, `type_resist`, `range_resist`),
-функции `effective_weakness_rules()`, `effective_resist_rules()`,
-`type_resist_for()`, `range_resist_for()` и временную ветку `_legacy_weak_to_type`
-вместе с пометкой «ВРЕМЕННО».
+Переходник (`effective_weakness_rules` / `effective_resist_rules`) и старые поля
+**остаются до Task 4**: пока данные в `.tres` не переведены на записи, именно они
+держат поведение игры. Их удаление — часть Task 4 Step 1, после того как все семь
+видов получат записи.
 
-**Внимание:** после этого шага данные в `.tres` ещё не переведены (это Task 4),
-поэтому записи у семи видов будут **пустыми** — игра станет нейтральной по
-модификаторам. Это ожидаемое переходное состояние между Task 2 и Task 4; полный
-прогон `run_checks.cmd` в этой задаче **не** требуется, кроме трёх режимов из
-шага 8. Если `--validate` упадёт из-за чтения старых полей — это тоже ожидаемо,
-его правка в Task 3, и «чинить» его здесь не надо.
+Здесь **не** удалять: старые поля, `type_resist_for()`, `range_resist_for()`,
+`is_weak_to_range()`, `_legacy_weak_to_type()` и пометку «ВРЕМЕННО». Они уходят
+в Task 4 вместе с синтезом.
+
+**Внимание:** в этой задаче ядро перестаёт читать старые поля напрямую, но
+переходник их ещё читает — поэтому игра остаётся играбельной, а полный прогон
+`run_checks.cmd` возможен только в Task 3, когда валидатор перестанет звать
+`type_resist_for`.
 
 - [ ] **Step 5: Перевести пробу на записи**
 
@@ -683,13 +729,17 @@ git commit -m "Валидатор и тексты досье читают зап
 **декартовым произведением** записей — это ровно то, что делал старый код, и
 единственный способ сохранить поведение на этапе 2а.
 
-**Обязательно вместе с этим:** убедиться, что синтеза из старых полей
-(`effective_weakness_rules` / `effective_resist_rules`) в `MonsterData` больше
-**нет** — он был переходником на время Task 1–3 и после появления записей во всех
-`.tres` стал бы вторым источником правды. Task 2 Step 4 уже удаляет его вместе с
-полями; здесь это проверка, а не вторая правка. Убедиться, что `weakness_modifier`,
-`resist_modifier`, `modifier_reasons`, `weakness_lines` и `resist_lines` читают
-**поля**, а не что-либо ещё.
+**Обязательно вместе с этим — снять переходник.** После перевода всех семи видов
+удалить из `MonsterData`: старые поля (`weakness_types`, `weakness_ranges`,
+`type_resist`, `range_resist`), методы `effective_weakness_rules()`,
+`effective_resist_rules()`, `type_resist_for()`, `range_resist_for()`,
+`is_weak_to_range()`, временную ветку `_legacy_weak_to_type()` и пометку «ВРЕМЕННО».
+Иначе синтез остаётся вторым источником правды о том же самом, что запрещено
+`AGENTS.md` §4.
+
+Убедиться, что `weakness_modifier`, `resist_modifier`, `modifier_reasons`,
+`weakness_lines` и `resist_lines` читают **поля** напрямую
+(`weakness_rules` / `resist_rules`), а не `effective_*`.
 
 | Вид | Было | Стало |
 |---|---|---|
