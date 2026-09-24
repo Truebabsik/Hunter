@@ -122,7 +122,8 @@ if weak_ranges.has(weapon.range_id):   +1   ← ещё раз
 | `type_resist: Dictionary` | `resist_rules: Array[Dictionary]` |
 | `range_resist: Dictionary` | *(входит в записи)* |
 | `type_resist_for()`, `range_resist_for()`, `is_weak_to_type()` | один обход записей |
-| фазы: `weak_types`/`weak_ranges`/`resist_types`/`resist_ranges` | `weak_rules` (резисты фаз не задаются) |
+| фазы: `weak_types` + `weak_ranges` | `weak_rules` (те же записи) |
+| фазы: `resist_types` + `resist_ranges` | **удаляются**: фаза резисты не задаёт (см. правило 3 выше) |
 
 Легаси-ключ `"physical"`, покрывающий все три подтипа, сохраняется: на нём держатся
 фазы и часть контента, и валидатор его уже проверяет.
