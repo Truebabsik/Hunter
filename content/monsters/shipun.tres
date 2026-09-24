@@ -141,14 +141,8 @@ max_hp = 10
 armor = 1
 base_damage = 2
 initiative = 6
-weakness_types = PackedStringArray("poison")
-weakness_ranges = PackedStringArray("ranged")
-range_resist = {}
-type_resist = {
-"ice": 1,
-"slash": 1,
-"pierce": 1
-}
+weakness_rules = [{"ranges": ["ranged"], "types": ["poison"]}]
+resist_rules = [{"ranges": [], "types": ["ice"]}, {"ranges": [], "types": ["slash"]}, {"ranges": [], "types": ["pierce"]}]
 scenarios = Array[ExtResource("3_scn")]([SubResource("scn_sting"), SubResource("scn_coil"), SubResource("scn_dash")])
 false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_sting"), SubResource("decoy_coil"), SubResource("decoy_dash")])
 combos = Array[ExtResource("1_cmb")]([SubResource("cmb_poison_dash"), SubResource("cmb_fire_coil")])

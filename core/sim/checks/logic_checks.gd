@@ -1077,10 +1077,9 @@ static func _status_mechanics() -> Array[String]:
 	#   (а) запись с двумя ограничениями даёт ровно +1/−1, не удваивается;
 	#   (б) запись без types срабатывает на любой тип в СВОЕЙ дистанции.
 	#
-	# Действующие записи, а не сырое поле: до Task 4 данные ещё лежат старыми
-	# списками, и обход `m.resist_rules` был бы вакуумным (пустой список — ноль
-	# замеров). Число проверенных записей печатается: ноль здесь значил бы, что
-	# сторож ничего не мерит.
+	# Записи читаются из ПОЛЯ напрямую: переходник `effective_*` снят в Task 4.
+	# Число проверенных записей печатается: ноль здесь значил бы, что сторож
+	# ничего не мерит.
 	var d23_fail: Array[String] = []
 	var d23_range_rules := 0
 	for mon_id in Database.monsters.keys():
@@ -1100,7 +1099,7 @@ static func _status_mechanics() -> Array[String]:
 		# `PackedStringArray(rule.get(...))`, и скаляр в поле ронял сторож
 		# SCRIPT ERROR'ом — отчёт пробы обрывался на этом месте, а хвостовые
 		# строки D23 просто не появлялись.
-		for rule_v in m.effective_resist_rules():
+		for rule_v in m.resist_rules:
 			var rule := rule_v as Dictionary
 			if MonsterData.rule_strings(rule, "types").size() > 0:
 				continue

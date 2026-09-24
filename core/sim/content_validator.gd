@@ -71,10 +71,10 @@ func _check_physical_subtypes() -> Array:
 		# Ошибка контента — когда уязвимость недостижима НИ ОДНОЙ парой
 		# (тип, дистанция) из существующего оружия.
 		#
-		# Действующие записи, а не сырое поле: до Task 4 данные лежат старыми
-		# списками, и обход `mon.weakness_rules` был бы вакуумным — проверка
-		# молчала бы, ничего не проверив.
-		for rule_v in mon.effective_weakness_rules():
+		# Записи читаются из ПОЛЯ напрямую: переходника `effective_*` больше нет
+		# (Task 4), и синтез записей из старых списков снят — иначе о том же
+		# самом было бы два источника правды.
+		for rule_v in mon.weakness_rules:
 			if not (rule_v is Dictionary):
 				continue
 			if _reachable_by_weapon(rule_v as Dictionary).is_empty():
@@ -85,7 +85,7 @@ func _check_physical_subtypes() -> Array:
 		# Частичные пересечения с резистами — замысел (§2.3: у Шипуна яд в упор даёт
 		# +1−1 = 0), полное перекрытие — нет: игрок видит слабость, которой нельзя
 		# воспользоваться ни одной парой «тип × дистанция».
-		for rule_v in mon.effective_weakness_rules():
+		for rule_v in mon.weakness_rules:
 			if not (rule_v is Dictionary):
 				continue
 			if not _rule_pays_off(mon, rule_v as Dictionary, {}):

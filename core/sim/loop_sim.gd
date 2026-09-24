@@ -366,8 +366,10 @@ func _simulate_read(
 	return others[rng.randi_range(0, others.size() - 1)]
 
 
-## Бот берёт инструмент, к которому зверь уязвим: тип из weakness_types,
-## дальность из weakness_ranges. Если такого нет — остаётся то, что в руке.
+## Бот берёт инструмент, к которому зверь уязвим НА ЭТОЙ ДИСТАНЦИИ (D23): запись
+## уязвимости — пара «тип И дистанция», поэтому брать первый тип и первую
+## дистанцию из двух списков нельзя: так бот собирал пару, которой в записях нет,
+## и получал +1 там, где игрок не получит ничего.
 ##
 ## Проверка владения обязательна, и раньше её здесь не было: перебор шёл по всей
 ## базе (Database.weapons), то есть бот вооружался Клинком или Копьём, не потратив
@@ -376,31 +378,20 @@ func _simulate_read(
 ## «режущий») бот получал бы преимущество, которого у игрока нет, и отчёт баланса
 ## мерил бы не ту игру.
 func _equip_best_tool(mon: MonsterData) -> void:
-	var want_type := MonsterData.TYPE_CRUSH
-	for t in mon.weakness_types:
-		want_type = StringName(t)
-		break
-	var want_range := MonsterData.RANGE_MELEE
-	for r in mon.weakness_ranges:
-		want_range = StringName(r)
-		break
-	# Лучшее — точно по типу И дистанции.
-	var fallback: WeaponData = null
+	var exact: WeaponData = null
+	var by_type: WeaponData = null
 	for id in GameState.owned_weapons:
 		var w: WeaponData = Database.weapon(id)
 		if w == null:
 			continue
-		if w.damage_type == want_type:
-			if fallback == null:
-				fallback = w
-			if w.range_id == want_range:
-				GameState.equipped_weapon = w.id
-				return
-	# Запасной вариант: любое СВОЁ оружие нужного типа.
-	if fallback != null:
-		GameState.equipped_weapon = fallback.id
-	# Если своего оружия нужного типа нет — остаётся то, что в руке: игрок в этом
-	# положении тоже не может ударить лучше, и прогон обязан это показывать.
+		if mon.weakness_modifier(w.damage_type, w.range_id) > 0:
+			exact = w
+			break
+		if by_type == null and w.damage_type == mon.weakness_type_hint():
+			by_type = w
+	var chosen := exact if exact != null else by_type
+	if chosen != null:
+		GameState.equipped_weapon = chosen.id
 
 
 ## Бот тратит монеты: сначала обязательные навыки, потом снаряжение.

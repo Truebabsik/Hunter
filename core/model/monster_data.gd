@@ -12,8 +12,8 @@ class_name MonsterData
 const TYPE_CRUSH := &"crush"
 const TYPE_SLASH := &"slash"
 const TYPE_PIERCE := &"pierce"
-## Общий физический тип. Оставлен как ЯРЛЫК КАТЕГОРИИ: в таблицах вида он значит
-## «устойчив ко всем трём подтипам сразу» (см. MonsterData.type_resist_for).
+## Общий физический тип. Оставлен как ЯРЛЫК КАТЕГОРИИ: в записи вида он значит
+## «устойчив ко всем трём подтипам сразу» (см. MonsterData.rule_applies).
 ## Новый контент должен писать конкретный подтип — иначе выбор оружия не работает.
 const TYPE_PHYSICAL := &"physical"
 const TYPE_FIRE := &"fire"
@@ -65,17 +65,6 @@ static func is_physical_subtype(type_id: StringName) -> bool:
 @export var weakness_rules: Array = []
 ## Записи резистов — та же форма; каждая даёт −1.
 @export var resist_rules: Array = []
-
-## ВРЕМЕННО до Task 4: старые независимые списки. Удаляются, когда записи
-## появятся во всех .tres. Новый контент писать только в *_rules.
-## Типы урона, которые дают +1 к урону игрока.
-@export var weakness_types: PackedStringArray = PackedStringArray()
-## Дальности, которые дают +1.
-@export var weakness_ranges: PackedStringArray = PackedStringArray()
-## Штраф по дальности: {"ranged": 2} — «резист к дальнему 2» (GDD 12.5).
-@export var range_resist: Dictionary = {}
-## Штраф по типу урона: {"fire": 1}.
-@export var type_resist: Dictionary = {}
 
 @export_group("Поведение")
 @export var scenarios: Array[ScenarioData] = []
@@ -156,78 +145,30 @@ func total_weight() -> int:
 	return sum
 
 
-## Штраф за дальность инструмента. 0 — если вид к этой дальности не устойчив.
-func range_resist_for(range_id: StringName) -> int:
-	return int(range_resist.get(String(range_id), 0))
-
-
-## Штраф за тип урона. 0 — если вид к этому типу не устойчив.
-##
-## Запись «physical» значит «устойчив ко всем трём физическим подтипам»: так
-## писались таблицы до разделения физурона, и это же удобно для зверя, которому
-## безразлично, чем его бьют — лишь бы не магией. Конкретный подтип сильнее
-## общего: если у вида есть и `slash`, и `physical`, для режущего берётся `slash`.
-func type_resist_for(type_id: StringName) -> int:
-	var key := String(type_id)
-	if type_resist.has(key):
-		return int(type_resist[key])
-	if is_physical_subtype(type_id) and type_resist.has(String(TYPE_PHYSICAL)):
-		return int(type_resist[String(TYPE_PHYSICAL)])
-	return 0
-
-
 ## Уязвим ли вид к этому типу на этой дистанции. Нужно валидатору.
-## Пустая дистанция значит «любая»: так зовут старые читатели, пока их не
-## перевели на пару координат (Task 3).
+## Пустая дистанция значит «любая»: так зовут читатели, которым дистанция
+## неизвестна (досье спрашивает только тип).
 func is_weak_to_type(type_id: StringName, range_id: StringName = &"") -> bool:
-	if weakness_rules.is_empty():
-		return _legacy_weak_to_type(type_id)
 	if range_id == &"":
 		return weakness_modifier(type_id, RANGE_MELEE) > 0 \
 			or weakness_modifier(type_id, RANGE_RANGED) > 0
 	return weakness_modifier(type_id, range_id) > 0
 
 
-## ВРЕМЕННО до Task 4: уязвимость по старому списку типов, без дистанции.
-## Контент ещё пишет списки, и старый валидатор спрашивает только про тип.
-func _legacy_weak_to_type(type_id: StringName) -> bool:
-	if weakness_types.has(String(type_id)):
-		return true
-	return is_physical_subtype(type_id) and weakness_types.has(String(TYPE_PHYSICAL))
-
-
-func is_weak_to_range(range_id: StringName) -> bool:
-	return weakness_ranges.has(String(range_id))
-
-
-## --- Переходник старых списков в записи (ВРЕМЕННО до Task 4) ---------------
-
-## Действующие записи уязвимостей. ВРЕМЕННО до Task 4: если записей нет, а старые
-## списки заполнены, строим записи из них декартовым произведением — ровно то, что
-## делал старый код. Снимается, когда записи появятся во всех .tres.
-func effective_weakness_rules() -> Array:
-	if weakness_rules.size() > 0 or weakness_types.size() == 0:
-		return weakness_rules
-	var out: Array = []
-	for t in weakness_types:
-		out.append({"types": [String(t)], "ranges": Array(weakness_ranges)})
-	return out
-
-
-## То же для резистов. Словарь «тип → количество» разворачивается в записи
-## повторением, поэтому прежний −2 (дальний бой у Громунa) сохраняется: две записи
-## по −1 дают тот же итог.
-func effective_resist_rules() -> Array:
-	if resist_rules.size() > 0 or (type_resist.is_empty() and range_resist.is_empty()):
-		return resist_rules
-	var out: Array = []
-	for key in type_resist.keys():
-		for _i in range(int(type_resist[key])):
-			out.append({"types": [String(key)], "ranges": []})
-	for key in range_resist.keys():
-		for _i in range(int(range_resist[key])):
-			out.append({"types": [], "ranges": [String(key)]})
-	return out
+## Первый тип уязвимости — подсказка для бота, когда точной пары нет.
+## Пустая строка, если уязвимостей нет.
+##
+## Поля записи разбирает модель (rule_strings), а не сама эта функция: скаляр
+## в поле приходит из .tres руками, и PackedStringArray() на нём уронил бы
+## выбор инструмента SCRIPT ERROR'ом. Назвать форму поля обязан валидатор.
+func weakness_type_hint() -> StringName:
+	for rule_v in weakness_rules:
+		if not (rule_v is Dictionary):
+			continue
+		var types := rule_strings(rule_v as Dictionary, "types")
+		if types.size() > 0:
+			return StringName(types[0])
+	return &""
 
 
 ## --- Записи уязвимостей и резистов (D23, GDD 12.3.1) -----------------------
@@ -266,7 +207,9 @@ static func rule_applies(rule: Dictionary, type_id: StringName, range_id: String
 
 
 ## Совпадает ли записанный тип с типом удара. Легаси-ключ "physical"
-## покрывает все три физических подтипа — на нём держатся старые таблицы.
+## покрывает все три физических подтипа — на нём держатся фазы и часть контента.
+## Конкретный подтип общую запись НЕ отменяет: в модели каждая запись
+## срабатывает сама по себе, а не «сильнейшая из двух».
 static func _type_matches(recorded: StringName, hit: StringName) -> bool:
 	if recorded == hit:
 		return true
@@ -303,7 +246,7 @@ static func phase_weak_rules(phase: Dictionary) -> Array:
 ## Записи, которые не являются словарями, пропускаются: это мусор в контенте, и
 ## его обязан назвать валидатор — а бой падать из-за него не имеет права.
 func weakness_modifier(type_id: StringName, range_id: StringName, phase: Dictionary = {}) -> int:
-	var rules: Array = effective_weakness_rules()
+	var rules: Array = weakness_rules
 	if phase.has("weak_rules"):
 		rules = phase_weak_rules(phase)
 	var sum := 0
@@ -320,7 +263,7 @@ func weakness_modifier(type_id: StringName, range_id: StringName, phase: Diction
 ## резистов не имеет вовсе.
 func resist_modifier(type_id: StringName, range_id: StringName) -> int:
 	var sum := 0
-	for r in effective_resist_rules():
+	for r in resist_rules:
 		if not (r is Dictionary):
 			continue
 		if rule_applies(r as Dictionary, type_id, range_id):
@@ -338,7 +281,7 @@ func resist_modifier(type_id: StringName, range_id: StringName) -> int:
 ## совпадение, а причину добавляем одну.
 func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary = {}) -> Array[String]:
 	var out: Array[String] = []
-	var weak_rules_used: Array = effective_weakness_rules()
+	var weak_rules_used: Array = weakness_rules
 	if phase.has("weak_rules"):
 		weak_rules_used = phase_weak_rules(phase)
 	for rule_v in weak_rules_used:
@@ -348,7 +291,7 @@ func modifier_reasons(types_hit: Array, range_id: StringName, phase: Dictionary 
 		var rtype := _matching_type(rule, types_hit, range_id)
 		if rtype != &"":
 			out.append("слабость: %s +1" % _rule_label(rule, rtype, types_hit, range_id))
-	for rule_v in effective_resist_rules():
+	for rule_v in resist_rules:
 		if not (rule_v is Dictionary):
 			continue
 		var rule := rule_v as Dictionary
@@ -392,12 +335,12 @@ func _rule_label(rule: Dictionary, rtype: StringName, types_hit: Array, range_id
 
 ## Уязвимости строками для досье и совета: одна строка на запись.
 func weakness_lines() -> PackedStringArray:
-	return rule_lines(effective_weakness_rules())
+	return rule_lines(weakness_rules)
 
 
 ## Резисты строками для досье и совета: одна строка на запись.
 func resist_lines() -> PackedStringArray:
-	return rule_lines(effective_resist_rules())
+	return rule_lines(resist_rules)
 
 
 ## Строки записей для показа: одна строка на запись, внутри записи — «+».
