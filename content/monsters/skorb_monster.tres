@@ -1,0 +1,292 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=26 format=3]
+
+[ext_resource type="Script" path="res://core/model/combo_data.gd" id="1_cmb"]
+[ext_resource type="Script" path="res://core/model/signal_data.gd" id="2_sig"]
+[ext_resource type="Script" path="res://core/model/scenario_data.gd" id="3_scn"]
+[ext_resource type="Script" path="res://core/model/monster_data.gd" id="4_mon"]
+[ext_resource type="Texture2D" path="res://art/monsters/skorb.svg" id="5_art"]
+
+[sub_resource type="Resource" id="sig_volley_ribs"]
+script = ExtResource("2_sig")
+id = &"skorb.volley.ribs"
+slot = &"gear"
+label = "рёбра смыкаются"
+monster_id = &"skorb"
+scenario_id = &"volley"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_volley_scrape"]
+script = ExtResource("2_sig")
+id = &"skorb.volley.scrape"
+slot = &"sound"
+label = "костяной скрежет"
+monster_id = &"skorb"
+scenario_id = &"volley"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_grasp_jaw"]
+script = ExtResource("2_sig")
+id = &"skorb.grasp.jaw"
+slot = &"gear"
+label = "челюсть тянется"
+monster_id = &"skorb"
+scenario_id = &"grasp"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_grasp_pose"]
+script = ExtResource("2_sig")
+id = &"skorb.grasp.pose"
+slot = &"pose"
+label = "наклоняется вперёд всей клеткой"
+monster_id = &"skorb"
+scenario_id = &"grasp"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_roar_sternum"]
+script = ExtResource("2_sig")
+id = &"skorb.roar.sternum"
+slot = &"gear"
+label = "грудина разрывается"
+monster_id = &"skorb"
+scenario_id = &"roar"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_roar_sound"]
+script = ExtResource("2_sig")
+id = &"skorb.roar.sound"
+slot = &"sound"
+label = "рёв из пустой грудной клетки"
+monster_id = &"skorb"
+scenario_id = &"roar"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_rebuild_bones"]
+script = ExtResource("2_sig")
+id = &"skorb.rebuild.bones"
+slot = &"gear"
+label = "кости сыплются вниз"
+monster_id = &"skorb"
+scenario_id = &"rebuild"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_rebuild_whirl"]
+script = ExtResource("2_sig")
+id = &"skorb.rebuild.whirl"
+slot = &"environment"
+label = "костяной вихрь вокруг"
+monster_id = &"skorb"
+scenario_id = &"rebuild"
+tags = PackedStringArray("environment")
+
+[sub_resource type="Resource" id="scn_volley"]
+script = ExtResource("3_scn")
+id = &"volley"
+card_label = "Дай залп"
+description = "Смыкает рёбра и бьёт костяным залпом."
+weight = 40
+signals = Array[ExtResource("2_sig")]([SubResource("sig_volley_ribs"), SubResource("sig_volley_scrape")])
+damage_override = 5
+tags = PackedStringArray("ranged")
+
+[sub_resource type="Resource" id="scn_grasp"]
+script = ExtResource("3_scn")
+id = &"grasp"
+card_label = "Схватит"
+description = "Тянется челюстью и всей клеткой вперёд, чтобы сжать и держать."
+weight = 30
+signals = Array[ExtResource("2_sig")]([SubResource("sig_grasp_jaw"), SubResource("sig_grasp_pose")])
+damage_override = 4
+tags = PackedStringArray("grab")
+
+[sub_resource type="Resource" id="scn_roar"]
+script = ExtResource("3_scn")
+id = &"roar"
+card_label = "Рванёт рёв"
+description = "Разрывает грудину и ревёт, подзывая кости пустоши."
+weight = 20
+signals = Array[ExtResource("2_sig")]([SubResource("sig_roar_sternum"), SubResource("sig_roar_sound")])
+damage_override = 4
+tags = PackedStringArray("summon")
+
+[sub_resource type="Resource" id="scn_rebuild"]
+script = ExtResource("3_scn")
+id = &"rebuild"
+card_label = "Начнёт пересборку"
+description = "Рассыпается и собирается вновь, залечивая разрывы."
+weight = 10
+signals = Array[ExtResource("2_sig")]([SubResource("sig_rebuild_bones"), SubResource("sig_rebuild_whirl")])
+damage_override = 0
+tags = PackedStringArray("heal")
+
+[sub_resource type="Resource" id="cmb_break_cage"]
+script = ExtResource("1_cmb")
+id = &"skorb.break_cage"
+title = "Разрыв клетки"
+scenario_id = &"rebuild"
+required_range = &"any"
+required_type = &"fire"
+damage_bonus = 2
+effect_text = "пересборка прервана"
+status_id = &"stun"
+
+[sub_resource type="Resource" id="cmb_bone_rain"]
+script = ExtResource("1_cmb")
+id = &"skorb.bone_rain"
+title = "Костяной дождь"
+scenario_id = &"roar"
+required_range = &"ranged"
+required_type = &"crush"
+damage_bonus = 2
+effect_text = "рёв захлебнулся"
+status_id = &""
+
+[sub_resource type="Resource" id="decoy_volley_gaze"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.volley.gaze"
+slot = &"gaze"
+label = "пустые глазницы"
+monster_id = &"skorb"
+scenario_id = &"volley"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_volley_sound"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.volley.sound"
+slot = &"pose"
+label = "хруст без сыпания"
+monster_id = &"skorb"
+scenario_id = &"volley"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_volley_pose"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.volley.pose"
+slot = &"environment"
+label = "подаётся вперёд"
+monster_id = &"skorb"
+scenario_id = &"volley"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_grasp_gaze"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.grasp.gaze"
+slot = &"gaze"
+label = "смотрит в пустоту"
+monster_id = &"skorb"
+scenario_id = &"grasp"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_grasp_sound"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.grasp.sound"
+slot = &"sound"
+label = "костяная пыль оседает"
+monster_id = &"skorb"
+scenario_id = &"grasp"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_grasp_pose"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.grasp.pose"
+slot = &"environment"
+label = "приседает на таз"
+monster_id = &"skorb"
+scenario_id = &"grasp"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_roar_gaze"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.roar.gaze"
+slot = &"gaze"
+label = "тени в глазницах"
+monster_id = &"skorb"
+scenario_id = &"roar"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_roar_sound"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.roar.sound"
+slot = &"pose"
+label = "щелчок без рёва"
+monster_id = &"skorb"
+scenario_id = &"roar"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_roar_pose"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.roar.pose"
+slot = &"environment"
+label = "оседает на таз"
+monster_id = &"skorb"
+scenario_id = &"roar"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_rebuild_gaze"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.rebuild.gaze"
+slot = &"gaze"
+label = "тени двигаются в глазницах"
+monster_id = &"skorb"
+scenario_id = &"rebuild"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_rebuild_sound"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.rebuild.sound"
+slot = &"sound"
+label = "сухой шорох костей"
+monster_id = &"skorb"
+scenario_id = &"rebuild"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_rebuild_pose"]
+script = ExtResource("2_sig")
+id = &"skorb.decoy.rebuild.pose"
+slot = &"pose"
+label = "наклоняется к земле"
+monster_id = &"skorb"
+scenario_id = &"rebuild"
+tags = PackedStringArray("decoy")
+
+[resource]
+script = ExtResource("4_mon")
+id = &"skorb"
+title = "Скорб"
+epithet = "костяная башня"
+lore = "Мёртв дольше, чем стоит гильдия, и не собирается ложиться. Каждая кость движется отдельно — то, что ты видишь, ещё не он. Убить его можно только заново разобрав по костям."
+rank = &"elite"
+max_hp = 25
+armor = 3
+base_damage = 4
+initiative = 2
+weakness_types = PackedStringArray("fire")
+weakness_ranges = PackedStringArray("ranged")
+type_resist = {
+"slash": 1,
+"pierce": 1,
+"ice": 1,
+"poison": 1
+}
+scenarios = Array[ExtResource("3_scn")]([SubResource("scn_volley"), SubResource("scn_grasp"), SubResource("scn_roar"), SubResource("scn_rebuild")])
+false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_volley_gaze"), SubResource("decoy_volley_sound"), SubResource("decoy_volley_pose"), SubResource("decoy_grasp_gaze"), SubResource("decoy_grasp_sound"), SubResource("decoy_grasp_pose"), SubResource("decoy_roar_gaze"), SubResource("decoy_roar_sound"), SubResource("decoy_roar_pose"), SubResource("decoy_rebuild_gaze"), SubResource("decoy_rebuild_sound"), SubResource("decoy_rebuild_pose")])
+combos = Array[ExtResource("1_cmb")]([SubResource("cmb_break_cage"), SubResource("cmb_bone_rain")])
+adaptations = Array[Dictionary]([{
+"after_round": 5,
+"multiplier": 1.1,
+"scenario": &"rebuild"
+}, {
+"after_round": 9,
+"multiplier": 1.15,
+"scenario": &"volley"
+}])
+counter_threshold = 3
+counter_title = "Костяной щит"
+counter_text = "Скорб поднимает рёбра клеткой: огонь больше не прерывает пересборку."
+trophy_names = PackedStringArray("Костяной залп", "Рёберная броня")
+trophy_prices = PackedInt32Array(35, 40)
+portrait = ExtResource("5_art")
+silhouette = ExtResource("5_art")
+accent_color = "#d8d2c4"
+art_scale = 1.1
+art_offset = Vector2(0, 0)
+by_scenario = {}

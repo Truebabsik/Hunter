@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dvul4rl6d370v"
+
+[deps]
+
+files=["res://content/phrases/tleun.monster.translation", "res://content/phrases/tleun.scenario.translation", "res://content/phrases/tleun.slot.translation", "res://content/phrases/tleun.role.translation", "res://content/phrases/tleun.text.translation", "res://content/phrases/tleun.weight.translation", "res://content/phrases/tleun.tags.translation"]
+
+source_file="res://content/phrases/tleun.csv"
+dest_files=["res://content/phrases/tleun.monster.translation", "res://content/phrases/tleun.scenario.translation", "res://content/phrases/tleun.slot.translation", "res://content/phrases/tleun.role.translation", "res://content/phrases/tleun.text.translation", "res://content/phrases/tleun.weight.translation", "res://content/phrases/tleun.tags.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

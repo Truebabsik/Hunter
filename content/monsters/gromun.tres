@@ -1,0 +1,210 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://core/model/combo_data.gd" id="1_cmb"]
+[ext_resource type="Script" path="res://core/model/signal_data.gd" id="2_sig"]
+[ext_resource type="Script" path="res://core/model/scenario_data.gd" id="3_scn"]
+[ext_resource type="Script" path="res://core/model/monster_data.gd" id="4_mon"]
+[ext_resource type="Texture2D" path="res://art/monsters/gromun.svg" id="5_art"]
+
+[sub_resource type="Resource" id="sig_pike_wings"]
+script = ExtResource("2_sig")
+id = &"gromun.pike.wings"
+slot = &"gear"
+label = "крылья сложены"
+monster_id = &"gromun"
+scenario_id = &"pike"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_pike_pose"]
+script = ExtResource("2_sig")
+id = &"gromun.pike.pose"
+slot = &"pose"
+label = "припадает на лапах к камню"
+monster_id = &"gromun"
+scenario_id = &"pike"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_pike_air"]
+script = ExtResource("2_sig")
+id = &"gromun.pike.air"
+slot = &"environment"
+label = "воздух свистит в крыльях"
+monster_id = &"gromun"
+scenario_id = &"pike"
+tags = PackedStringArray("environment")
+
+[sub_resource type="Resource" id="sig_sweep_head"]
+script = ExtResource("2_sig")
+id = &"gromun.sweep.head"
+slot = &"pose"
+label = "опускает голову"
+monster_id = &"gromun"
+scenario_id = &"sweep"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_sweep_sound"]
+script = ExtResource("2_sig")
+id = &"gromun.sweep.sound"
+slot = &"sound"
+label = "когти скребут камень"
+monster_id = &"gromun"
+scenario_id = &"sweep"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_roar_throat"]
+script = ExtResource("2_sig")
+id = &"gromun.roar.throat"
+slot = &"gear"
+label = "горло раздувается"
+monster_id = &"gromun"
+scenario_id = &"roar"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_roar_wave"]
+script = ExtResource("2_sig")
+id = &"gromun.roar.wave"
+slot = &"sound"
+label = "нарастающий вой"
+monster_id = &"gromun"
+scenario_id = &"roar"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="scn_pike"]
+script = ExtResource("3_scn")
+id = &"pike"
+card_label = "Сложит крылья"
+description = "Складывает крылья, наклоняет шипы и падает сверху гарпуном."
+weight = 45
+signals = Array[ExtResource("2_sig")]([SubResource("sig_pike_wings"), SubResource("sig_pike_pose"), SubResource("sig_pike_air")])
+damage_override = 5
+tags = PackedStringArray("charge")
+
+[sub_resource type="Resource" id="scn_sweep"]
+script = ExtResource("3_scn")
+id = &"sweep"
+card_label = "Пойдёт на таран"
+description = "Прижимает голову, разгоняется по камню и бьёт корпусом."
+weight = 30
+signals = Array[ExtResource("2_sig")]([SubResource("sig_sweep_head"), SubResource("sig_sweep_sound")])
+damage_override = 3
+tags = PackedStringArray("charge")
+
+[sub_resource type="Resource" id="scn_roar"]
+script = ExtResource("3_scn")
+id = &"roar"
+card_label = "Закричит"
+description = "Раздувает горло и бьёт воем по нервам. Блок не помогает — спасает только чтение."
+weight = 25
+signals = Array[ExtResource("2_sig")]([SubResource("sig_roar_throat"), SubResource("sig_roar_wave")])
+damage_override = 4
+unblockable = true
+tags = PackedStringArray("roar")
+
+[sub_resource type="Resource" id="cmb_break_pike"]
+script = ExtResource("1_cmb")
+id = &"gromun.break_pike"
+title = "Срыв пике"
+scenario_id = &"pike"
+required_range = &"melee"
+required_type = &"crush"
+damage_bonus = 2
+effect_text = "пике сбито, зверь оглушён на 1 ход"
+status_id = &"stun"
+
+[sub_resource type="Resource" id="cmb_fire_roar"]
+script = ExtResource("1_cmb")
+id = &"gromun.fire_roar"
+title = "Огненный вой"
+scenario_id = &"roar"
+required_range = &"ranged"
+required_type = &"fire"
+damage_bonus = 2
+effect_text = "вой прерван на полуслове"
+status_id = &""
+
+[sub_resource type="Resource" id="decoy_0"]
+script = ExtResource("2_sig")
+id = &"gromun.decoy.pike.gaze"
+slot = &"gaze"
+label = "косит взглядом вниз"
+monster_id = &"gromun"
+scenario_id = &"pike"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_1"]
+script = ExtResource("2_sig")
+id = &"gromun.decoy.pike.sound"
+slot = &"sound"
+label = "сипит без нажима"
+monster_id = &"gromun"
+scenario_id = &"pike"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_2"]
+script = ExtResource("2_sig")
+id = &"gromun.decoy.sweep.gaze"
+slot = &"gaze"
+label = "приседает на лапах"
+monster_id = &"gromun"
+scenario_id = &"sweep"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_3"]
+script = ExtResource("2_sig")
+id = &"gromun.decoy.sweep.sound"
+slot = &"gaze"
+label = "шорох перьев"
+monster_id = &"gromun"
+scenario_id = &"sweep"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_4"]
+script = ExtResource("2_sig")
+id = &"gromun.decoy.roar.gaze"
+slot = &"gaze"
+label = "закрывает глаза и держит паузу"
+monster_id = &"gromun"
+scenario_id = &"roar"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_5"]
+script = ExtResource("2_sig")
+id = &"gromun.decoy.roar.pose"
+slot = &"pose"
+label = "оседает на лапах"
+monster_id = &"gromun"
+scenario_id = &"roar"
+tags = PackedStringArray("decoy")
+[resource]
+script = ExtResource("4_mon")
+id = &"gromun"
+title = "Громун"
+epithet = "гривастая гарпуна"
+lore = "Костяные шипы на крыльях отрастают заново, поэтому трофей ценят, а зверя не добивают зря. Бьёт с воздуха, где до него не достать. Гильдия не выпускает на него без дальнего боя."
+rank = &"advanced"
+max_hp = 15
+armor = 2
+base_damage = 3
+initiative = 5
+weakness_types = PackedStringArray("crush")
+weakness_ranges = PackedStringArray("melee")
+type_resist = {
+"ice": 1
+}
+range_resist = {
+"ranged": 2
+}
+scenarios = Array[ExtResource("3_scn")]([SubResource("scn_pike"), SubResource("scn_sweep"), SubResource("scn_roar")])
+false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_0"), SubResource("decoy_1"), SubResource("decoy_2"), SubResource("decoy_3"), SubResource("decoy_4"), SubResource("decoy_5")])
+combos = Array[ExtResource("1_cmb")]([SubResource("cmb_break_pike"), SubResource("cmb_fire_roar")])
+counter_threshold = 3
+counter_title = "Воздушный вираж"
+counter_text = "Громун уходит в вираж: ближний бой больше не достаёт, пока он кружит."
+trophy_names = PackedStringArray("Костяной гарпун", "Грива")
+trophy_prices = PackedInt32Array(25, 12)
+portrait = ExtResource("5_art")
+silhouette = ExtResource("5_art")
+accent_color = "#8d7a5f"
+art_scale = 1.0
+art_offset = Vector2(0, -10)
+by_scenario = {}

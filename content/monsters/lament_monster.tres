@@ -1,0 +1,393 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=40 format=3]
+
+[ext_resource type="Script" path="res://core/model/combo_data.gd" id="1_cmb"]
+[ext_resource type="Script" path="res://core/model/signal_data.gd" id="2_sig"]
+[ext_resource type="Script" path="res://core/model/scenario_data.gd" id="3_scn"]
+[ext_resource type="Script" path="res://core/model/monster_data.gd" id="4_mon"]
+[ext_resource type="Texture2D" path="res://art/monsters/lament.svg" id="5_art"]
+
+[sub_resource type="Resource" id="sig_devour_dark"]
+script = ExtResource("2_sig")
+id = &"lament.devour.dark"
+slot = &"gear"
+label = "тьма сгущается вокруг пасти"
+monster_id = &"lament"
+scenario_id = &"devour"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_devour_light"]
+script = ExtResource("2_sig")
+id = &"lament.devour.light"
+slot = &"environment"
+label = "свет гаснет"
+monster_id = &"lament"
+scenario_id = &"devour"
+tags = PackedStringArray("environment")
+
+[sub_resource type="Resource" id="sig_cascade_spikes"]
+script = ExtResource("2_sig")
+id = &"lament.cascade.spikes"
+slot = &"gear"
+label = "шипы дрожат"
+monster_id = &"lament"
+scenario_id = &"cascade"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_cascade_ring"]
+script = ExtResource("2_sig")
+id = &"lament.cascade.ring"
+slot = &"sound"
+label = "звон шипов"
+monster_id = &"lament"
+scenario_id = &"cascade"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_silence_room"]
+script = ExtResource("2_sig")
+id = &"lament.silence.room"
+slot = &"gaze"
+label = "звук пропадает"
+monster_id = &"lament"
+scenario_id = &"silence"
+tags = PackedStringArray("environment")
+
+[sub_resource type="Resource" id="sig_silence_pose"]
+script = ExtResource("2_sig")
+id = &"lament.silence.pose"
+slot = &"gear"
+label = "разворачивает корпус в беззвучном крике"
+monster_id = &"lament"
+scenario_id = &"silence"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_call_gear"]
+script = ExtResource("2_sig")
+id = &"lament.call.gear"
+slot = &"gear"
+label = "тени липнут к его бокам"
+monster_id = &"lament"
+scenario_id = &"call"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_call_rustle"]
+script = ExtResource("2_sig")
+id = &"lament.call.rustle"
+slot = &"pose"
+label = "шорох по краю света"
+monster_id = &"lament"
+scenario_id = &"call"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_variable_signals"]
+script = ExtResource("2_sig")
+id = &"lament.variable.signals"
+slot = &"gear"
+label = "сигналы читаются наоборот"
+monster_id = &"lament"
+scenario_id = &"variable"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_variable_reality"]
+script = ExtResource("2_sig")
+id = &"lament.variable.reality"
+slot = &"environment"
+label = "реальность дрожит по краям"
+monster_id = &"lament"
+scenario_id = &"variable"
+tags = PackedStringArray("environment")
+
+[sub_resource type="Resource" id="scn_devour"]
+script = ExtResource("3_scn")
+id = &"devour"
+card_label = "Схватит и сожрёт"
+description = "Сгущает тьму вокруг пасти и втягивает охотника."
+weight = 30
+signals = Array[ExtResource("2_sig")]([SubResource("sig_devour_dark"), SubResource("sig_devour_light")])
+damage_override = 7
+tags = PackedStringArray("grab")
+
+[sub_resource type="Resource" id="scn_cascade"]
+script = ExtResource("3_scn")
+id = &"cascade"
+card_label = "Обрушит шипы"
+description = "Дробит шипы каскадом сверху вниз."
+weight = 25
+signals = Array[ExtResource("2_sig")]([SubResource("sig_cascade_spikes"), SubResource("sig_cascade_ring")])
+damage_override = 5
+tags = PackedStringArray("aoe")
+
+[sub_resource type="Resource" id="scn_silence"]
+script = ExtResource("3_scn")
+id = &"silence"
+card_label = "Заревёт в тишину"
+description = "Забирает звук из мира и бьёт этой пустотой. Блок не помогает."
+weight = 20
+signals = Array[ExtResource("2_sig")]([SubResource("sig_silence_room"), SubResource("sig_silence_pose")])
+damage_override = 5
+unblockable = true
+tags = PackedStringArray("roar")
+
+[sub_resource type="Resource" id="scn_call"]
+script = ExtResource("3_scn")
+id = &"call"
+card_label = "Позовёт слуг"
+description = "Отпускает тени по краю света и подзывает их."
+weight = 15
+signals = Array[ExtResource("2_sig")]([SubResource("sig_call_gear"), SubResource("sig_call_rustle")])
+damage_override = 3
+tags = PackedStringArray("summon")
+
+[sub_resource type="Resource" id="scn_variable"]
+script = ExtResource("3_scn")
+id = &"variable"
+card_label = "Станет переменным"
+description = "Переворачивает сигналы: то, что ты видишь, значит обратное."
+weight = 10
+signals = Array[ExtResource("2_sig")]([SubResource("sig_variable_signals"), SubResource("sig_variable_reality")])
+damage_override = 3
+tags = PackedStringArray("phase")
+
+[sub_resource type="Resource" id="cmb_wreath"]
+script = ExtResource("1_cmb")
+id = &"lament.wreath"
+title = "Венок"
+scenario_id = &"devour"
+required_range = &"melee"
+required_type = &"poison"
+damage_bonus = 2
+effect_text = "финальный удар: захват разорван, тьма отступает"
+status_id = &""
+
+[sub_resource type="Resource" id="cmb_tear_dark"]
+script = ExtResource("1_cmb")
+id = &"lament.tear_dark"
+title = "Разрыв тьмы"
+scenario_id = &"devour"
+required_range = &"ranged"
+required_type = &"fire"
+damage_bonus = 2
+effect_text = "тьма вокруг пасти разорвана"
+status_id = &""
+
+[sub_resource type="Resource" id="cmb_silence_break"]
+script = ExtResource("1_cmb")
+id = &"lament.silence_break"
+title = "Голос в тишине"
+scenario_id = &"silence"
+required_range = &"melee"
+required_type = &"crush"
+damage_bonus = 2
+effect_text = "рёв-тишина сорван в самом начале"
+status_id = &"stun"
+
+[sub_resource type="Resource" id="decoy_devour_gaze"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.devour.gaze"
+slot = &"gaze"
+label = "смотрит сквозь тебя"
+monster_id = &"lament"
+scenario_id = &"devour"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_devour_pose"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.devour.pose"
+slot = &"pose"
+label = "покачивается на месте"
+monster_id = &"lament"
+scenario_id = &"devour"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_devour_sound"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.devour.sound"
+slot = &"sound"
+label = "шёпот без слов"
+monster_id = &"lament"
+scenario_id = &"devour"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_cascade_gaze"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.cascade.gaze"
+slot = &"gaze"
+label = "замирает без причины"
+monster_id = &"lament"
+scenario_id = &"cascade"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_cascade_pose"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.cascade.pose"
+slot = &"pose"
+label = "втягивает шипы"
+monster_id = &"lament"
+scenario_id = &"cascade"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_cascade_sound"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.cascade.sound"
+slot = &"environment"
+label = "эхо без источника"
+monster_id = &"lament"
+scenario_id = &"cascade"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_silence_sound"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.silence.sound"
+slot = &"sound"
+label = "шипы опадают вдоль тела"
+monster_id = &"lament"
+scenario_id = &"silence"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_silence_env"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.silence.env"
+slot = &"environment"
+label = "пустота там, где должна быть тень"
+monster_id = &"lament"
+scenario_id = &"silence"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_call_gaze"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.call.gaze"
+slot = &"gaze"
+label = "тени идут по краю"
+monster_id = &"lament"
+scenario_id = &"call"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_variable_gaze"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.variable.gaze"
+slot = &"gaze"
+label = "эхо твоим голосом"
+monster_id = &"lament"
+scenario_id = &"variable"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_variable_pose"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.variable.pose"
+slot = &"pose"
+label = "реальность дрожит"
+monster_id = &"lament"
+scenario_id = &"variable"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_variable_sound"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.variable.sound"
+slot = &"sound"
+label = "эхо без источника звука"
+monster_id = &"lament"
+scenario_id = &"variable"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_call_pose"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.call.pose"
+slot = &"environment"
+label = "пустота вместо тени"
+monster_id = &"lament"
+scenario_id = &"call"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_silence_pose"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.silence.pose"
+slot = &"pose"
+label = "он смотрит в сторону"
+monster_id = &"lament"
+scenario_id = &"silence"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_call_env"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.call.env"
+slot = &"environment"
+label = "сумрак сгущается сам"
+monster_id = &"lament"
+scenario_id = &"call"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_variable_pose"]
+script = ExtResource("2_sig")
+id = &"lament.decoy.variable.pose"
+slot = &"pose"
+label = "реальность дрожит"
+monster_id = &"lament"
+scenario_id = &"variable"
+tags = PackedStringArray("decoy")
+[resource]
+script = ExtResource("4_mon")
+id = &"lament"
+title = "Ламент"
+epithet = "коронованный пожиратель сигналов"
+lore = "Единственный, кто охотится не на охотников, а на то, чем они думают. Он повторяет увиденное и потому кажется знакомым. Все, кто его описывал, противоречат друг другу — и это лучшее, что о нём известно."
+rank = &"legendary"
+max_hp = 40
+armor = 3
+base_damage = 5
+initiative = 5
+weakness_types = PackedStringArray()
+weakness_ranges = PackedStringArray()
+type_resist = {}
+range_resist = {}
+scenarios = Array[ExtResource("3_scn")]([SubResource("scn_devour"), SubResource("scn_cascade"), SubResource("scn_silence"), SubResource("scn_call"), SubResource("scn_variable")])
+false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_devour_gaze"), SubResource("decoy_devour_pose"), SubResource("decoy_devour_sound"), SubResource("decoy_cascade_gaze"), SubResource("decoy_cascade_pose"), SubResource("decoy_cascade_sound"), SubResource("decoy_silence_sound"), SubResource("decoy_silence_env"), SubResource("decoy_silence_pose"), SubResource("decoy_call_gaze"), SubResource("decoy_call_pose"), SubResource("decoy_call_env"), SubResource("decoy_variable_gaze"), SubResource("decoy_variable_pose"), SubResource("decoy_variable_sound")])
+combos = Array[ExtResource("1_cmb")]([SubResource("cmb_wreath"), SubResource("cmb_tear_dark"), SubResource("cmb_silence_break")])
+phases = Array[Dictionary]([{
+"hp_below": 0.3,
+"id": &"worn",
+"note": "Он выдохся: тьма отошла, блок больше не держит.",
+"resist_ranges": {},
+"resist_types": {},
+"title": "Истощение",
+"weak_ranges": PackedStringArray("melee"),
+"weak_types": PackedStringArray("crush", "poison")
+}, {
+"hp_below": 0.7,
+"id": &"rage",
+"note": "Он перестал считаться с собой.",
+"noise": 2.0,
+"resist_ranges": {},
+"resist_types": {},
+"title": "Бешенство",
+"weak_ranges": PackedStringArray(),
+"weak_types": PackedStringArray()
+}, {
+"hp_below": 1.0,
+"id": &"calm",
+"note": "Он ещё играет с тобой.",
+"noise": 1.0,
+"resist_ranges": {},
+"resist_types": {},
+"title": "Спокойствие",
+"weak_ranges": PackedStringArray(),
+"weak_types": PackedStringArray()
+}])
+adaptations = Array[Dictionary]([{
+"after_round": 5,
+"multiplier": 1.15,
+"scenario": &"variable"
+}, {
+"after_round": 9,
+"multiplier": 1.2,
+"scenario": &"variable"
+}])
+counter_threshold = 3
+counter_title = "Пожирание сигнала"
+counter_text = "Ламент съедает твой приём: сигналы вокруг него выворачиваются наизнанку."
+trophy_names = PackedStringArray("Венок легенды", "Осколок тьмы")
+trophy_prices = PackedInt32Array(100, 80)
+portrait = ExtResource("5_art")
+silhouette = ExtResource("5_art")
+accent_color = "#6f5ea8"
+art_scale = 1.05
+art_offset = Vector2(0, -5)
+by_scenario = {}

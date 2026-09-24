@@ -1,0 +1,151 @@
+id,monster,scenario,slot,role,text,weight,tags
+lament.devour.dark.01,lament,devour,gear,core,"Горло раздувается — кожа натягивается и блестит.",10,core
+lament.devour.dark.02,lament,devour,gear,core,"Он пробует клешню на сжатие, будто проверяет хват.",10,core
+lament.devour.dark.03,lament,devour,gear,core,"Он подбирает крылья — плотно, как перед броском камня.",10,core
+lament.devour.light.01,lament,devour,environment,core,"Вода у берега идёт кругами и не успокаивается.",10,core
+lament.devour.light.02,lament,devour,environment,core,"Краски стекают с предметов и пропадают.",10,core
+lament.devour.light.03,lament,devour,environment,core,"Костяной вихрь поднимается вокруг и закручивается.",10,core
+lament.cascade.spikes.01,lament,cascade,gear,core,"Крылья складываются вдоль тела и прижимаются к бокам.",10,core
+lament.cascade.spikes.02,lament,cascade,gear,core,"Он набирает воздух, и шея становится вдвое толще.",10,core
+lament.cascade.spikes.03,lament,cascade,gear,core,"Зоб раздувается изнутри, как мех.",10,core
+lament.cascade.ring.01,lament,cascade,sound,core,"Он дерёт камень и разгоняется на этом звуке.",10,core
+lament.cascade.ring.02,lament,cascade,sound,core,"Вой начинается низко и идёт вверх, не прерываясь.",10,core
+lament.cascade.ring.03,lament,cascade,sound,core,"Слабое сипение, не похожее на угрозу.",10,core
+lament.silence.room.01,lament,silence,gaze,core,"Шорох перьев — глухой, без скрежета.",10,core
+lament.silence.room.02,lament,silence,gaze,core,"Перья шелестят на ветру, и только.",10,core
+lament.silence.room.03,lament,silence,gaze,core,"Мягкий шорох, который ничем не кончается.",10,core
+lament.silence.pose.01,lament,silence,gear,core,"Он отплёвывается и переводит дыхание, опустив клешню.",10,core
+lament.silence.pose.02,lament,silence,gear,core,"Кожаный воротник раскрывается, обнажая жало.",10,core
+lament.silence.pose.03,lament,silence,gear,core,"Капюшон поднимается медленно — зверь примеряется к броску.",10,core
+lament.call.gear.01,lament,call,gear,core,"Капюшон вздымается над головой — кожа натягивается до звона.",10,core
+lament.call.gear.02,lament,call,gear,core,"Шипун разворачивает капюшон, и чешуя встаёт дыбом.",10,core
+lament.call.gear.03,lament,call,gear,core,"Кольцо тела сужается — виток за витком, без спешки.",10,core
+lament.call.rustle.01,lament,call,pose,core,"Он сокращает дистанцию медленно, по сантиметру.",10,core
+lament.call.rustle.02,lament,call,pose,core,"Он поворачивает голову к цели — и замирает на долю секунды.",10,core
+lament.call.rustle.03,lament,call,pose,core,"Голова разворачивается в твою сторону, взгляд цепляется за тебя.",10,core
+lament.variable.signals.01,lament,variable,gear,core,"Горло разгорается изнутри — сквозь кожу пробивается красное.",10,core
+lament.variable.signals.02,lament,variable,gear,core,"Под челюстью светится, как в горне.",10,core
+lament.variable.signals.03,lament,variable,gear,core,"Глотка наливается жаром и начинает светиться.",10,core
+lament.variable.reality.01,lament,variable,environment,core,"Костяной вихрь поднимается вокруг и закручивается.",10,core
+lament.variable.reality.02,lament,variable,environment,core,"Пыль и костяная крошка идут по кругу.",10,core
+lament.variable.reality.03,lament,variable,environment,core,"Ветер бьёт по камню и взвизгивает под крыльями.",10,core
+lament.decoy.cascade.gaze.01,lament,cascade,gaze,decoy,"Корпус проседает — но всего на миг.",10,decoy
+lament.decoy.cascade.gaze.02,lament,cascade,gaze,decoy,"Она смотрит сквозь рой, не различая тебя.",10,decoy
+lament.decoy.cascade.gaze.03,lament,cascade,gaze,decoy,"Мутный глаз зверя не двигается — он смотрит в пустоту.",10,decoy
+lament.decoy.silence.pose.01,lament,silence,pose,decoy,"Он подаётся вперёд и прижимается к камню.",10,decoy
+lament.decoy.silence.pose.02,lament,silence,pose,decoy,"Присед идёт на передние лапы, задние поджаты.",10,decoy
+lament.decoy.silence.pose.03,lament,silence,pose,decoy,"Корпус опускается — ровно, как перед падением.",10,decoy
+lament.decoy.variable.gaze.01,lament,variable,gaze,decoy,"Мягкий шорох, который ничем не кончается.",10,decoy
+lament.decoy.variable.gaze.02,lament,variable,gaze,decoy,"Он закрывает глаза и держит паузу.",10,decoy
+lament.decoy.variable.gaze.03,lament,variable,gaze,decoy,"Веки опускаются тяжело, как у старой птицы.",10,decoy
+lament.decoy.variable.sound.01,lament,variable,sound,decoy,"Короткий скрежещущий выдох — и тишина.",10,decoy
+lament.decoy.variable.sound.02,lament,variable,sound,decoy,"Туман выходит из него с ровным шипением, как из котла.",10,decoy
+lament.decoy.variable.sound.03,lament,variable,sound,decoy,"Из-под панциря сочится пар с резким шипом.",10,decoy
+lament.decoy.cascade.pose.01,lament,cascade,pose,decoy,"Он оседает на брюхо и отдыхает.",10,decoy
+lament.decoy.cascade.pose.02,lament,cascade,pose,decoy,"Лапы подгибаются, корпус опускается к грязи.",10,decoy
+lament.decoy.cascade.pose.03,lament,cascade,pose,decoy,"Он ложится и поджимает лапы под панцирь.",10,decoy
+lament.decoy.devour.sound.01,lament,devour,sound,decoy,"Когти скребут камень с нарастающим визгом.",10,decoy
+lament.decoy.devour.sound.02,lament,devour,sound,decoy,"Нарастающий вой заполняет всё вокруг.",10,decoy
+lament.decoy.devour.sound.03,lament,devour,sound,decoy,"Звук идёт по камню и отдаётся в зубах.",10,decoy
+lament.decoy.devour.gaze.01,lament,devour,gaze,decoy,"Он косит взглядом вниз, на камень под ногами.",10,decoy
+lament.decoy.devour.gaze.02,lament,devour,gaze,decoy,"Взгляд уходит вбок и возвращается.",10,decoy
+lament.decoy.devour.gaze.03,lament,devour,gaze,decoy,"Глаз дёргается на каждое твоё движение.",10,decoy
+lament.decoy.cascade.sound.01,lament,cascade,environment,decoy,"Костяной вихрь поднимается вокруг и закручивается.",10,decoy
+lament.decoy.cascade.sound.02,lament,cascade,environment,decoy,"Пыль и костяная крошка идут по кругу.",10,decoy
+lament.decoy.cascade.sound.03,lament,cascade,environment,decoy,"Ветер бьёт по камню и взвизгивает под крыльями.",10,decoy
+lament.decoy.devour.pose.01,lament,devour,pose,decoy,"Шипун выравнивает голову по линии атаки.",10,decoy
+lament.decoy.devour.pose.02,lament,devour,pose,decoy,"Он наваливается всей тушей вперёд, ломая камыш.",10,decoy
+lament.decoy.devour.pose.03,lament,devour,pose,decoy,"Корпус идёт вперёд всей тяжестью, без разгона.",10,decoy
+lament.decoy.silence.sound.01,lament,silence,sound,decoy,"Он шипит — коротко и зло, на выдохе.",10,decoy
+lament.decoy.silence.sound.02,lament,silence,sound,decoy,"Он скрежещет чешуёй, будто проводит по ней камнем.",10,decoy
+lament.decoy.silence.sound.03,lament,silence,sound,decoy,"Сухой скрежет идёт вдоль всего тела.",10,decoy
+lament.decoy.call.env.01,lament,call,environment,decoy,"Краски стекают с предметов и пропадают.",10,decoy
+lament.decoy.call.env.02,lament,call,environment,decoy,"Костяной вихрь поднимается вокруг и закручивается.",10,decoy
+lament.decoy.call.env.03,lament,call,environment,decoy,"Пыль и костяная крошка идут по кругу.",10,decoy
+lament.decoy.silence.env.01,lament,silence,environment,decoy,"Ветер несёт с воды запах тины и мокрого камня.",10,decoy
+lament.decoy.silence.env.02,lament,silence,environment,decoy,"Вокруг него поднимается сухой смерч из обломков.",10,decoy
+lament.decoy.silence.env.03,lament,silence,environment,decoy,"Ветер несёт с болота запах гнили и тины.",10,decoy
+lament.decoy.call.pose.01,lament,call,environment,decoy,"Воздух сохнет — дышать становится больно.",10,decoy
+lament.decoy.call.pose.02,lament,call,environment,decoy,"Жар идёт волной, и туман отступает от него.",10,decoy
+lament.decoy.call.pose.03,lament,call,environment,decoy,"Трава перед ним скручивается от близкого жара.",10,decoy
+lament.decoy.call.gaze.01,lament,call,gaze,decoy,"Мутный глаз не двигается вовсе.",10,decoy
+lament.decoy.call.gaze.02,lament,call,gaze,decoy,"Взгляд уходит в болото и остаётся там.",10,decoy
+lament.decoy.call.gaze.03,lament,call,gaze,decoy,"Он полуприкрывает глаза и замирает.",10,decoy
+lament.decoy.variable.pose.01,lament,variable,pose,decoy,"Корпус опускается к камню и замирает.",10,decoy
+lament.decoy.variable.pose.02,lament,variable,pose,decoy,"Он прижимается к скале и не двигается.",10,decoy
+lament.decoy.variable.pose.03,lament,variable,pose,decoy,"Он подбирается ближе, не отрывая брюха от земли.",10,decoy
+lament.devour.dark.04,lament,devour,gear,core,"Он втягивает в себя свет у самой пасти.",10,action
+lament.devour.dark.05,lament,devour,gear,core,"Тьма стекается к его морде, как вода в воронку.",10,action
+lament.devour.dark.06,lament,devour,gear,core,"Воздух у пасти чернеет и собирается в ком.",10,action
+lament.devour.light.04,lament,devour,environment,core,"Свет отступает и остаётся только у его пасти.",10,environment
+lament.devour.light.05,lament,devour,environment,core,"Краски стекают с предметов и пропадают.",10,environment
+lament.devour.light.06,lament,devour,environment,core,"Вокруг темнеет так, что ты перестаёшь видеть свои руки.",10,environment
+lament.cascade.spikes.04,lament,cascade,gear,core,"Шипы встают дыбом и наклоняются к тебе.",10,action
+lament.cascade.spikes.05,lament,cascade,gear,core,"Он топорщится весь разом, как еж.",10,action
+lament.cascade.spikes.06,lament,cascade,gear,core,"Каждый шип на его теле начинает вибрировать.",10,action
+lament.cascade.ring.04,lament,cascade,sound,core,"Звон поднимается и замирает, ожидая.",10,sound
+lament.cascade.ring.05,lament,cascade,sound,core,"Что-то звенит часто и мелко — со всех сторон сразу.",10,sound
+lament.cascade.ring.06,lament,cascade,sound,core,"Костяной звон стоит в воздухе и не стихает.",10,sound
+lament.silence.room.04,lament,silence,gaze,core,"Тишина накрывает так, что слышно сердце.",10,environment
+lament.silence.room.05,lament,silence,gaze,core,"Всё смолкает разом: ветер, вода, птицы.",10,environment
+lament.silence.room.06,lament,silence,gaze,core,"Мир глохнет — тишина плотная, как вата.",10,environment
+lament.silence.pose.04,lament,silence,gear,core,"Он орёт в пустоту, а пустота не отвечает.",10,action
+lament.silence.pose.05,lament,silence,gear,core,"Челюсти разводятся в беззвучном крике.",10,action
+lament.silence.pose.06,lament,silence,gear,core,"Он ревёт, но ты не слышишь рёва.",10,action
+lament.call.gear.04,lament,call,gear,core,"Тени впитываются в шкуру и остаются там.",10,action
+lament.call.gear.05,lament,call,gear,core,"Чёрные полосы стекают по его телу вниз.",10,action
+lament.call.gear.06,lament,call,gear,core,"Тьма собирается вокруг него в плотную корку.",10,action
+lament.call.rustle.04,lament,call,pose,core,"Шелест идёт по земле и не прекращается.",10,action
+lament.call.rustle.05,lament,call,pose,core,"Сухой шорох приближается с нескольких сторон.",10,action
+lament.call.rustle.06,lament,call,pose,core,"Слышно, как что-то ползёт по кругу.",10,action
+lament.variable.signals.04,lament,variable,gear,core,"Каждое движение выворачивается наизнанку у тебя в голове.",10,action
+lament.variable.signals.05,lament,variable,gear,core,"Его тело говорит одно, а значит другое.",10,action
+lament.variable.signals.06,lament,variable,gear,core,"Ты видишь то же, что и раньше, но понимаешь иначе.",10,action
+lament.variable.reality.04,lament,variable,environment,core,"Ты не уверен, что стоишь там, где стоял.",10,environment
+lament.variable.reality.05,lament,variable,environment,core,"Всё вокруг двоится и сходится обратно.",10,environment
+lament.variable.reality.06,lament,variable,environment,core,"Края мира плывут и не встают на место.",10,environment
+lament.decoy.devour.gaze.04,lament,devour,gaze,decoy,"Он глядит в пустоту за твоей спиной.",10,decoy
+lament.decoy.devour.gaze.05,lament,devour,gaze,decoy,"Взгляд проходит насквозь и не возвращается.",10,decoy
+lament.decoy.devour.gaze.06,lament,devour,gaze,decoy,"Он смотрит сквозь тебя, будто тебя нет.",10,decoy
+lament.decoy.devour.pose.04,lament,devour,pose,decoy,"Он покачивается на месте, как маятник.",10,decoy
+lament.decoy.devour.pose.05,lament,devour,pose,decoy,"Корпус медленно ходит из стороны в сторону.",10,decoy
+lament.decoy.devour.pose.06,lament,devour,pose,decoy,"Его ведёт, но он не двигается с места.",10,decoy
+lament.decoy.devour.sound.04,lament,devour,sound,decoy,"Шёпот идёт без слов и без источника.",10,decoy
+lament.decoy.devour.sound.05,lament,devour,sound,decoy,"Что-то шепчет рядом, но никого нет.",10,decoy
+lament.decoy.devour.sound.06,lament,devour,sound,decoy,"Сухой шёпот скользит по краю слышимости.",10,decoy
+lament.decoy.cascade.gaze.04,lament,cascade,gaze,decoy,"Он перестаёт следить за тобой вовсе.",10,decoy
+lament.decoy.cascade.gaze.05,lament,cascade,gaze,decoy,"Взгляд стекленеет и не двигается.",10,decoy
+lament.decoy.cascade.gaze.06,lament,cascade,gaze,decoy,"Он замирает без причины и держит паузу.",10,decoy
+lament.decoy.cascade.pose.04,lament,cascade,pose,decoy,"Он втягивает шипы и оседает ниже.",10,decoy
+lament.decoy.cascade.pose.05,lament,cascade,pose,decoy,"Шипы ложатся вдоль тела, и он замирает.",10,decoy
+lament.decoy.cascade.pose.06,lament,cascade,pose,decoy,"Он прижимается к земле, будто хочет исчезнуть.",10,decoy
+lament.decoy.cascade.sound.04,lament,cascade,environment,decoy,"Эхо приходит без источника звука.",10,decoy
+lament.decoy.cascade.sound.05,lament,cascade,environment,decoy,"Воздух звенит сам по себе и стихает.",10,decoy
+lament.decoy.cascade.sound.06,lament,cascade,environment,decoy,"Что-то отзывается из темноты и умолкает.",10,decoy
+lament.decoy.silence.sound.04,lament,silence,sound,decoy,"Шипы опадают вдоль тела с мягким шелестом.",10,decoy
+lament.decoy.silence.sound.05,lament,silence,sound,decoy,"Он складывается и шуршит, как сухая трава.",10,decoy
+lament.decoy.silence.sound.06,lament,silence,sound,decoy,"Тихий шелест идёт по его телу и пропадает.",10,decoy
+lament.decoy.silence.env.04,lament,silence,environment,decoy,"Пустота там, где должна быть тень.",10,decoy
+lament.decoy.silence.env.05,lament,silence,environment,decoy,"Свет падает на него, а тени не остаётся.",10,decoy
+lament.decoy.silence.env.06,lament,silence,environment,decoy,"Он стоит так, что тени под ним нет вовсе.",10,decoy
+lament.decoy.silence.pose.04,lament,silence,pose,decoy,"Он смотрит в сторону, мимо тебя.",10,decoy
+lament.decoy.silence.pose.05,lament,silence,pose,decoy,"Голова поворачивается, а глаза не следят.",10,decoy
+lament.decoy.silence.pose.06,lament,silence,pose,decoy,"Он отворачивается и держит паузу.",10,decoy
+lament.decoy.call.gaze.04,lament,call,gaze,decoy,"Тени идут по краю, не приближаясь.",10,decoy
+lament.decoy.call.gaze.05,lament,call,gaze,decoy,"Что-то шевелится на границе видимого.",10,decoy
+lament.decoy.call.gaze.06,lament,call,gaze,decoy,"Сумрак сгущается сам, без его участия.",10,decoy
+lament.decoy.call.pose.04,lament,call,environment,decoy,"Пустота вместо тени под ним.",10,decoy
+lament.decoy.call.pose.05,lament,call,environment,decoy,"Тьма по краям поля идёт волной и опадает.",10,decoy
+lament.decoy.call.pose.06,lament,call,environment,decoy,"Тени тянутся по земле к тебе, но не от него.",10,decoy
+lament.decoy.call.env.04,lament,call,sound,decoy,"Глухой шорох идёт по кругу и не кончается.",10,decoy
+lament.decoy.call.env.05,lament,call,sound,decoy,"Слышно, как что-то переступает в темноте.",10,decoy
+lament.decoy.call.env.06,lament,call,sound,decoy,"Шелест поднимается и опадает сам по себе.",10,decoy
+lament.decoy.variable.gaze.04,lament,variable,gaze,decoy,"Что-то отзывается из темноты твоим голосом.",10,decoy
+lament.decoy.variable.gaze.05,lament,variable,gaze,decoy,"Ты слышишь свой шаг, которого не делал.",10,decoy
+lament.decoy.variable.gaze.06,lament,variable,gaze,decoy,"Эхо приходит раньше звука.",10,decoy
+lament.decoy.variable.pose.04,lament,variable,pose,decoy,"Реальность дрожит под ним, как нагретый воздух.",10,decoy
+lament.decoy.variable.pose.05,lament,variable,pose,decoy,"Он колеблется на месте, будто его два.",10,decoy
+lament.decoy.variable.pose.06,lament,variable,pose,decoy,"Силуэт расплывается и сходится обратно.",10,decoy
+lament.decoy.variable.sound.04,lament,variable,sound,decoy,"Эхо без источника звука идёт из ниоткуда.",10,decoy
+lament.decoy.variable.sound.05,lament,variable,sound,decoy,"Звук приходит позже, чем должен.",10,decoy
+lament.decoy.variable.sound.06,lament,variable,sound,decoy,"Что-то повторяет твои слова чужим голосом.",10,decoy

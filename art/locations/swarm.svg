@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Рой: выжженная земля, дым, мелкая мошкара. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="288" viewBox="0 0 512 288">
+  <rect width="512" height="288" fill="#1d1712"/>
+  <rect y="120" width="512" height="50" fill="#2b2016" opacity="0.8"/>
+  <rect y="190" width="512" height="98" fill="#241b13"/>
+  <g fill="#3a2a18" opacity="0.7">
+    <path d="M0 206 Q140 190 280 208 Q400 222 512 206 L512 288 L0 288 Z"/>
+  </g>
+  <g fill="#0f0c09" opacity="0.6">
+    <circle cx="90" cy="90" r="4"/><circle cx="140" cy="66" r="3"/><circle cx="200" cy="104" r="5"/>
+    <circle cx="260" cy="72" r="3"/><circle cx="320" cy="100" r="4"/><circle cx="380" cy="70" r="3"/>
+    <circle cx="430" cy="106" r="4"/><circle cx="170" cy="140" r="3"/><circle cx="350" cy="146" r="3"/>
+  </g>
+  <g fill="#5a3f1f" opacity="0.45">
+    <ellipse cx="256" cy="214" rx="150" ry="10"/>
+  </g>
+  <g fill="#8a6a3a" opacity="0.35">
+    <circle cx="256" cy="180" r="60"/>
+  </g>
+</svg>

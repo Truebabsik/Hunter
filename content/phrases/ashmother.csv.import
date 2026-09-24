@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://xt17nddxnpp"
+
+[deps]
+
+files=["res://content/phrases/ashmother.monster.translation", "res://content/phrases/ashmother.scenario.translation", "res://content/phrases/ashmother.slot.translation", "res://content/phrases/ashmother.role.translation", "res://content/phrases/ashmother.text.translation", "res://content/phrases/ashmother.weight.translation", "res://content/phrases/ashmother.tags.translation"]
+
+source_file="res://content/phrases/ashmother.csv"
+dest_files=["res://content/phrases/ashmother.monster.translation", "res://content/phrases/ashmother.scenario.translation", "res://content/phrases/ashmother.slot.translation", "res://content/phrases/ashmother.role.translation", "res://content/phrases/ashmother.text.translation", "res://content/phrases/ashmother.weight.translation", "res://content/phrases/ashmother.tags.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

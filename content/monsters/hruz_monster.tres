@@ -1,0 +1,173 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=21 format=3]
+
+[ext_resource type="Script" path="res://core/model/combo_data.gd" id="1_cmb"]
+[ext_resource type="Script" path="res://core/model/signal_data.gd" id="2_sig"]
+[ext_resource type="Script" path="res://core/model/scenario_data.gd" id="3_scn"]
+[ext_resource type="Script" path="res://core/model/monster_data.gd" id="4_mon"]
+[ext_resource type="Texture2D" path="res://art/monsters/hruz.png" id="5_art"]
+[ext_resource type="Texture2D" path="res://art/monsters/hruz.svg" id="6_sil"]
+
+[sub_resource type="Resource" id="sig_pounce_pose"]
+script = ExtResource("2_sig")
+id = &"hruz.pounce.pose"
+slot = &"pose"
+label = "припадает к земле"
+monster_id = &"hruz"
+scenario_id = &"pounce"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_pounce_shells"]
+script = ExtResource("2_sig")
+id = &"hruz.pounce.shells"
+slot = &"sound"
+label = "ракушки дребезжат"
+monster_id = &"hruz"
+scenario_id = &"pounce"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_pounce_claw"]
+script = ExtResource("2_sig")
+id = &"hruz.pounce.claw"
+slot = &"gear"
+label = "клешня сжимается"
+monster_id = &"hruz"
+scenario_id = &"pounce"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_claw_pose"]
+script = ExtResource("2_sig")
+id = &"hruz.claw.pose"
+slot = &"pose"
+label = "делает шаг назад"
+monster_id = &"hruz"
+scenario_id = &"claw"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_claw_sound"]
+script = ExtResource("2_sig")
+id = &"hruz.claw.sound"
+slot = &"sound"
+label = "шипит"
+monster_id = &"hruz"
+scenario_id = &"claw"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_roar_gear"]
+script = ExtResource("2_sig")
+id = &"hruz.roar.gear"
+slot = &"gear"
+label = "зевает и отплёвывается"
+monster_id = &"hruz"
+scenario_id = &"roar"
+tags = PackedStringArray("recover")
+
+[sub_resource type="Resource" id="decoy_pounce"]
+script = ExtResource("2_sig")
+id = &"hruz.decoy.pounce.gaze"
+slot = &"gaze"
+label = "смотрит сквозь тебя"
+monster_id = &"hruz"
+scenario_id = &"pounce"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_claw"]
+script = ExtResource("2_sig")
+id = &"hruz.decoy.claw.env"
+slot = &"environment"
+label = "вода идёт рябью"
+monster_id = &"hruz"
+scenario_id = &"claw"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_roar"]
+script = ExtResource("2_sig")
+id = &"hruz.decoy.roar.gaze"
+slot = &"gaze"
+label = "щурится, будто дремлет"
+monster_id = &"hruz"
+scenario_id = &"roar"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="scn_pounce"]
+script = ExtResource("3_scn")
+id = &"pounce"
+card_label = "Прыгнет"
+description = "Припадает к земле и обрушивается всем весом."
+weight = 60
+signals = Array[ExtResource("2_sig")]([SubResource("sig_pounce_pose"), SubResource("sig_pounce_shells"), SubResource("sig_pounce_claw")])
+damage_override = 4
+tags = PackedStringArray("charge")
+
+[sub_resource type="Resource" id="scn_claw"]
+script = ExtResource("3_scn")
+id = &"claw"
+card_label = "Ударит клешнёй"
+description = "Берёт разгон на коротком шаге и бьёт клешнёй наотмашь."
+weight = 30
+signals = Array[ExtResource("2_sig")]([SubResource("sig_claw_pose"), SubResource("sig_claw_sound")])
+tags = PackedStringArray("grab")
+
+[sub_resource type="Resource" id="scn_roar"]
+script = ExtResource("3_scn")
+id = &"roar"
+card_label = "Перезарядится"
+description = "Рычит, отплёвывается и переводит дыхание."
+weight = 10
+signals = Array[ExtResource("2_sig")]([SubResource("sig_roar_gear")])
+tags = PackedStringArray("recover")
+
+[sub_resource type="Resource" id="cmb_ice_pounce"]
+script = ExtResource("1_cmb")
+id = &"hruz.ice_pounce"
+title = "Ледяной прыжок"
+scenario_id = &"pounce"
+required_range = &"ranged"
+required_type = &"ice"
+damage_bonus = 2
+effect_text = "заморозка на 1 ход"
+status_id = &"freeze"
+
+[sub_resource type="Resource" id="cmb_poison_claw"]
+script = ExtResource("1_cmb")
+id = &"hruz.poison_claw"
+title = "Ядовитый панцирь"
+scenario_id = &"claw"
+required_range = &"melee"
+required_type = &"poison"
+damage_bonus = 2
+effect_text = "отравление на 2 хода"
+status_id = &"poison"
+
+[resource]
+script = ExtResource("4_mon")
+id = &"hruz"
+title = "Хруз"
+epithet = "береговой трущобник"
+lore = "Держится у воды: там его не обойти и не увидеть заранее. Бьёт всем весом, а не скоростью, и потому первый удар почти всегда его. Уходя, всегда тащит добычу к норе — значит, гнездо рядом."
+rank = &"starter"
+max_hp = 12
+armor = 2
+base_damage = 3
+initiative = 4
+weakness_types = PackedStringArray("ice", "poison")
+weakness_ranges = PackedStringArray("ranged")
+range_resist = {}
+type_resist = {
+"fire": 1,
+"slash": 1,
+"pierce": 1
+}
+scenarios = Array[ExtResource("3_scn")]([SubResource("scn_pounce"), SubResource("scn_claw"), SubResource("scn_roar")])
+false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_pounce"), SubResource("decoy_claw"), SubResource("decoy_roar")])
+combos = Array[ExtResource("1_cmb")]([SubResource("cmb_ice_pounce"), SubResource("cmb_poison_claw")])
+counter_threshold = 3
+counter_title = "Береговой манёвр"
+counter_text = "Хруз меняет стойку: присед исчезает, клешня разжимается. Он смотрит на тебя иначе."
+trophy_names = PackedStringArray("Панцирная пластина", "Ракушечный порошок")
+trophy_prices = PackedInt32Array(10, 5)
+portrait = ExtResource("5_art")
+silhouette = ExtResource("6_sil")
+accent_color = "#7a6849"
+art_scale = 0.95
+art_offset = Vector2(0, 10)
+by_scenario = {}

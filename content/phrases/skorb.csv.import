@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://cc1w7vi758osf"
+
+[deps]
+
+files=["res://content/phrases/skorb.monster.translation", "res://content/phrases/skorb.scenario.translation", "res://content/phrases/skorb.slot.translation", "res://content/phrases/skorb.role.translation", "res://content/phrases/skorb.text.translation", "res://content/phrases/skorb.weight.translation", "res://content/phrases/skorb.tags.translation"]
+
+source_file="res://content/phrases/skorb.csv"
+dest_files=["res://content/phrases/skorb.monster.translation", "res://content/phrases/skorb.scenario.translation", "res://content/phrases/skorb.slot.translation", "res://content/phrases/skorb.role.translation", "res://content/phrases/skorb.text.translation", "res://content/phrases/skorb.weight.translation", "res://content/phrases/skorb.tags.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

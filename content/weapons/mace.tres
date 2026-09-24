@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/model/weapon_data.gd" id="1_wpn"]
+
+[resource]
+script = ExtResource("1_wpn")
+id = &"mace"
+title = "Молот"
+range_id = &"melee"
+damage_type = &"crush"
+base_damage = 5
+initiative_bonus = 0
+price = 30

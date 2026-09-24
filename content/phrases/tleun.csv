@@ -1,0 +1,73 @@
+id,monster,scenario,slot,role,text,weight,tags
+tleun.flame.throat.01,tleun,flame,gear,core,"Горло разгорается изнутри — сквозь кожу пробивается красное.",10,action
+tleun.flame.throat.02,tleun,flame,gear,core,"Под челюстью светится, как в горне.",10,action
+tleun.flame.throat.03,tleun,flame,gear,core,"Глотка наливается жаром и начинает светиться.",10,action
+tleun.flame.heat.01,tleun,flame,environment,core,"Воздух сохнет — дышать становится больно.",10,environment
+tleun.flame.heat.02,tleun,flame,environment,core,"Жар идёт волной, и туман отступает от него.",10,environment
+tleun.flame.heat.03,tleun,flame,environment,core,"Трава перед ним скручивается от близкого жара.",10,environment
+tleun.jaws.gear.01,tleun,jaws,gear,core,"Челюсти распахиваются — широко, до хруста.",10,action
+tleun.jaws.gear.02,tleun,jaws,gear,core,"Пасть раскрывается и застывает в ожидании.",10,action
+tleun.jaws.gear.03,tleun,jaws,gear,core,"Он разводит створки челюстей до предела.",10,action
+tleun.jaws.pose.01,tleun,jaws,pose,core,"Он наваливается всей тушей вперёд, ломая камыш.",10,action
+tleun.jaws.pose.02,tleun,jaws,pose,core,"Корпус идёт вперёд всей тяжестью, без разгона.",10,action
+tleun.jaws.pose.03,tleun,jaws,pose,core,"Туша подаётся на тебя и перекрывает свет.",10,action
+tleun.mist.belly.01,tleun,mist,gear,core,"Брюхо раздувается и натягивает панцирные пластины.",10,action
+tleun.mist.belly.02,tleun,mist,gear,core,"Он набирает воздух в брюхо, и пластины расходятся.",10,action
+tleun.mist.belly.03,tleun,mist,gear,core,"Живот поднимается, панцирь раздвигается по швам.",10,action
+tleun.mist.sound.01,tleun,mist,sound,core,"Туман выходит из него с ровным шипением, как из котла.",10,sound
+tleun.mist.sound.02,tleun,mist,sound,core,"Шипение расползается по болоту и не стихает.",10,sound
+tleun.mist.sound.03,tleun,mist,sound,core,"Из-под панциря сочится пар с резким шипом.",10,sound
+tleun.decoy.flame.gaze.01,tleun,flame,gaze,decoy,"Он щурится на огонь, будто ему тепло и приятно.",10,decoy
+tleun.decoy.flame.gaze.02,tleun,flame,gaze,decoy,"Глаз мутнеет и стекленеет от жара.",10,decoy
+tleun.decoy.flame.gaze.03,tleun,flame,gaze,decoy,"Взгляд уходит вбок, на воду.",10,decoy
+tleun.decoy.flame.sound.01,tleun,flame,sound,decoy,"Он шипит без жара — воздух выходит сам.",10,decoy
+tleun.decoy.flame.sound.02,tleun,flame,sound,decoy,"Из горла выходит пар, а не огонь.",10,decoy
+tleun.decoy.flame.sound.03,tleun,flame,sound,decoy,"Слышно сипение, и только.",10,decoy
+tleun.decoy.jaws.gaze.01,tleun,jaws,gaze,decoy,"Он смотрит сквозь тебя, не задерживаясь.",10,decoy
+tleun.decoy.jaws.gaze.02,tleun,jaws,gaze,decoy,"Мутный глаз не двигается вовсе.",10,decoy
+tleun.decoy.jaws.gaze.03,tleun,jaws,gaze,decoy,"Взгляд уходит в болото и остаётся там.",10,decoy
+tleun.decoy.jaws.sound.01,tleun,jaws,sound,decoy,"Он булькает в горле, не раскрывая пасти.",10,decoy
+tleun.decoy.jaws.sound.02,tleun,jaws,sound,decoy,"Изнутри доносится тихое бульканье.",10,decoy
+tleun.decoy.jaws.sound.03,tleun,jaws,sound,decoy,"Хриплый выдох — и снова тихо.",10,decoy
+tleun.decoy.mist.gaze.01,tleun,mist,gaze,decoy,"Он полуприкрывает глаза и замирает.",10,decoy
+tleun.decoy.mist.gaze.02,tleun,mist,gaze,decoy,"Веки опускаются тяжело, как у старой рыбы.",10,decoy
+tleun.decoy.mist.gaze.03,tleun,mist,gaze,decoy,"Глаз подёргивается плёнкой и не смотрит.",10,decoy
+tleun.decoy.mist.pose.01,tleun,mist,pose,decoy,"Он оседает на брюхо и отдыхает.",10,decoy
+tleun.decoy.mist.pose.02,tleun,mist,pose,decoy,"Лапы подгибаются, корпус опускается к грязи.",10,decoy
+tleun.decoy.mist.pose.03,tleun,mist,pose,decoy,"Он ложится и поджимает лапы под панцирь.",10,decoy
+tleun.flame.throat.04,tleun,flame,gear,core,"Глотка наливается жаром и начинает светиться изнутри.",10,action
+tleun.flame.throat.05,tleun,flame,gear,core,"Он раздувает горло, и оно тлеет оранжевым под кожей.",10,action
+tleun.flame.throat.06,tleun,flame,gear,core,"Сквозь чешую под челюстью пробивается красное пятно.",10,action
+tleun.flame.heat.04,tleun,flame,environment,core,"Мокрая земля под ним шипит и сохнет.",10,environment
+tleun.flame.heat.05,tleun,flame,environment,core,"Трава перед ним скручивается от близкого жара.",10,environment
+tleun.flame.heat.06,tleun,flame,environment,core,"Жар идёт волной, и туман отступает от него.",10,environment
+tleun.jaws.gear.04,tleun,jaws,gear,core,"Роговые пластины челюстей встают на упор.",10,action
+tleun.jaws.gear.05,tleun,jaws,gear,core,"Пасть раскрывается и застывает в ожидании.",10,action
+tleun.jaws.gear.06,tleun,jaws,gear,core,"Он разводит створки челюстей до предела, до хруста.",10,action
+tleun.jaws.pose.04,tleun,jaws,pose,core,"Корпус идёт вперёд всей тяжестью, без разгона.",10,action
+tleun.jaws.pose.05,tleun,jaws,pose,core,"Туша подаётся на тебя и перекрывает свет.",10,action
+tleun.jaws.pose.06,tleun,jaws,pose,core,"Он наваливается вперёд, ломая камыш под собой.",10,action
+tleun.mist.belly.04,tleun,mist,gear,core,"Брюхо надувается, как мешок под панцирем.",10,action
+tleun.mist.belly.05,tleun,mist,gear,core,"Живот поднимается, панцирь раздвигается по швам.",10,action
+tleun.mist.belly.06,tleun,mist,gear,core,"Он набирает воздух в брюхо, и пластины расходятся.",10,action
+tleun.mist.sound.04,tleun,mist,sound,core,"Из-под панциря сочится пар с резким шипом.",10,sound
+tleun.mist.sound.05,tleun,mist,sound,core,"Шипение расползается по болоту и не стихает.",10,sound
+tleun.mist.sound.06,tleun,mist,sound,core,"Туман выходит из него с ровным шипением, как из котла.",10,sound
+tleun.decoy.flame.gaze.04,tleun,flame,gaze,decoy,"Взгляд уходит вбок, на воду.",10,decoy
+tleun.decoy.flame.gaze.05,tleun,flame,gaze,decoy,"Глаз мутнеет и стекленеет от жара.",10,decoy
+tleun.decoy.flame.gaze.06,tleun,flame,gaze,decoy,"Он щурится на огонь, будто ему тепло и приятно.",10,decoy
+tleun.decoy.flame.sound.04,tleun,flame,sound,decoy,"Слышно сипение, и только.",10,decoy
+tleun.decoy.flame.sound.05,tleun,flame,sound,decoy,"Из горла выходит пар, а не огонь.",10,decoy
+tleun.decoy.flame.sound.06,tleun,flame,sound,decoy,"Он шипит без жара — воздух выходит сам.",10,decoy
+tleun.decoy.jaws.gaze.04,tleun,jaws,gaze,decoy,"Взгляд уходит в болото и остаётся там.",10,decoy
+tleun.decoy.jaws.gaze.05,tleun,jaws,gaze,decoy,"Мутный глаз не двигается вовсе.",10,decoy
+tleun.decoy.jaws.gaze.06,tleun,jaws,gaze,decoy,"Он смотрит сквозь тебя, не задерживаясь.",10,decoy
+tleun.decoy.jaws.sound.04,tleun,jaws,sound,decoy,"Хриплый выдох — и снова тихо.",10,decoy
+tleun.decoy.jaws.sound.05,tleun,jaws,sound,decoy,"Изнутри доносится тихое бульканье.",10,decoy
+tleun.decoy.jaws.sound.06,tleun,jaws,sound,decoy,"Он булькает в горле, не раскрывая пасти.",10,decoy
+tleun.decoy.mist.gaze.04,tleun,mist,gaze,decoy,"Глаз подёргивается плёнкой и не смотрит.",10,decoy
+tleun.decoy.mist.gaze.05,tleun,mist,gaze,decoy,"Веки опускаются тяжело, как у старой рыбы.",10,decoy
+tleun.decoy.mist.gaze.06,tleun,mist,gaze,decoy,"Он полуприкрывает глаза и замирает.",10,decoy
+tleun.decoy.mist.pose.04,tleun,mist,pose,decoy,"Он ложится и поджимает лапы под панцирь.",10,decoy
+tleun.decoy.mist.pose.05,tleun,mist,pose,decoy,"Лапы подгибаются, корпус опускается к грязи.",10,decoy
+tleun.decoy.mist.pose.06,tleun,mist,pose,decoy,"Он оседает на брюхо и отдыхает.",10,decoy

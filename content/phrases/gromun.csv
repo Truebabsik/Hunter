@@ -1,0 +1,73 @@
+id,monster,scenario,slot,role,text,weight,tags
+gromun.pike.wings.01,gromun,pike,gear,core,"Крылья складываются вдоль тела и прижимаются к бокам.",10,action
+gromun.pike.wings.02,gromun,pike,gear,core,"Он подбирает крылья — плотно, как перед броском камня.",10,action
+gromun.pike.wings.03,gromun,pike,gear,core,"Размах исчезает: крылья обтягивают корпус.",10,action
+gromun.pike.pose.01,gromun,pike,pose,core,"Он подаётся вперёд и прижимается к камню.",10,action
+gromun.pike.pose.02,gromun,pike,pose,core,"Присед идёт на передние лапы, задние поджаты.",10,action
+gromun.pike.pose.03,gromun,pike,pose,core,"Корпус опускается — ровно, как перед падением.",10,action
+gromun.pike.air.01,gromun,pike,environment,core,"Воздух свистит в сложенных крыльях — тонко и нарастающе.",10,environment
+gromun.pike.air.02,gromun,pike,environment,core,"Свист идёт сверху, и он приближается.",10,environment
+gromun.pike.air.03,gromun,pike,environment,core,"Ветер бьёт по камню и взвизгивает под крыльями.",10,environment
+gromun.sweep.head.01,gromun,sweep,pose,core,"Он опускает голову к самой земле и выставляет клюв вперёд.",10,action
+gromun.sweep.head.02,gromun,sweep,pose,core,"Голова прижата, шея вытянута по линии разгона.",10,action
+gromun.sweep.head.03,gromun,sweep,pose,core,"Он пригибается и роет когтями камень под собой.",10,action
+gromun.sweep.sound.01,gromun,sweep,sound,core,"Когти скребут камень с нарастающим визгом.",10,sound
+gromun.sweep.sound.02,gromun,sweep,sound,core,"Скрежет когтей по камню — короткий, злой.",10,sound
+gromun.sweep.sound.03,gromun,sweep,sound,core,"Он дерёт камень и разгоняется на этом звуке.",10,sound
+gromun.roar.throat.01,gromun,roar,gear,core,"Горло раздувается — кожа натягивается и блестит.",10,action
+gromun.roar.throat.02,gromun,roar,gear,core,"Он набирает воздух, и шея становится вдвое толще.",10,action
+gromun.roar.throat.03,gromun,roar,gear,core,"Зоб раздувается изнутри, как мех.",10,action
+gromun.roar.wave.01,gromun,roar,sound,core,"Вой начинается низко и идёт вверх, не прерываясь.",10,sound
+gromun.roar.wave.02,gromun,roar,sound,core,"Нарастающий вой заполняет всё вокруг.",10,sound
+gromun.roar.wave.03,gromun,roar,sound,core,"Звук идёт по камню и отдаётся в зубах.",10,sound
+gromun.decoy.pike.gaze.01,gromun,pike,gaze,decoy,"Он косит взглядом вниз, на камень под ногами.",10,decoy
+gromun.decoy.pike.gaze.02,gromun,pike,gaze,decoy,"Взгляд уходит вбок и возвращается.",10,decoy
+gromun.decoy.pike.gaze.03,gromun,pike,gaze,decoy,"Глаз дёргается на каждое твоё движение.",10,decoy
+gromun.decoy.pike.sound.01,gromun,pike,sound,decoy,"Он сипит без нажима — воздух выходит сам.",10,decoy
+gromun.decoy.pike.sound.02,gromun,pike,sound,decoy,"Слабое сипение, не похожее на угрозу.",10,decoy
+gromun.decoy.pike.sound.03,gromun,pike,sound,decoy,"Короткий сип, и снова тихо.",10,decoy
+gromun.decoy.sweep.gaze.01,gromun,sweep,gaze,decoy,"Он приседает на лапах и застывает в полуприседе.",10,decoy
+gromun.decoy.sweep.gaze.02,gromun,sweep,gaze,decoy,"Корпус проседает — но всего на миг.",10,decoy
+gromun.decoy.sweep.gaze.03,gromun,sweep,gaze,decoy,"Он поджимает лапы и держит паузу.",10,decoy
+gromun.decoy.sweep.sound.01,gromun,sweep,gaze,decoy,"Шорох перьев — глухой, без скрежета.",10,decoy
+gromun.decoy.sweep.sound.02,gromun,sweep,gaze,decoy,"Перья шелестят на ветру, и только.",10,decoy
+gromun.decoy.sweep.sound.03,gromun,sweep,gaze,decoy,"Мягкий шорох, который ничем не кончается.",10,decoy
+gromun.decoy.roar.gaze.01,gromun,roar,gaze,decoy,"Он закрывает глаза и держит паузу.",10,decoy
+gromun.decoy.roar.gaze.02,gromun,roar,gaze,decoy,"Веки опускаются тяжело, как у старой птицы.",10,decoy
+gromun.decoy.roar.gaze.03,gromun,roar,gaze,decoy,"Глаз мутнеет и стекленеет.",10,decoy
+gromun.decoy.roar.pose.01,gromun,roar,pose,decoy,"Он оседает на лапах, будто устал стоять.",10,decoy
+gromun.decoy.roar.pose.02,gromun,roar,pose,decoy,"Корпус опускается к камню и замирает.",10,decoy
+gromun.decoy.roar.pose.03,gromun,roar,pose,decoy,"Он прижимается к скале и не двигается.",10,decoy
+gromun.pike.wings.04,gromun,pike,gear,core,"Перья ложатся гладко, и силуэт становится узким и длинным.",10,action
+gromun.pike.wings.05,gromun,pike,gear,core,"Крылья обтягивают бока — ни одного просвета между перьями.",10,action
+gromun.pike.wings.06,gromun,pike,gear,core,"Он складывает крылья вдвое и прижимает их к корпусу, как ножны.",10,action
+gromun.pike.pose.04,gromun,pike,pose,core,"Лапы подбираются под корпус, и он проседает к самому камню.",10,action
+gromun.pike.pose.05,gromun,pike,pose,core,"Он припадает так низко, что брюхо почти легло на камень.",10,action
+gromun.pike.pose.06,gromun,pike,pose,core,"Корпус заваливается вперёд, вес уходит на передние лапы.",10,action
+gromun.pike.air.04,gromun,pike,environment,core,"Воздух разрезается со свистом, будто падает что-то тяжёлое.",10,environment
+gromun.pike.air.05,gromun,pike,environment,core,"Свист идёт сверху, тонкий и нарастающий.",10,environment
+gromun.pike.air.06,gromun,pike,environment,core,"Ветер бьёт по камню и взвизгивает под сложенными крыльями.",10,environment
+gromun.sweep.head.04,gromun,sweep,pose,core,"Голова идёт вниз, корпус вперёд — в одну линию.",10,action
+gromun.sweep.head.05,gromun,sweep,pose,core,"Он пригибается и роет когтями камень под собой.",10,action
+gromun.sweep.head.06,gromun,sweep,pose,core,"Шея вытягивается по линии разгона, голова прижата.",10,action
+gromun.sweep.sound.04,gromun,sweep,sound,core,"Визг когтей переходит в топот.",10,sound
+gromun.sweep.sound.05,gromun,sweep,sound,core,"Он дерёт камень и разгоняется на этом звуке.",10,sound
+gromun.sweep.sound.06,gromun,sweep,sound,core,"Скрежет когтей идёт по камню с нарастающей злостью.",10,sound
+gromun.roar.throat.04,gromun,roar,gear,core,"Горло поднимается волной и застывает.",10,action
+gromun.roar.throat.05,gromun,roar,gear,core,"Он набирает воздух — шея раздувается вдвое.",10,action
+gromun.roar.throat.06,gromun,roar,gear,core,"Зоб раздувается изнутри, как кузнечный мех.",10,action
+gromun.roar.sound.04,gromun,roar,sound,core,"Вой поднимается ступенями, и каждая следующая выше.",10,sound
+gromun.roar.sound.05,gromun,roar,sound,core,"Звук идёт по камню и отдаётся в зубах.",10,sound
+gromun.roar.sound.06,gromun,roar,sound,core,"Вой начинается низко и идёт вверх, не прерываясь.",10,sound
+gromun.decoy.pike.gaze.04,gromun,pike,gaze,decoy,"Глаз дёргается на каждое твоё движение.",10,decoy
+gromun.decoy.pike.gaze.05,gromun,pike,gaze,decoy,"Он косит взглядом вниз, на камень под ногами.",10,decoy
+gromun.decoy.pike.gaze.06,gromun,pike,gaze,decoy,"Взгляд уходит вбок и возвращается.",10,decoy
+gromun.decoy.pike.sound.04,gromun,pike,sound,decoy,"Слабое сипение, не похожее на угрозу.",10,decoy
+gromun.decoy.pike.sound.05,gromun,pike,sound,decoy,"Короткий сип, и снова тихо.",10,decoy
+gromun.decoy.pike.sound.06,gromun,pike,sound,decoy,"Он сипит без нажима — воздух выходит сам.",10,decoy
+gromun.decoy.sweep.pose.04,gromun,sweep,pose,decoy,"Он поджимает лапы и держит паузу.",10,decoy
+gromun.decoy.sweep.pose.05,gromun,sweep,pose,decoy,"Корпус проседает — но всего на миг.",10,decoy
+gromun.decoy.sweep.pose.06,gromun,sweep,pose,decoy,"Он приседает на лапах и застывает в полуприседе.",10,decoy
+gromun.decoy.roar.pose.04,gromun,roar,pose,decoy,"Он опускает голову к камню и замирает.",10,decoy
+gromun.decoy.roar.pose.05,gromun,roar,pose,decoy,"Корпус оседает, будто он решил отдохнуть.",10,decoy
+gromun.decoy.roar.pose.06,gromun,roar,pose,decoy,"Он прижимается к скале и не двигается.",10,decoy

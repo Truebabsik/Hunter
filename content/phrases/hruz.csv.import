@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://1cqhrg8c6h35"
+
+[deps]
+
+files=["res://content/phrases/hruz.monster.translation", "res://content/phrases/hruz.scenario.translation", "res://content/phrases/hruz.slot.translation", "res://content/phrases/hruz.role.translation", "res://content/phrases/hruz.text.translation", "res://content/phrases/hruz.weight.translation", "res://content/phrases/hruz.tags.translation"]
+
+source_file="res://content/phrases/hruz.csv"
+dest_files=["res://content/phrases/hruz.monster.translation", "res://content/phrases/hruz.scenario.translation", "res://content/phrases/hruz.slot.translation", "res://content/phrases/hruz.role.translation", "res://content/phrases/hruz.text.translation", "res://content/phrases/hruz.weight.translation", "res://content/phrases/hruz.tags.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

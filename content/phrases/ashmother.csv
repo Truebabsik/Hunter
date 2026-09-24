@@ -1,0 +1,91 @@
+id,monster,scenario,slot,role,text,weight,tags
+ash.burst.swarm.01,ashmother,burst,gear,core,"Размах исчезает: крылья обтягивают корпус.",10,core
+ash.burst.swarm.02,ashmother,burst,gear,core,"Горло раздувается — кожа натягивается и блестит.",10,core
+ash.burst.swarm.03,ashmother,burst,gear,core,"Он пробует клешню на сжатие, будто проверяет хват.",10,core
+ash.burst.hum.01,ashmother,burst,sound,core,"Короткий сип, и снова тихо.",10,core
+ash.burst.hum.02,ashmother,burst,sound,core,"Ракушки на его шкуре дребезжат, как сухая трава на ветру.",10,core
+ash.burst.hum.03,ashmother,burst,sound,core,"Он шипит — коротко и зло, на выдохе.",10,core
+ash.bite.sting.01,ashmother,bite,gear,core,"Он подбирает крылья — плотно, как перед броском камня.",10,core
+ash.bite.sting.02,ashmother,bite,gear,core,"Размах исчезает: крылья обтягивают корпус.",10,core
+ash.bite.sting.03,ashmother,bite,gear,core,"Горло раздувается — кожа натягивается и блестит.",10,core
+ash.bite.scream.01,ashmother,bite,sound,core,"Он скрежещет чешуёй, будто проводит по ней камнем.",10,core
+ash.bite.scream.02,ashmother,bite,sound,core,"Сухой скрежет идёт вдоль всего тела.",10,core
+ash.bite.scream.03,ashmother,bite,sound,core,"Когти скребут камень с нарастающим визгом.",10,core
+ash.eggs.pose.01,ashmother,eggs,pose,core,"Голова прижата, шея вытянута по линии разгона.",10,core
+ash.eggs.pose.02,ashmother,eggs,pose,core,"Он пригибается и роет когтями камень под собой.",10,core
+ash.eggs.pose.03,ashmother,eggs,pose,core,"Он оседает на лапах, будто устал стоять.",10,core
+ash.eggs.sound.01,ashmother,eggs,sound,core,"Нарастающий вой заполняет всё вокруг.",10,core
+ash.eggs.sound.02,ashmother,eggs,sound,core,"Звук идёт по камню и отдаётся в зубах.",10,core
+ash.eggs.sound.03,ashmother,eggs,sound,core,"Он сипит без нажима — воздух выходит сам.",10,core
+ash.decoy.burst.gaze.01,ashmother,burst,gaze,decoy,"Он приседает на лапах и застывает в полуприседе.",10,decoy
+ash.decoy.burst.gaze.02,ashmother,burst,gaze,decoy,"Корпус проседает — но всего на миг.",10,decoy
+ash.decoy.burst.gaze.03,ashmother,burst,gaze,decoy,"Она смотрит сквозь рой, не различая тебя.",10,decoy
+ash.decoy.burst.sound.01,ashmother,burst,environment,decoy,"Трава у воды дрожит, будто там кто-то прошёл.",10,decoy
+ash.decoy.burst.sound.02,ashmother,burst,environment,decoy,"Воздух свистит в сложенных крыльях — тонко и нарастающе.",10,decoy
+ash.decoy.burst.sound.03,ashmother,burst,environment,decoy,"Свист идёт сверху, и он приближается.",10,decoy
+ash.decoy.burst.pose.01,ashmother,burst,pose,decoy,"Он оседает на лапах, будто устал стоять.",10,decoy
+ash.decoy.burst.pose.02,ashmother,burst,pose,decoy,"Корпус опускается к камню и замирает.",10,decoy
+ash.decoy.burst.pose.03,ashmother,burst,pose,decoy,"Он прижимается к скале и не двигается.",10,decoy
+ash.decoy.bite.gaze.01,ashmother,bite,gaze,decoy,"Мутный глаз зверя не двигается — он смотрит в пустоту.",10,decoy
+ash.decoy.bite.gaze.02,ashmother,bite,gaze,decoy,"Хруз застывает и переводит взгляд в никуда.",10,decoy
+ash.decoy.bite.gaze.03,ashmother,bite,gaze,decoy,"Взгляд проходит мимо тебя и не возвращается.",10,decoy
+ash.decoy.bite.sound.01,ashmother,bite,environment,decoy,"Трава у воды дрожит, будто там кто-то прошёл.",10,decoy
+ash.decoy.bite.sound.02,ashmother,bite,environment,decoy,"Мокрый след на песке темнеет и расползается.",10,decoy
+ash.decoy.bite.sound.03,ashmother,bite,environment,decoy,"Вода у берега идёт кругами и не успокаивается.",10,decoy
+ash.decoy.bite.pose.01,ashmother,bite,pose,decoy,"Он подбирается ближе, не отрывая брюха от земли.",10,decoy
+ash.decoy.bite.pose.02,ashmother,bite,pose,decoy,"Шипун ползёт вперёд низко, почти сливаясь с почвой.",10,decoy
+ash.decoy.bite.pose.03,ashmother,bite,pose,decoy,"Тело стелется по земле, подкрадываясь на длину броска.",10,decoy
+ash.decoy.eggs.gaze.01,ashmother,eggs,gaze,decoy,"Глаз мутнеет и стекленеет от жара.",10,decoy
+ash.decoy.eggs.gaze.02,ashmother,eggs,gaze,decoy,"Он смотрит в сторону воды и не отводит глаз.",10,decoy
+ash.decoy.eggs.gaze.03,ashmother,eggs,gaze,decoy,"Взгляд скользит по берегу, не задерживаясь ни на чём.",10,decoy
+ash.decoy.eggs.env.01,ashmother,eggs,environment,decoy,"Краски стекают с предметов и пропадают.",10,decoy
+ash.decoy.eggs.env.02,ashmother,eggs,environment,decoy,"Костяной вихрь поднимается вокруг и закручивается.",10,decoy
+ash.decoy.eggs.env.03,ashmother,eggs,environment,decoy,"Пыль и костяная крошка идут по кругу.",10,decoy
+ash.decoy.eggs.pose.01,ashmother,eggs,gear,decoy,"Он разводит створки челюстей до предела.",10,decoy
+ash.decoy.eggs.pose.02,ashmother,eggs,gear,decoy,"Брюхо раздувается и натягивает панцирные пластины.",10,decoy
+ash.decoy.eggs.pose.03,ashmother,eggs,gear,decoy,"Он набирает воздух в брюхо, и пластины расходятся.",10,decoy
+ash.burst.swarm.04,ashmother,burst,gear,core,"Рой перестаёт виться и встаёт плотной стеной.",10,action
+ash.burst.swarm.05,ashmother,burst,gear,core,"Живая пелена собирается в ком и наливается весом.",10,action
+ash.burst.swarm.06,ashmother,burst,gear,core,"Мелкие твари стягиваются к её боку и темнеют.",10,action
+ash.burst.hum.04,ashmother,burst,sound,core,"Гул идёт волнами и не даёт слушать себя.",10,sound
+ash.burst.hum.05,ashmother,burst,sound,core,"Рой гудит вразнобой, потом разом.",10,sound
+ash.burst.hum.06,ashmother,burst,sound,core,"Гудение становится ниже и плотнее.",10,sound
+ash.bite.sting.04,ashmother,bite,gear,core,"Жало выдвигается на всю длину и замирает.",10,action
+ash.bite.sting.05,ashmother,bite,gear,core,"Она выпускает жало и пробует им воздух.",10,action
+ash.bite.sting.06,ashmother,bite,gear,core,"Длинный отросток медленно выходит наружу.",10,action
+ash.bite.scream.04,ashmother,bite,sound,core,"Резкий визг режет воздух над болотом.",10,sound
+ash.bite.scream.05,ashmother,bite,sound,core,"Визг входит в уши и остаётся там.",10,sound
+ash.bite.scream.06,ashmother,bite,sound,core,"Она визжит тонко и ровно, как пила.",10,sound
+ash.eggs.pose.04,ashmother,eggs,pose,core,"Она вибрирует всем брюхом, роняя капли.",10,action
+ash.eggs.pose.05,ashmother,eggs,pose,core,"Низ тела ходит ходуном — мелко, как от озноба.",10,action
+ash.eggs.pose.06,ashmother,eggs,pose,core,"Пластины на животе дрожат часто и дробно.",10,action
+ash.eggs.sound.04,ashmother,eggs,sound,core,"Мгла оседает низко и держится, не расходясь.",10,sound
+ash.eggs.sound.05,ashmother,eggs,sound,core,"Сизый туман расходится кругами от её ног.",10,sound
+ash.eggs.sound.06,ashmother,eggs,sound,core,"Воздух густеет и пахнет мёдом и гнилью.",10,sound
+ash.decoy.burst.gaze.04,ashmother,burst,gaze,decoy,"Она не смотрит — она слушает.",10,decoy
+ash.decoy.burst.gaze.05,ashmother,burst,gaze,decoy,"Глаза её скрыты за живой пеленой.",10,decoy
+ash.decoy.burst.gaze.06,ashmother,burst,gaze,decoy,"Она глядит сквозь рой, не различая тебя.",10,decoy
+ash.decoy.burst.sound.04,ashmother,burst,environment,decoy,"Воздух дрожит от гула, но туча не собирается.",10,decoy
+ash.decoy.burst.sound.05,ashmother,burst,environment,decoy,"Пыль поднимается от земли и висит в воздухе.",10,decoy
+ash.decoy.burst.sound.06,ashmother,burst,environment,decoy,"Сухая мгла стелется по выжженной земле.",10,decoy
+ash.decoy.burst.pose.04,ashmother,burst,pose,decoy,"Она дрожит на месте, не сходя с места.",10,decoy
+ash.decoy.burst.pose.05,ashmother,burst,pose,decoy,"Корпус раскачивается, но она стоит.",10,decoy
+ash.decoy.burst.pose.06,ashmother,burst,pose,decoy,"Её ведёт из стороны в сторону без причины.",10,decoy
+ash.decoy.bite.gaze.04,ashmother,bite,gaze,decoy,"Она смотрит в сторону, на выжженную землю.",10,decoy
+ash.decoy.bite.gaze.05,ashmother,bite,gaze,decoy,"Глаза её пусты и не задерживаются на тебе.",10,decoy
+ash.decoy.bite.gaze.06,ashmother,bite,gaze,decoy,"Она глядит мимо, будто тебя здесь нет.",10,decoy
+ash.decoy.bite.sound.04,ashmother,bite,sound,decoy,"Она пищит без жала — тонко и без угрозы.",10,decoy
+ash.decoy.bite.sound.05,ashmother,bite,sound,decoy,"Слабый визг, не переходящий в атаку.",10,decoy
+ash.decoy.bite.sound.06,ashmother,bite,sound,decoy,"Писк идёт из брюха, а не из горла.",10,decoy
+ash.decoy.bite.pose.04,ashmother,bite,pose,decoy,"Она поджимает лапы и замирает.",10,decoy
+ash.decoy.bite.pose.05,ashmother,bite,pose,decoy,"Корпус оседает, будто она устала.",10,decoy
+ash.decoy.bite.pose.06,ashmother,bite,pose,decoy,"Она приседает и держит паузу.",10,decoy
+ash.decoy.eggs.gaze.04,ashmother,eggs,gaze,decoy,"Она закатывает глаза и замирает.",10,decoy
+ash.decoy.eggs.gaze.05,ashmother,eggs,gaze,decoy,"Взгляд её уходит внутрь, в кладку.",10,decoy
+ash.decoy.eggs.gaze.06,ashmother,eggs,gaze,decoy,"Глаза стекленеют и не следят за тобой.",10,decoy
+ash.decoy.eggs.env.04,ashmother,eggs,environment,decoy,"Мокрые пятна на земле темнеют и расползаются.",10,decoy
+ash.decoy.eggs.env.05,ashmother,eggs,environment,decoy,"Влага выступает на пепле без всякой причины.",10,decoy
+ash.decoy.eggs.env.06,ashmother,eggs,environment,decoy,"Под ней темнеет круг, будто земля потеет.",10,decoy
+ash.decoy.eggs.pose.04,ashmother,eggs,pose,decoy,"Она горбится над кладкой и не двигается.",10,decoy
+ash.decoy.eggs.pose.05,ashmother,eggs,pose,decoy,"Корпус опускается к самой земле.",10,decoy
+ash.decoy.eggs.pose.06,ashmother,eggs,pose,decoy,"Она нависает над кладкой всей тяжестью.",10,decoy

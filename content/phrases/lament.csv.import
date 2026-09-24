@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://crxf8ew80nyyr"
+
+[deps]
+
+files=["res://content/phrases/lament.monster.translation", "res://content/phrases/lament.scenario.translation", "res://content/phrases/lament.slot.translation", "res://content/phrases/lament.role.translation", "res://content/phrases/lament.text.translation", "res://content/phrases/lament.weight.translation", "res://content/phrases/lament.tags.translation"]
+
+source_file="res://content/phrases/lament.csv"
+dest_files=["res://content/phrases/lament.monster.translation", "res://content/phrases/lament.scenario.translation", "res://content/phrases/lament.slot.translation", "res://content/phrases/lament.role.translation", "res://content/phrases/lament.text.translation", "res://content/phrases/lament.weight.translation", "res://content/phrases/lament.tags.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

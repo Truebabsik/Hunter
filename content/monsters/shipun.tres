@@ -1,0 +1,165 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://core/model/combo_data.gd" id="1_cmb"]
+[ext_resource type="Script" path="res://core/model/signal_data.gd" id="2_sig"]
+[ext_resource type="Script" path="res://core/model/scenario_data.gd" id="3_scn"]
+[ext_resource type="Script" path="res://core/model/monster_data.gd" id="4_mon"]
+[ext_resource type="Texture2D" path="res://art/monsters/shipun.svg" id="5_art"]
+
+[sub_resource type="Resource" id="sig_sting_gear"]
+script = ExtResource("2_sig")
+id = &"shipun.sting.hood"
+slot = &"gear"
+label = "вздымается капюшон"
+monster_id = &"shipun"
+scenario_id = &"sting"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_sting_sound"]
+script = ExtResource("2_sig")
+id = &"shipun.sting.sound"
+slot = &"sound"
+label = "скрежещет чешуёй"
+monster_id = &"shipun"
+scenario_id = &"sting"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_coil_gear"]
+script = ExtResource("2_sig")
+id = &"shipun.coil.rings"
+slot = &"gear"
+label = "кольцо тела сужается"
+monster_id = &"shipun"
+scenario_id = &"coil"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_coil_pose"]
+script = ExtResource("2_sig")
+id = &"shipun.coil.pose"
+slot = &"pose"
+label = "подбирается ближе, не отрывая брюха от земли"
+monster_id = &"shipun"
+scenario_id = &"coil"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_dash_pose"]
+script = ExtResource("2_sig")
+id = &"shipun.dash.pose"
+slot = &"pose"
+label = "поворачивает голову к цели"
+monster_id = &"shipun"
+scenario_id = &"dash"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="decoy_sting"]
+script = ExtResource("2_sig")
+id = &"shipun.decoy.sting.env"
+slot = &"environment"
+label = "пыль поднимается столбиком"
+monster_id = &"shipun"
+scenario_id = &"sting"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_coil"]
+script = ExtResource("2_sig")
+id = &"shipun.decoy.coil.gaze"
+slot = &"gaze"
+label = "смотрит в сторону воды"
+monster_id = &"shipun"
+scenario_id = &"coil"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_dash"]
+script = ExtResource("2_sig")
+id = &"shipun.decoy.dash.env"
+slot = &"environment"
+label = "трава у воды дрожит"
+monster_id = &"shipun"
+scenario_id = &"dash"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="scn_sting"]
+script = ExtResource("3_scn")
+id = &"sting"
+card_label = "Бросит жало"
+description = "Вздымает капюшон и бьёт жалом на выдохе."
+weight = 50
+signals = Array[ExtResource("2_sig")]([SubResource("sig_sting_gear"), SubResource("sig_sting_sound")])
+damage_override = 3
+tags = PackedStringArray("strike")
+
+[sub_resource type="Resource" id="scn_coil"]
+script = ExtResource("3_scn")
+id = &"coil"
+card_label = "Обовьёт"
+description = "Сжимает кольца и душит."
+weight = 30
+signals = Array[ExtResource("2_sig")]([SubResource("sig_coil_gear"), SubResource("sig_coil_pose")])
+damage_override = 2
+tags = PackedStringArray("grab")
+
+[sub_resource type="Resource" id="scn_dash"]
+script = ExtResource("3_scn")
+id = &"dash"
+card_label = "Рванёт вбок"
+description = "Уходит в рывок на охоту — и на ход подставляет бок."
+weight = 20
+signals = Array[ExtResource("2_sig")]([SubResource("sig_dash_pose")])
+damage_override = 2
+tags = PackedStringArray("flank")
+
+[sub_resource type="Resource" id="cmb_poison_dash"]
+script = ExtResource("1_cmb")
+id = &"shipun.poison_dash"
+title = "Ядовитый рывок"
+scenario_id = &"dash"
+required_range = &"ranged"
+required_type = &"poison"
+damage_bonus = 2
+effect_text = "двойной урон: подставленный бок + слепота на 2 хода"
+status_id = &"blind"
+
+[sub_resource type="Resource" id="cmb_fire_coil"]
+script = ExtResource("1_cmb")
+id = &"shipun.fire_coil"
+title = "Огненный обвив"
+scenario_id = &"coil"
+required_range = &"melee"
+required_type = &"fire"
+damage_bonus = 2
+effect_text = "разрыв кольца: зверь теряет захват"
+status_id = &""
+
+[resource]
+script = ExtResource("4_mon")
+id = &"shipun"
+title = "Шипун"
+epithet = "скользун-кочка"
+lore = "Быстрее любого охотника на ровном месте, но на подъёме сдаёт. Держит дистанцию и ждёт, пока ты подойдёшь сам. В книге гильдии помечен как «недоделанный»: бросок быстрый, а хватка слабая."
+rank = &"starter"
+max_hp = 10
+armor = 1
+base_damage = 2
+initiative = 6
+weakness_types = PackedStringArray("poison")
+weakness_ranges = PackedStringArray("ranged")
+range_resist = {}
+type_resist = {
+"ice": 1,
+"slash": 1,
+"pierce": 1
+}
+scenarios = Array[ExtResource("3_scn")]([SubResource("scn_sting"), SubResource("scn_coil"), SubResource("scn_dash")])
+false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_sting"), SubResource("decoy_coil"), SubResource("decoy_dash")])
+combos = Array[ExtResource("1_cmb")]([SubResource("cmb_poison_dash"), SubResource("cmb_fire_coil")])
+counter_threshold = 3
+counter_title = "Ложный рывок"
+counter_text = "Шипун больше не подставляется: бок прикрыт, рывок короткий и злой."
+trophy_names = PackedStringArray("Чешуйчатый плащ", "Жало")
+trophy_prices = PackedInt32Array(15, 8)
+portrait = ExtResource("5_art")
+silhouette = ExtResource("5_art")
+accent_color = "#7d8a5e"
+art_scale = 0.9
+art_offset = Vector2(0, 20)
+by_scenario = {}

@@ -1,0 +1,57 @@
+id,monster,scenario,slot,role,text,weight,tags
+shipun.sting.hood.01,shipun,sting,gear,core,"Капюшон вздымается над головой — кожа натягивается до звона.",10,action
+shipun.sting.hood.02,shipun,sting,gear,core,"Шипун разворачивает капюшон, и чешуя встаёт дыбом.",10,action
+shipun.sting.hood.03,shipun,sting,gear,core,"Кожаный воротник раскрывается, обнажая жало.",10,action
+shipun.sting.hood.04,shipun,sting,gear,core,"Капюшон поднимается медленно — зверь примеряется к броску.",10,action
+shipun.sting.sound.01,shipun,sting,sound,core,"Он скрежещет чешуёй, будто проводит по ней камнем.",10,sound
+shipun.sting.sound.02,shipun,sting,sound,core,"Сухой скрежет идёт вдоль всего тела.",10,sound
+shipun.sting.sound.03,shipun,sting,sound,core,"Чешуя трётся о чешую с резким скрипом.",10,sound
+shipun.sting.sound.04,shipun,sting,sound,core,"Короткий скрежещущий выдох — и тишина.",10,sound
+shipun.coil.rings.01,shipun,coil,gear,core,"Кольцо тела сужается — виток за витком, без спешки.",10,action
+shipun.coil.rings.02,shipun,coil,gear,core,"Он собирает кольца плотнее, подтягивая их к середине.",10,action
+shipun.coil.rings.03,shipun,coil,gear,core,"Тело сворачивается узлом, чешуя ложится на чешую.",10,action
+shipun.coil.rings.04,shipun,coil,gear,core,"Шипун обжимает кольца — теперь их не разорвать рывком.",10,action
+shipun.coil.pose.01,shipun,coil,pose,core,"Он подбирается ближе, не отрывая брюха от земли.",10,action
+shipun.coil.pose.02,shipun,coil,pose,core,"Шипун ползёт вперёд низко, почти сливаясь с почвой.",10,action
+shipun.coil.pose.03,shipun,coil,pose,core,"Тело стелется по земле, подкрадываясь на длину броска.",10,action
+shipun.coil.pose.04,shipun,coil,pose,core,"Он сокращает дистанцию медленно, по сантиметру.",10,action
+shipun.dash.pose.01,shipun,dash,pose,core,"Он поворачивает голову к цели — и замирает на долю секунды.",10,action
+shipun.dash.pose.02,shipun,dash,pose,core,"Голова разворачивается в твою сторону, взгляд цепляется за тебя.",10,action
+shipun.dash.pose.03,shipun,dash,pose,core,"Шипун выравнивает голову по линии атаки.",10,action
+shipun.dash.pose.04,shipun,dash,pose,core,"Он разворачивает голову, примеряя, где ты будешь через миг.",10,action
+shipun.decoy.sting.env.01,shipun,sting,environment,decoy,"Пыль поднимается столбиком и висит в воздухе.",10,decoy
+shipun.decoy.sting.env.02,shipun,sting,environment,decoy,"Камыш у воды качается сам по себе.",10,decoy
+shipun.decoy.sting.env.03,shipun,sting,environment,decoy,"Ветер несёт с болота запах гнили и тины.",10,decoy
+shipun.decoy.sting.env.04,shipun,sting,environment,decoy,"Мелкая мошка вьётся низко над землёй.",10,decoy
+shipun.decoy.coil.gaze.01,shipun,coil,gaze,decoy,"Он смотрит в сторону воды и не отводит глаз.",10,decoy
+shipun.decoy.coil.gaze.02,shipun,coil,gaze,decoy,"Взгляд скользит по берегу, не задерживаясь ни на чём.",10,decoy
+shipun.decoy.coil.gaze.03,shipun,coil,gaze,decoy,"Шипун таращится в пустоту у тебя за спиной.",10,decoy
+shipun.decoy.coil.gaze.04,shipun,coil,gaze,decoy,"Глаз зверя мутнеет, как у сонной рыбы.",10,decoy
+shipun.decoy.dash.env.01,shipun,dash,environment,decoy,"Трава у воды дрожит, будто там кто-то прошёл.",10,decoy
+shipun.decoy.dash.env.02,shipun,dash,environment,decoy,"Мокрый след на песке темнеет и расползается.",10,decoy
+shipun.decoy.dash.env.03,shipun,dash,environment,decoy,"Вода у берега идёт кругами и не успокаивается.",10,decoy
+shipun.decoy.dash.env.04,shipun,dash,environment,decoy,"Галька осыпается с берега и стучит по воде.",10,decoy
+shipun.sting.hood.04,shipun,sting,gear,core,"Капюшон раскрывается медленно — зверь примеряется к броску.",10,action
+shipun.sting.hood.05,shipun,sting,gear,core,"Кожаный воротник встаёт дыбом, обнажая жало на конце.",10,action
+shipun.sting.hood.06,shipun,sting,gear,core,"Он разворачивает капюшон во всю ширину и держит его поднятым.",10,action
+shipun.sting.sound.04,shipun,sting,sound,core,"Короткий скрежещущий выдох — и снова тихо.",10,sound
+shipun.sting.sound.05,shipun,sting,sound,core,"Чешуя скребёт по чешуе с сухим треском.",10,sound
+shipun.sting.sound.06,shipun,sting,sound,core,"Он скрежещет, будто точит чешую о камень.",10,sound
+shipun.coil.rings.04,shipun,coil,gear,core,"Шипун обжимает кольца — теперь их не разорвать рывком.",10,action
+shipun.coil.rings.05,shipun,coil,gear,core,"Витки ложатся один на другой и стягиваются в тугой узел.",10,action
+shipun.coil.rings.06,shipun,coil,gear,core,"Он подтягивает кольцо к кольцу, пока середина не становится плотной.",10,action
+shipun.coil.pose.04,shipun,coil,pose,core,"Он сокращает дистанцию медленно, по сантиметру.",10,action
+shipun.coil.pose.05,shipun,coil,pose,core,"Тело стелется по земле и подбирается на длину броска.",10,action
+shipun.coil.pose.06,shipun,coil,pose,core,"Шипун ползёт вперёд низко, почти сливаясь с почвой.",10,action
+shipun.dash.pose.04,shipun,dash,pose,core,"Он разворачивает голову, примеряя, где ты будешь через миг.",10,action
+shipun.dash.pose.05,shipun,dash,pose,core,"Голова выравнивается по линии, взгляд цепляется за тебя.",10,action
+shipun.dash.pose.06,shipun,dash,pose,core,"Шипун поворачивает голову и замирает на долю секунды.",10,action
+shipun.decoy.sting.env.04,shipun,sting,environment,decoy,"Мелкая мошка вьётся низко над землёй.",10,decoy
+shipun.decoy.sting.env.05,shipun,sting,environment,decoy,"Камыш у воды качается сам по себе.",10,decoy
+shipun.decoy.sting.env.06,shipun,sting,environment,decoy,"Пыль поднимается столбиком и висит в воздухе.",10,decoy
+shipun.decoy.coil.gaze.04,shipun,coil,gaze,decoy,"Глаз зверя мутнеет, как у сонной рыбы.",10,decoy
+shipun.decoy.coil.gaze.05,shipun,coil,gaze,decoy,"Он смотрит в сторону воды и не отводит глаз.",10,decoy
+shipun.decoy.coil.gaze.06,shipun,coil,gaze,decoy,"Взгляд скользит по берегу, не задерживаясь ни на чём.",10,decoy
+shipun.decoy.dash.env.04,shipun,dash,environment,decoy,"Трава у воды дрожит, будто там кто-то прошёл.",10,decoy
+shipun.decoy.dash.env.05,shipun,dash,environment,decoy,"Мокрый след на песке темнеет и расползается.",10,decoy
+shipun.decoy.dash.env.06,shipun,dash,environment,decoy,"Галька осыпается с берега и стучит по воде.",10,decoy

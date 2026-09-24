@@ -1,0 +1,237 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=23 format=3]
+
+[ext_resource type="Script" path="res://core/model/combo_data.gd" id="1_cmb"]
+[ext_resource type="Script" path="res://core/model/signal_data.gd" id="2_sig"]
+[ext_resource type="Script" path="res://core/model/scenario_data.gd" id="3_scn"]
+[ext_resource type="Script" path="res://core/model/monster_data.gd" id="4_mon"]
+[ext_resource type="Texture2D" path="res://art/monsters/ashmother.svg" id="5_art"]
+
+[sub_resource type="Resource" id="sig_burst_swarm"]
+script = ExtResource("2_sig")
+id = &"ash.burst.swarm"
+slot = &"gear"
+label = "рой сгущается в тучу"
+monster_id = &"ashmother"
+scenario_id = &"burst"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_burst_hum"]
+script = ExtResource("2_sig")
+id = &"ash.burst.hum"
+slot = &"sound"
+label = "гул роя нарастает"
+monster_id = &"ashmother"
+scenario_id = &"burst"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_bite_sting"]
+script = ExtResource("2_sig")
+id = &"ash.bite.sting"
+slot = &"gear"
+label = "жало вытягивается"
+monster_id = &"ashmother"
+scenario_id = &"bite"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_bite_scream"]
+script = ExtResource("2_sig")
+id = &"ash.bite.scream"
+slot = &"sound"
+label = "визг на одной ноте"
+monster_id = &"ashmother"
+scenario_id = &"bite"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="sig_eggs_pose"]
+script = ExtResource("2_sig")
+id = &"ash.eggs.pose"
+slot = &"pose"
+label = "приседает и выгибает брюхо"
+monster_id = &"ashmother"
+scenario_id = &"eggs"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_eggs_sound"]
+script = ExtResource("2_sig")
+id = &"ash.eggs.sound"
+slot = &"sound"
+label = "мокрый шорох кладки"
+monster_id = &"ashmother"
+scenario_id = &"eggs"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="scn_burst"]
+script = ExtResource("3_scn")
+id = &"burst"
+card_label = "Выбросит рой"
+description = "Сгущает рой в тучу и бросает её вперёд."
+weight = 40
+signals = Array[ExtResource("2_sig")]([SubResource("sig_burst_swarm"), SubResource("sig_burst_hum")])
+damage_override = 4
+tags = PackedStringArray("swarm")
+
+[sub_resource type="Resource" id="scn_bite"]
+script = ExtResource("3_scn")
+id = &"bite"
+card_label = "Укусит"
+description = "Вытягивает жало и бьёт на визге."
+weight = 35
+signals = Array[ExtResource("2_sig")]([SubResource("sig_bite_sting"), SubResource("sig_bite_scream")])
+damage_override = 3
+tags = PackedStringArray("strike")
+
+[sub_resource type="Resource" id="scn_eggs"]
+script = ExtResource("3_scn")
+id = &"eggs"
+card_label = "Начнёт кладку"
+description = "Приседает над кладкой и разгоняет её мокрым шорохом."
+weight = 25
+signals = Array[ExtResource("2_sig")]([SubResource("sig_eggs_pose"), SubResource("sig_eggs_sound")])
+damage_override = 2
+tags = PackedStringArray("spawn")
+
+[sub_resource type="Resource" id="cmb_burn_swarm"]
+script = ExtResource("1_cmb")
+id = &"ashmother.burn_swarm"
+title = "Выжигание роя"
+scenario_id = &"burst"
+required_range = &"any"
+required_type = &"fire"
+damage_bonus = 2
+effect_text = "рой сбит, тикающий урон прекращён"
+status_id = &""
+
+[sub_resource type="Resource" id="cmb_poison_sting"]
+script = ExtResource("1_cmb")
+id = &"ashmother.poison_sting"
+title = "Ядовитое жало"
+scenario_id = &"bite"
+required_range = &"melee"
+required_type = &"poison"
+damage_bonus = 2
+effect_text = "жало перебито, зверь слепнет"
+status_id = &"blind"
+
+[sub_resource type="Resource" id="decoy_burst_gaze"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.burst.gaze"
+slot = &"gaze"
+label = "смотрит сквозь рой"
+monster_id = &"ashmother"
+scenario_id = &"burst"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_burst_sound"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.burst.sound"
+slot = &"environment"
+label = "гудит без сгущения"
+monster_id = &"ashmother"
+scenario_id = &"burst"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_burst_pose"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.burst.pose"
+slot = &"pose"
+label = "дрожит на месте"
+monster_id = &"ashmother"
+scenario_id = &"burst"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_bite_gaze"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.bite.gaze"
+slot = &"gaze"
+label = "смотрит в сторону"
+monster_id = &"ashmother"
+scenario_id = &"bite"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_bite_sound"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.bite.sound"
+slot = &"environment"
+label = "пищит без жала"
+monster_id = &"ashmother"
+scenario_id = &"bite"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_bite_pose"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.bite.pose"
+slot = &"pose"
+label = "поджимает лапы"
+monster_id = &"ashmother"
+scenario_id = &"bite"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_eggs_gaze"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.eggs.gaze"
+slot = &"gaze"
+label = "закатывает глаза"
+monster_id = &"ashmother"
+scenario_id = &"eggs"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_eggs_env"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.eggs.env"
+slot = &"environment"
+label = "мокрые пятна на земле"
+monster_id = &"ashmother"
+scenario_id = &"eggs"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_eggs_pose"]
+script = ExtResource("2_sig")
+id = &"ash.decoy.eggs.pose"
+slot = &"gear"
+label = "горбится над кладкой"
+monster_id = &"ashmother"
+scenario_id = &"eggs"
+tags = PackedStringArray("decoy")
+
+[resource]
+script = ExtResource("4_mon")
+id = &"ashmother"
+title = "Пепел-Мать"
+epithet = "роевая носительница"
+lore = "Она не охотится сама: рой делает это за неё и всегда возвращается. Пока рой движется, она стоит на месте и ждёт. Без роя — просто большое тело."
+rank = &"elite"
+max_hp = 22
+armor = 2
+base_damage = 3
+initiative = 4
+weakness_types = PackedStringArray("fire", "poison", "slash")
+type_resist = {
+"crush": 1,
+"ice": 1
+}
+scenarios = Array[ExtResource("3_scn")]([SubResource("scn_burst"), SubResource("scn_bite"), SubResource("scn_eggs")])
+false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_burst_gaze"), SubResource("decoy_burst_sound"), SubResource("decoy_burst_pose"), SubResource("decoy_bite_gaze"), SubResource("decoy_bite_sound"), SubResource("decoy_bite_pose"), SubResource("decoy_eggs_gaze"), SubResource("decoy_eggs_env"), SubResource("decoy_eggs_pose")])
+combos = Array[ExtResource("1_cmb")]([SubResource("cmb_burn_swarm"), SubResource("cmb_poison_sting")])
+adaptations = Array[Dictionary]([{
+"after_round": 5,
+"multiplier": 1.1,
+"scenario": &"burst"
+}, {
+"after_round": 9,
+"multiplier": 1.15,
+"scenario": &"bite"
+}])
+counter_threshold = 3
+counter_title = "Плотный рой"
+counter_text = "Рой стягивается коркой: огонь больше не пробивает его насквозь."
+ticking_damage = 1
+ticking_key_scenario = &"burst"
+ticking_text = "Рой осыпается на землю. Больше он тебя не грызёт."
+trophy_names = PackedStringArray("Роевой фермент", "Маточный панцирь")
+trophy_prices = PackedInt32Array(30, 45)
+portrait = ExtResource("5_art")
+silhouette = ExtResource("5_art")
+accent_color = "#6d5644"
+art_scale = 1.0
+art_offset = Vector2(0, 0)
+by_scenario = {}

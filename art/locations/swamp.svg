@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Болото: мгла, кочки, стоячая вода. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="288" viewBox="0 0 512 288">
+  <rect width="512" height="288" fill="#161c18"/>
+  <g opacity="0.45" fill="#2a3830">
+    <rect y="80" width="512" height="40"/>
+    <rect y="140" width="512" height="46"/>
+  </g>
+  <rect y="200" width="512" height="88" fill="#1d241d"/>
+  <g fill="#26301f">
+    <ellipse cx="80" cy="216" rx="46" ry="12"/><ellipse cx="200" cy="240" rx="54" ry="14"/>
+    <ellipse cx="330" cy="220" rx="40" ry="11"/><ellipse cx="450" cy="248" rx="50" ry="13"/>
+  </g>
+  <g fill="#2f3a26">
+    <path d="M40 210 L48 176 L56 210 Z"/><path d="M196 234 L206 196 L216 234 Z"/>
+    <path d="M328 214 L336 182 L344 214 Z"/>
+  </g>
+  <rect y="150" width="512" height="60" fill="#3c4a3a" opacity="0.3"/>
+</svg>

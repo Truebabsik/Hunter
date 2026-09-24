@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/model/weapon_data.gd" id="1_wpn"]
+
+[resource]
+script = ExtResource("1_wpn")
+id = &"blade"
+title = "Клинок"
+range_id = &"melee"
+damage_type = &"slash"
+base_damage = 4
+initiative_bonus = 1
+price = 20

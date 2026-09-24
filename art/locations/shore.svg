@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Берег: полоса воды, галька, рассветная дымка. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="288" viewBox="0 0 512 288">
+  <rect width="512" height="288" fill="#1a1c1e"/>
+  <rect y="150" width="512" height="60" fill="#232a2e"/>
+  <g fill="#2e383c">
+    <path d="M0 168 Q64 156 128 168 Q192 180 256 168 Q320 156 384 168 Q448 180 512 168 L512 210 L0 210 Z"/>
+  </g>
+  <rect y="206" width="512" height="82" fill="#2b2620"/>
+  <g fill="#3a342b">
+    <ellipse cx="60" cy="232" rx="30" ry="8"/><ellipse cx="150" cy="252" rx="36" ry="9"/>
+    <ellipse cx="250" cy="236" rx="28" ry="7"/><ellipse cx="350" cy="258" rx="40" ry="10"/>
+    <ellipse cx="450" cy="238" rx="30" ry="8"/>
+  </g>
+  <rect y="120" width="512" height="34" fill="#3b4148" opacity="0.5"/>
+</svg>

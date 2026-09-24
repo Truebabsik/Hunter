@@ -1,0 +1,118 @@
+id,monster,scenario,slot,role,text,weight,tags
+skorb.volley.ribs.01,skorb,volley,gear,core,"Размах исчезает: крылья обтягивают корпус.",10,core
+skorb.volley.ribs.02,skorb,volley,gear,core,"Горло раздувается — кожа натягивается и блестит.",10,core
+skorb.volley.ribs.03,skorb,volley,gear,core,"Он пробует клешню на сжатие, будто проверяет хват.",10,core
+skorb.volley.scrape.01,skorb,volley,sound,core,"Короткий сип, и снова тихо.",10,core
+skorb.volley.scrape.02,skorb,volley,sound,core,"Ракушки на его шкуре дребезжат, как сухая трава на ветру.",10,core
+skorb.volley.scrape.03,skorb,volley,sound,core,"Он шипит — коротко и зло, на выдохе.",10,core
+skorb.grasp.jaw.01,skorb,grasp,gear,core,"Он подбирает крылья — плотно, как перед броском камня.",10,core
+skorb.grasp.jaw.02,skorb,grasp,gear,core,"Размах исчезает: крылья обтягивают корпус.",10,core
+skorb.grasp.jaw.03,skorb,grasp,gear,core,"Горло раздувается — кожа натягивается и блестит.",10,core
+skorb.grasp.pose.01,skorb,grasp,pose,core,"Присед идёт на передние лапы, задние поджаты.",10,core
+skorb.grasp.pose.02,skorb,grasp,pose,core,"Корпус опускается — ровно, как перед падением.",10,core
+skorb.grasp.pose.03,skorb,grasp,pose,core,"Он опускает голову к самой земле и выставляет клюв вперёд.",10,core
+skorb.roar.sternum.01,skorb,roar,gear,core,"Он пробует клешню на сжатие, будто проверяет хват.",10,core
+skorb.roar.sternum.02,skorb,roar,gear,core,"Клешня подбирается и застывает в полуоткрытом замке.",10,core
+skorb.roar.sternum.03,skorb,roar,gear,core,"Створки клешни сходятся и расходятся — зверь примеряется.",10,core
+skorb.roar.sound.01,skorb,roar,sound,core,"Нарастающий вой заполняет всё вокруг.",10,core
+skorb.roar.sound.02,skorb,roar,sound,core,"Звук идёт по камню и отдаётся в зубах.",10,core
+skorb.roar.sound.03,skorb,roar,sound,core,"Он сипит без нажима — воздух выходит сам.",10,core
+skorb.rebuild.bones.01,skorb,rebuild,gear,core,"Он отплёвывается и переводит дыхание, опустив клешню.",10,core
+skorb.rebuild.bones.02,skorb,rebuild,gear,core,"Он подбирает крылья — плотно, как перед броском камня.",10,core
+skorb.rebuild.bones.03,skorb,rebuild,gear,core,"Размах исчезает: крылья обтягивают корпус.",10,core
+skorb.rebuild.whirl.01,skorb,rebuild,environment,core,"Пыль и костяная крошка идут по кругу.",10,core
+skorb.rebuild.whirl.02,skorb,rebuild,environment,core,"Вокруг него поднимается сухой смерч из обломков.",10,core
+skorb.rebuild.whirl.03,skorb,rebuild,environment,core,"Воздух свистит в сложенных крыльях — тонко и нарастающе.",10,core
+skorb.decoy.volley.gaze.01,skorb,volley,gaze,decoy,"Он приседает на лапах и застывает в полуприседе.",10,decoy
+skorb.decoy.volley.gaze.02,skorb,volley,gaze,decoy,"Корпус проседает — но всего на миг.",10,decoy
+skorb.decoy.volley.gaze.03,skorb,volley,gaze,decoy,"Она смотрит сквозь рой, не различая тебя.",10,decoy
+skorb.decoy.volley.sound.01,skorb,volley,pose,decoy,"Он разворачивает голову, примеряя, где ты будешь через миг.",10,decoy
+skorb.decoy.volley.sound.02,skorb,volley,pose,decoy,"Он подаётся вперёд и прижимается к камню.",10,decoy
+skorb.decoy.volley.sound.03,skorb,volley,pose,decoy,"Присед идёт на передние лапы, задние поджаты.",10,decoy
+skorb.decoy.volley.pose.01,skorb,volley,environment,decoy,"Ветер несёт с воды запах тины и мокрого камня.",10,decoy
+skorb.decoy.volley.pose.02,skorb,volley,environment,decoy,"Пыль поднимается столбиком и висит в воздухе.",10,decoy
+skorb.decoy.volley.pose.03,skorb,volley,environment,decoy,"Камыш у воды качается сам по себе.",10,decoy
+skorb.decoy.grasp.gaze.01,skorb,grasp,gaze,decoy,"Мутный глаз зверя не двигается — он смотрит в пустоту.",10,decoy
+skorb.decoy.grasp.gaze.02,skorb,grasp,gaze,decoy,"Хруз застывает и переводит взгляд в никуда.",10,decoy
+skorb.decoy.grasp.gaze.03,skorb,grasp,gaze,decoy,"Взгляд проходит мимо тебя и не возвращается.",10,decoy
+skorb.decoy.grasp.sound.01,skorb,grasp,sound,decoy,"Слабое сипение, не похожее на угрозу.",10,decoy
+skorb.decoy.grasp.sound.02,skorb,grasp,sound,decoy,"Короткий сип, и снова тихо.",10,decoy
+skorb.decoy.grasp.sound.03,skorb,grasp,sound,decoy,"Ракушки на его шкуре дребезжат, как сухая трава на ветру.",10,decoy
+skorb.decoy.grasp.pose.01,skorb,grasp,environment,decoy,"Галька под ним поскрипывает и оседает.",10,decoy
+skorb.decoy.grasp.pose.02,skorb,grasp,environment,decoy,"Краски стекают с предметов и пропадают.",10,decoy
+skorb.decoy.grasp.pose.03,skorb,grasp,environment,decoy,"Пыль поднимается столбиком и висит в воздухе.",10,decoy
+skorb.decoy.roar.gaze.01,skorb,roar,gaze,decoy,"Глаз мутнеет и стекленеет от жара.",10,decoy
+skorb.decoy.roar.gaze.02,skorb,roar,gaze,decoy,"Он смотрит в сторону воды и не отводит глаз.",10,decoy
+skorb.decoy.roar.gaze.03,skorb,roar,gaze,decoy,"Взгляд скользит по берегу, не задерживаясь ни на чём.",10,decoy
+skorb.decoy.roar.sound.01,skorb,roar,pose,decoy,"Голова разворачивается в твою сторону, взгляд цепляется за тебя.",10,decoy
+skorb.decoy.roar.sound.02,skorb,roar,pose,decoy,"Шипун выравнивает голову по линии атаки.",10,decoy
+skorb.decoy.roar.sound.03,skorb,roar,pose,decoy,"Он разворачивает голову, примеряя, где ты будешь через миг.",10,decoy
+skorb.decoy.roar.pose.01,skorb,roar,environment,decoy,"Воздух свистит в сложенных крыльях — тонко и нарастающе.",10,decoy
+skorb.decoy.roar.pose.02,skorb,roar,environment,decoy,"Свист идёт сверху, и он приближается.",10,decoy
+skorb.decoy.roar.pose.03,skorb,roar,environment,decoy,"Ветер бьёт по камню и взвизгивает под крыльями.",10,decoy
+skorb.decoy.rebuild.gaze.01,skorb,rebuild,gaze,decoy,"Мутный глаз не двигается вовсе.",10,decoy
+skorb.decoy.rebuild.gaze.02,skorb,rebuild,gaze,decoy,"Взгляд уходит в болото и остаётся там.",10,decoy
+skorb.decoy.rebuild.gaze.03,skorb,rebuild,gaze,decoy,"Он полуприкрывает глаза и замирает.",10,decoy
+skorb.decoy.rebuild.sound.01,skorb,rebuild,sound,decoy,"Вой начинается низко и идёт вверх, не прерываясь.",10,decoy
+skorb.decoy.rebuild.sound.02,skorb,rebuild,sound,decoy,"Слабое сипение, не похожее на угрозу.",10,decoy
+skorb.decoy.rebuild.sound.03,skorb,rebuild,sound,decoy,"Короткий сип, и снова тихо.",10,decoy
+skorb.decoy.rebuild.pose.01,skorb,rebuild,pose,decoy,"Шипун выравнивает голову по линии атаки.",10,decoy
+skorb.decoy.rebuild.pose.02,skorb,rebuild,pose,decoy,"Он разворачивает голову, примеряя, где ты будешь через миг.",10,decoy
+skorb.decoy.rebuild.pose.03,skorb,rebuild,pose,decoy,"Он подаётся вперёд и прижимается к камню.",10,decoy
+skorb.volley.ribs.04,skorb,volley,gear,core,"Грудная клетка сжимается и целится в твою сторону.",10,action
+skorb.volley.ribs.05,skorb,volley,gear,core,"Рёбра защёлкиваются одно за другим, снизу вверх.",10,action
+skorb.volley.ribs.06,skorb,volley,gear,core,"Костяные створки сходятся, открывая жерло грудной клетки.",10,action
+skorb.volley.scrape.04,skorb,volley,sound,core,"Слышно, как рёбра встают на место — все сразу.",10,sound
+skorb.volley.scrape.05,skorb,volley,sound,core,"Скрежет поднимается от таза к черепу.",10,sound
+skorb.volley.scrape.06,skorb,volley,sound,core,"Кости трутся друг о друга с сухим хрустом.",10,sound
+skorb.grasp.jaw.04,skorb,grasp,gear,core,"Челюсти выезжают наружу из клетки рёбер.",10,action
+skorb.grasp.jaw.05,skorb,grasp,gear,core,"Нижняя челюсть выдвигается и раскрывается.",10,action
+skorb.grasp.jaw.06,skorb,grasp,gear,core,"Он подаёт череп вперёд, оставляя шею позади.",10,action
+skorb.grasp.pose.04,skorb,grasp,pose,core,"Вся башня наклоняется, как падающее дерево.",10,action
+skorb.grasp.pose.05,skorb,grasp,pose,core,"Корпус подаётся вперёд и вниз, чтобы дотянуться.",10,action
+skorb.grasp.pose.06,skorb,grasp,pose,core,"Он перевешивается в твою сторону, скрипя тазом.",10,action
+skorb.roar.sternum.04,skorb,roar,gear,core,"Рёбра разводятся в стороны, и грудина трещит.",10,action
+skorb.roar.sternum.05,skorb,roar,gear,core,"Грудь раскрывается, обнажая пустую полость.",10,action
+skorb.roar.sternum.06,skorb,roar,gear,core,"Костяная пластина на груди ломается надвое.",10,action
+skorb.roar.sound.04,skorb,roar,sound,core,"Пустая клетка работает как труба, и рёв идёт наружу.",10,sound
+skorb.roar.sound.05,skorb,roar,sound,core,"Низкий рёв поднимается из грудной полости.",10,sound
+skorb.roar.sound.06,skorb,roar,sound,core,"Он ревёт, и звук отдаётся в земле под ногами.",10,sound
+skorb.rebuild.bones.04,skorb,rebuild,gear,core,"Костяная клетка распускается и падает к ногам.",10,action
+skorb.rebuild.bones.05,skorb,rebuild,gear,core,"Он осыпается и тут же начинает собираться вновь.",10,action
+skorb.rebuild.bones.06,skorb,rebuild,gear,core,"Скелет разваливается — рёбра падают одно за другим.",10,action
+skorb.rebuild.whirl.04,skorb,rebuild,environment,core,"Обломки кружат на месте, не опускаясь.",10,environment
+skorb.rebuild.whirl.05,skorb,rebuild,environment,core,"Вокруг него поднимается сухой смерч из обломков.",10,environment
+skorb.rebuild.whirl.06,skorb,rebuild,environment,core,"Пыль и костяная крошка идут по кругу.",10,environment
+skorb.decoy.volley.gaze.04,skorb,volley,gaze,decoy,"Тёмные провалы глазниц не двигаются.",10,decoy
+skorb.decoy.volley.gaze.05,skorb,volley,gaze,decoy,"В черепе нет глаз, и всё же он поворачивается к тебе.",10,decoy
+skorb.decoy.volley.gaze.06,skorb,volley,gaze,decoy,"Пустые глазницы смотрят в никуда.",10,decoy
+skorb.decoy.volley.sound.04,skorb,volley,sound,decoy,"Хруст раздаётся, но рёбра не двигаются.",10,decoy
+skorb.decoy.volley.sound.05,skorb,volley,sound,decoy,"Сухой щелчок внутри клетки — сам по себе.",10,decoy
+skorb.decoy.volley.sound.06,skorb,volley,sound,decoy,"Кости поскрипывают без всякой причины.",10,decoy
+skorb.decoy.volley.pose.04,skorb,volley,pose,decoy,"Он покачивается вперёд и обратно на месте.",10,decoy
+skorb.decoy.volley.pose.05,skorb,volley,pose,decoy,"Башня кренится, но не сходит с места.",10,decoy
+skorb.decoy.volley.pose.06,skorb,volley,pose,decoy,"Он подаётся вперёд ровно настолько, чтобы устоять.",10,decoy
+skorb.decoy.grasp.gaze.04,skorb,grasp,gaze,decoy,"Тени шевелятся в пустых глазницах.",10,decoy
+skorb.decoy.grasp.gaze.05,skorb,grasp,gaze,decoy,"Череп поворачивается, а взгляда нет.",10,decoy
+skorb.decoy.grasp.gaze.06,skorb,grasp,gaze,decoy,"Он смотрит в пустоту между тобой и собой.",10,decoy
+skorb.decoy.grasp.sound.04,skorb,grasp,sound,decoy,"Костяная крошка сыплется с рёбер и шуршит.",10,decoy
+skorb.decoy.grasp.sound.05,skorb,grasp,sound,decoy,"Пыль оседает на таз со сухим шорохом.",10,decoy
+skorb.decoy.grasp.sound.06,skorb,grasp,sound,decoy,"Что-то осыпается внутри клетки и затихает.",10,decoy
+skorb.decoy.grasp.pose.04,skorb,grasp,pose,decoy,"Он оседает на таз и стоит неподвижно.",10,decoy
+skorb.decoy.grasp.pose.05,skorb,grasp,pose,decoy,"Башня проседает и замирает.",10,decoy
+skorb.decoy.grasp.pose.06,skorb,grasp,pose,decoy,"Он опускается ниже, будто устал стоять.",10,decoy
+skorb.decoy.roar.gaze.04,skorb,roar,gaze,decoy,"В провалах глаз что-то шевелится и пропадает.",10,decoy
+skorb.decoy.roar.gaze.05,skorb,roar,gaze,decoy,"Пустота в черепе смотрит на тебя.",10,decoy
+skorb.decoy.roar.gaze.06,skorb,roar,gaze,decoy,"Тени двигаются в глазницах без всякой причины.",10,decoy
+skorb.decoy.roar.env.04,skorb,roar,environment,decoy,"Пыль костей висит в воздухе и не оседает.",10,decoy
+skorb.decoy.roar.env.05,skorb,roar,environment,decoy,"Костяная крошка кружит низко над землёй.",10,decoy
+skorb.decoy.roar.env.06,skorb,roar,environment,decoy,"Сухая мгла поднимается от пустоши сама по себе.",10,decoy
+skorb.decoy.rebuild.gaze.04,skorb,rebuild,gaze,decoy,"Глазницы пусты, и всё же он следит за тобой.",10,decoy
+skorb.decoy.rebuild.gaze.05,skorb,rebuild,gaze,decoy,"В черепе шевелится тень и не уходит.",10,decoy
+skorb.decoy.rebuild.gaze.06,skorb,rebuild,gaze,decoy,"Пустые глазницы не двигаются вовсе.",10,decoy
+skorb.decoy.rebuild.sound.04,skorb,rebuild,sound,decoy,"Сухой шорох костей идёт по земле и стихает.",10,decoy
+skorb.decoy.rebuild.sound.05,skorb,rebuild,sound,decoy,"Что-то сыплется внутри, но наружу не выходит.",10,decoy
+skorb.decoy.rebuild.sound.06,skorb,rebuild,sound,decoy,"Кости поскрипывают тихо, без движения.",10,decoy
+skorb.decoy.rebuild.pose.04,skorb,rebuild,pose,decoy,"Он наклоняется к земле, будто прислушивается.",10,decoy
+skorb.decoy.rebuild.pose.05,skorb,rebuild,pose,decoy,"Башня кренится вниз и застывает.",10,decoy
+skorb.decoy.rebuild.pose.06,skorb,rebuild,pose,decoy,"Корпус опускается к самой пустоши.",10,decoy

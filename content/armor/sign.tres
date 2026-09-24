@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ArmorData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://core/model/armor_data.gd" id="1_arm"]
+
+[resource]
+script = ExtResource("1_arm")
+id = &"sign"
+title = "Знак ранга"
+slot = &"functional"
+absorption = 0
+initiative_penalty = 0
+price = 0
+effect_text = "+1 к славе за победу (выдаётся гильдией)"

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Скалы: закат, зубцы, обрыв. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="288" viewBox="0 0 512 288">
+  <rect width="512" height="288" fill="#2a2028"/>
+  <g opacity="0.5">
+    <rect y="90" width="512" height="30" fill="#4a3320"/>
+    <rect y="126" width="512" height="24" fill="#31241e"/>
+  </g>
+  <g fill="#241d1c">
+    <path d="M0 288 L0 190 L70 130 L130 200 L200 118 L280 210 L350 150 L430 220 L512 168 L512 288 Z"/>
+  </g>
+  <g fill="#191415">
+    <path d="M120 288 L120 216 L200 176 L280 230 L360 190 L440 240 L512 214 L512 288 Z"/>
+  </g>
+  <circle cx="410" cy="92" r="26" fill="#c98a4a" opacity="0.55"/>
+</svg>

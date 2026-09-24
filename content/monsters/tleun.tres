@@ -1,0 +1,203 @@
+[gd_resource type="Resource" script_class="MonsterData" load_steps=21 format=3]
+
+[ext_resource type="Script" path="res://core/model/combo_data.gd" id="1_cmb"]
+[ext_resource type="Script" path="res://core/model/signal_data.gd" id="2_sig"]
+[ext_resource type="Script" path="res://core/model/scenario_data.gd" id="3_scn"]
+[ext_resource type="Script" path="res://core/model/monster_data.gd" id="4_mon"]
+[ext_resource type="Texture2D" path="res://art/monsters/tleun.svg" id="5_art"]
+
+[sub_resource type="Resource" id="sig_flame_throat"]
+script = ExtResource("2_sig")
+id = &"tleun.flame.throat"
+slot = &"gear"
+label = "горло разгорается"
+monster_id = &"tleun"
+scenario_id = &"flame"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_flame_heat"]
+script = ExtResource("2_sig")
+id = &"tleun.flame.heat"
+slot = &"environment"
+label = "воздух сохнет от жара"
+monster_id = &"tleun"
+scenario_id = &"flame"
+tags = PackedStringArray("environment")
+
+[sub_resource type="Resource" id="sig_jaws_gear"]
+script = ExtResource("2_sig")
+id = &"tleun.jaws.gear"
+slot = &"gear"
+label = "челюсти распахиваются"
+monster_id = &"tleun"
+scenario_id = &"jaws"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_jaws_pose"]
+script = ExtResource("2_sig")
+id = &"tleun.jaws.pose"
+slot = &"pose"
+label = "наваливается всей тушей вперёд"
+monster_id = &"tleun"
+scenario_id = &"jaws"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_mist_belly"]
+script = ExtResource("2_sig")
+id = &"tleun.mist.belly"
+slot = &"gear"
+label = "брюхо раздувается и натягивает пластины"
+monster_id = &"tleun"
+scenario_id = &"mist"
+tags = PackedStringArray("action")
+
+[sub_resource type="Resource" id="sig_mist_sound"]
+script = ExtResource("2_sig")
+id = &"tleun.mist.sound"
+slot = &"sound"
+label = "туман идёт с шипением"
+monster_id = &"tleun"
+scenario_id = &"mist"
+tags = PackedStringArray("sound")
+
+[sub_resource type="Resource" id="scn_flame"]
+script = ExtResource("3_scn")
+id = &"flame"
+card_label = "Дохнёт огнём"
+description = "Разогревает горло и бьёт струёй пламени."
+weight = 40
+signals = Array[ExtResource("2_sig")]([SubResource("sig_flame_throat"), SubResource("sig_flame_heat")])
+damage_override = 5
+tags = PackedStringArray("breath")
+
+[sub_resource type="Resource" id="scn_jaws"]
+script = ExtResource("3_scn")
+id = &"jaws"
+card_label = "Щёлкнет челюстями"
+description = "Распахивает челюсти и наваливается всей тушей."
+weight = 35
+signals = Array[ExtResource("2_sig")]([SubResource("sig_jaws_gear"), SubResource("sig_jaws_pose")])
+damage_override = 4
+tags = PackedStringArray("grab")
+
+[sub_resource type="Resource" id="scn_mist"]
+script = ExtResource("3_scn")
+id = &"mist"
+card_label = "Плюнет туманом"
+description = "Надувает брюхо и заливает всё едким туманом: карточки скрыты, пока туман не сбит."
+weight = 25
+signals = Array[ExtResource("2_sig")]([SubResource("sig_mist_belly"), SubResource("sig_mist_sound")])
+damage_override = 3
+tags = PackedStringArray("fog")
+
+[sub_resource type="Resource" id="cmb_quench"]
+script = ExtResource("1_cmb")
+id = &"tleun.quench"
+title = "Гашение"
+scenario_id = &"flame"
+required_range = &"ranged"
+required_type = &"ice"
+damage_bonus = 2
+effect_text = "пламя сбито, горло остыло: зверь открыт на 2 хода"
+status_id = &"open"
+
+[sub_resource type="Resource" id="cmb_poison_mist"]
+script = ExtResource("1_cmb")
+id = &"tleun.poison_mist"
+title = "Ядовитый туман"
+scenario_id = &"mist"
+required_range = &"ranged"
+required_type = &"poison"
+damage_bonus = 2
+effect_text = "туман рассеян, обзор вернулся"
+status_id = &""
+
+[sub_resource type="Resource" id="decoy_0"]
+script = ExtResource("2_sig")
+id = &"tleun.decoy.flame.gaze"
+slot = &"gaze"
+label = "щурится на огонь"
+monster_id = &"tleun"
+scenario_id = &"flame"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_1"]
+script = ExtResource("2_sig")
+id = &"tleun.decoy.flame.sound"
+slot = &"sound"
+label = "шипит без жара"
+monster_id = &"tleun"
+scenario_id = &"flame"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_2"]
+script = ExtResource("2_sig")
+id = &"tleun.decoy.jaws.gaze"
+slot = &"gaze"
+label = "смотрит сквозь тебя"
+monster_id = &"tleun"
+scenario_id = &"jaws"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_3"]
+script = ExtResource("2_sig")
+id = &"tleun.decoy.jaws.sound"
+slot = &"sound"
+label = "булькает в горле"
+monster_id = &"tleun"
+scenario_id = &"jaws"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_4"]
+script = ExtResource("2_sig")
+id = &"tleun.decoy.mist.gaze"
+slot = &"gaze"
+label = "полуприкрывает глаза"
+monster_id = &"tleun"
+scenario_id = &"mist"
+tags = PackedStringArray("decoy")
+
+[sub_resource type="Resource" id="decoy_5"]
+script = ExtResource("2_sig")
+id = &"tleun.decoy.mist.pose"
+slot = &"pose"
+label = "оседает на брюхо"
+monster_id = &"tleun"
+scenario_id = &"mist"
+tags = PackedStringArray("decoy")
+
+[resource]
+script = ExtResource("4_mon")
+id = &"tleun"
+title = "Тлеун"
+epithet = "болотный ходячий панцирь"
+lore = "Стоит по колено в трясине и почти не двигается — ждёт, пока ты подойдёшь сам. Светится в темноте, но по свету его не найти: он сам знает, где ты. Панцирь идёт на щиты, и это единственная причина, по которой на него ходят."
+rank = &"advanced"
+max_hp = 18
+armor = 3
+base_damage = 4
+initiative = 3
+weakness_types = PackedStringArray("poison", "ice", "pierce")
+type_resist = {
+"fire": 1,
+"crush": 1,
+"slash": 1
+}
+scenarios = Array[ExtResource("3_scn")]([SubResource("scn_flame"), SubResource("scn_jaws"), SubResource("scn_mist")])
+false_leads = Array[ExtResource("2_sig")]([SubResource("decoy_0"), SubResource("decoy_1"), SubResource("decoy_2"), SubResource("decoy_3"), SubResource("decoy_4"), SubResource("decoy_5")])
+combos = Array[ExtResource("1_cmb")]([SubResource("cmb_quench"), SubResource("cmb_poison_mist")])
+counter_threshold = 3
+counter_title = "Густой туман"
+counter_text = "Тлеун заливает всё вокруг: туман больше не рассеивается."
+fog_enabled = true
+fog_key_scenario = &"mist"
+fog_title = "ТУМАН ОБЗОРА"
+fog_text = "Туман осел. Ты снова видишь, что можно предположить."
+trophy_names = PackedStringArray("Фосфорная железа", "Панцирный щит")
+trophy_prices = PackedInt32Array(20, 30)
+portrait = ExtResource("5_art")
+silhouette = ExtResource("5_art")
+accent_color = "#6f7d56"
+art_scale = 0.95
+art_offset = Vector2(0, 10)
+by_scenario = {}

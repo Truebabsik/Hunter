@@ -1,0 +1,65 @@
+id,monster,scenario,slot,role,text,weight,tags
+hruz.pounce.pose.01,hruz,pounce,pose,core,"Хруз припадает к земле — так низко, что панцирь почти касается берега.",10,action
+hruz.pounce.pose.02,hruz,pounce,pose,core,"Он вжимается в песок, подбирая под себя все четыре лапы.",10,action
+hruz.pounce.pose.03,hruz,pounce,pose,core,"Хруз проседает на задние лапы и наклоняет корпус вперёд.",10,action
+hruz.pounce.pose.04,hruz,pounce,pose,core,"Тяжёлое тело опускается к самой воде, готовое сорваться.",10,action
+hruz.pounce.pose.05,hruz,pounce,pose,core,"Он ложится грудью на гальку — медленно, будто отдыхает.",10,action
+hruz.pounce.shells.01,hruz,pounce,sound,core,"Ракушки на его шкуре дребезжат, как сухая трава на ветру.",10,sound
+hruz.pounce.shells.02,hruz,pounce,sound,core,"Пластины на спине звенят мелко и часто — дрожь идёт по всему панцирю.",10,sound
+hruz.pounce.shells.03,hruz,pounce,sound,core,"Ракушечная корка на спине трясётся и стучит друг о друга.",10,sound
+hruz.pounce.shells.04,hruz,pounce,sound,core,"Сухой перестук ракушек слышно даже сквозь плеск воды.",10,sound
+hruz.pounce.claw.01,hruz,pounce,gear,core,"Клешня сжимается — медленно, обдуманно.",10,action
+hruz.pounce.claw.02,hruz,pounce,gear,core,"Он пробует клешню на сжатие, будто проверяет хват.",10,action
+hruz.pounce.claw.03,hruz,pounce,gear,core,"Клешня подбирается и застывает в полуоткрытом замке.",10,action
+hruz.pounce.claw.04,hruz,pounce,gear,core,"Створки клешни сходятся и расходятся — зверь примеряется.",10,action
+hruz.claw.pose.01,hruz,claw,pose,core,"Хруз делает шаг назад, освобождая место для замаха.",10,action
+hruz.claw.pose.02,hruz,claw,pose,core,"Он отступает на полшага и разворачивает корпус боком.",10,action
+hruz.claw.pose.03,hruz,claw,pose,core,"Тяжёлый шаг назад — и вес переносится на дальнюю лапу.",10,action
+hruz.claw.pose.04,hruz,claw,pose,core,"Хруз отходит, выравнивая линию для удара клешнёй.",10,action
+hruz.claw.sound.01,hruz,claw,sound,core,"Он шипит — коротко и зло, на выдохе.",10,sound
+hruz.claw.sound.02,hruz,claw,sound,core,"Из-под панциря вырывается злое шипение.",10,sound
+hruz.claw.sound.03,hruz,claw,sound,core,"Хруз шипит, не разжимая челюстей.",10,sound
+hruz.claw.sound.04,hruz,claw,sound,core,"Свистящее шипение идёт из глубины панциря.",10,sound
+hruz.roar.gear.01,hruz,roar,gear,core,"Хруз зевает и отплёвывается — из пасти тянется нить слюны.",10,recover
+hruz.roar.gear.02,hruz,roar,gear,core,"Он широко разевает пасть и сплёвывает на гальку.",10,recover
+hruz.roar.gear.03,hruz,roar,gear,core,"Челюсти разжимаются в зевке, клешня опускается к земле.",10,recover
+hruz.roar.gear.04,hruz,roar,gear,core,"Он отплёвывается и переводит дыхание, опустив клешню.",10,recover
+hruz.decoy.pounce.gaze.01,hruz,pounce,gaze,decoy,"Он замирает и смотрит сквозь тебя, будто тебя здесь нет.",10,decoy
+hruz.decoy.pounce.gaze.02,hruz,pounce,gaze,decoy,"Мутный глаз зверя не двигается — он смотрит в пустоту.",10,decoy
+hruz.decoy.pounce.gaze.03,hruz,pounce,gaze,decoy,"Хруз застывает и переводит взгляд в никуда.",10,decoy
+hruz.decoy.pounce.gaze.04,hruz,pounce,gaze,decoy,"Взгляд проходит мимо тебя и не возвращается.",10,decoy
+hruz.decoy.claw.env.01,hruz,claw,environment,decoy,"Вода у берега идёт мелкой рябью, хотя ветра нет.",10,decoy
+hruz.decoy.claw.env.02,hruz,claw,environment,decoy,"Галька под ним поскрипывает и оседает.",10,decoy
+hruz.decoy.claw.env.03,hruz,claw,environment,decoy,"Пена у кромки воды лопается и шипит сама по себе.",10,decoy
+hruz.decoy.claw.env.04,hruz,claw,environment,decoy,"Ветер несёт с воды запах тины и мокрого камня.",10,decoy
+hruz.decoy.roar.gaze.01,hruz,roar,gaze,decoy,"Он щурится, будто дремлет на солнце.",10,decoy
+hruz.decoy.roar.gaze.02,hruz,roar,gaze,decoy,"Глаз зверя мутнеет и стекленеет.",10,decoy
+hruz.decoy.roar.gaze.03,hruz,roar,gaze,decoy,"Он отводит взгляд к воде и держит его там.",10,decoy
+hruz.decoy.roar.gaze.04,hruz,roar,gaze,decoy,"Веки опускаются тяжело, как у старого зверя.",10,decoy
+hruz.pounce.pose.04,hruz,pounce,pose,core,"Он оседает на брюхо, подбирая лапы под панцирь.",10,action
+hruz.pounce.pose.05,hruz,pounce,pose,core,"Хруз прижимается к гальке так, что между панцирем и камнем не проходит и ладони.",10,action
+hruz.pounce.pose.06,hruz,pounce,pose,core,"Он сплющивается у самой кромки воды, готовый сорваться вперёд.",10,action
+hruz.pounce.shells.04,hruz,pounce,sound,core,"Ракушечная корка идёт мелкой дрожью — звенит, не переставая.",10,sound
+hruz.pounce.shells.05,hruz,pounce,sound,core,"Панцирь отвечает сухим стрекотом на каждое движение.",10,sound
+hruz.pounce.shells.06,hruz,pounce,sound,core,"Ракушки на спине пересыпаются и стучат, как горсть камешков.",10,sound
+hruz.pounce.claw.04,hruz,pounce,gear,core,"Клешня смыкается до щелчка и держит сжатие.",10,action
+hruz.pounce.claw.05,hruz,pounce,gear,core,"Он подтягивает клешню к груди и пробует замок на прочность.",10,action
+hruz.pounce.claw.06,hruz,pounce,gear,core,"Створки клешни сходятся медленно и остаются сомкнутыми.",10,action
+hruz.claw.pose.04,hruz,claw,pose,core,"Он отступает, освобождая размах для удара.",10,action
+hruz.claw.pose.05,hruz,claw,pose,core,"Шаг назад — и корпус разворачивается для бокового замаха.",10,action
+hruz.claw.pose.06,hruz,claw,pose,core,"Хруз сдаёт назад и перекладывает вес на задние лапы.",10,action
+hruz.claw.sound.04,hruz,claw,sound,core,"Он шипит сквозь сомкнутые челюсти.",10,sound
+hruz.claw.sound.05,hruz,claw,sound,core,"Свист идёт из-под панциря, злой и короткий.",10,sound
+hruz.claw.sound.06,hruz,claw,sound,core,"Из панциря вырывается шипение — резкое, на выдохе.",10,sound
+hruz.roar.gear.04,hruz,roar,gear,core,"Он широко зевает и сплёвывает вязкую слюну на гальку.",10,recover
+hruz.roar.gear.05,hruz,roar,gear,core,"Челюсти разжимаются в долгом зевке, клешня опускается.",10,recover
+hruz.roar.gear.06,hruz,roar,gear,core,"Хруз отплёвывается и переводит дыхание, опустив клешню к воде.",10,recover
+hruz.decoy.pounce.gaze.04,hruz,pounce,gaze,decoy,"Он замирает и смотрит мимо тебя, в воду.",10,decoy
+hruz.decoy.pounce.gaze.05,hruz,pounce,gaze,decoy,"Мутный глаз зверя не двигается, будто ему всё равно.",10,decoy
+hruz.decoy.pounce.gaze.06,hruz,pounce,gaze,decoy,"Хруз переводит взгляд в никуда и держит его там.",10,decoy
+hruz.decoy.claw.env.04,hruz,claw,environment,decoy,"Галька под ним поскрипывает и оседает.",10,decoy
+hruz.decoy.claw.env.05,hruz,claw,environment,decoy,"Ветер несёт с воды запах тины и мокрого камня.",10,decoy
+hruz.decoy.claw.env.06,hruz,claw,environment,decoy,"Пена у кромки лопается и шипит сама по себе.",10,decoy
+hruz.decoy.roar.gaze.04,hruz,roar,gaze,decoy,"Он щурится, будто дремлет на солнце.",10,decoy
+hruz.decoy.roar.gaze.05,hruz,roar,gaze,decoy,"Веки опускаются тяжело, как у старого зверя.",10,decoy
+hruz.decoy.roar.gaze.06,hruz,roar,gaze,decoy,"Глаз стекленеет и не следит за тобой.",10,decoy
