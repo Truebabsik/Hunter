@@ -1,7 +1,7 @@
 extends RefCounted
 class_name DamageCalc
 ## Единственное место, где считаются формулы урона. Реализация — по GDD 12.5 и 12.6
-## в редакции от 2026-09-22 (правки внесены в документ, см. gdd_pravki.md).
+## в редакции от 2026-09-22 (правки внесены в документ, см. docs/gdd_pravki.md).
 
 enum Reading { MISS, PARTIAL, COUNTER, PERFECT }
 
