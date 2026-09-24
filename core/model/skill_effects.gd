@@ -147,6 +147,5 @@ static func build_hunter(weapon: WeaponData, armor: ArmorData, free_swap: bool =
 
 	if weapon != null:
 		hunter.weapon_id = weapon.id
-		hunter.initiative_bonus_total = weapon.initiative_bonus
 	hunter.initiative_penalty = armor.initiative_penalty if armor != null else 0
 	return hunter

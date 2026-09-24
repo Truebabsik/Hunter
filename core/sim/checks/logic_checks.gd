@@ -940,6 +940,22 @@ static func _status_mechanics() -> Array[String]:
 			out.append("ПРОВАЛ фаз Ламента: границы сдвинуты (28→%s, 12→%s)" % [at28, at12])
 	else:
 		out.append("ПРОВАЛ фаз Ламента: вид не загружен")
+
+	# D20: концепт скорости оружия снят. Инициативу дают только знаки ранга,
+	# а оружие на неё не влияет вовсе.
+	var fast := WeaponData.new()
+	fast.id = &"d20_probe"
+	fast.range_id = MonsterData.RANGE_MELEE
+	fast.damage_type = MonsterData.TYPE_CRUSH
+	fast.base_damage = 5
+	var d20_hunter := SkillEffects.build_hunter(fast, Database.armor(&"light"))
+	var has_field := "initiative_bonus" in fast
+	out.append("D20 инициатива: поле у оружия %s, инициатива охотника %d (ждали 5)" % [
+		str(has_field), d20_hunter.initiative()])
+	if not has_field and d20_hunter.initiative() == 5:
+		out.append("ок D20: оружие на инициативу не влияет")
+	else:
+		out.append("ПРОВАЛ D20: поле %s, инициатива %d" % [str(has_field), d20_hunter.initiative()])
 	return out
 
 

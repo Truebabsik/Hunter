@@ -9,5 +9,4 @@ title = "Арбалет"
 range_id = &"ranged"
 damage_type = &"pierce"
 base_damage = 4
-initiative_bonus = 0
 price = 35

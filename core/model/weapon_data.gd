@@ -25,9 +25,6 @@ class_name WeaponData
 
 @export_range(1, 20, 1) var base_damage: int = 3
 
-## Бонус инициативы (GDD 12.9).
-@export_range(-2, 3, 1) var initiative_bonus: int = 0
-
 @export_range(0, 200, 1) var price: int = 0
 
 ## Арт: иконка в выборе инструмента.

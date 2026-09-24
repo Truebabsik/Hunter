@@ -42,6 +42,7 @@ $Log   = Join-Path $Root "_glog.txt"
 # "NO REPORT" for a perfectly healthy run, which is worse than no tool at all.
 # It already happened once -- _val_out.txt instead of _validate_out.txt.
 $Reports = [ordered]@{
+    "--probe"    = "_probe_out.txt"
     "--validate" = "_validate_out.txt"
     "--outcomes" = "_outcomes_out.txt"
     "--swap"     = "_swap_out.txt"

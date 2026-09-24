@@ -196,15 +196,14 @@ static func prep(host: Node) -> String:
 	#
 	# Условия подобраны по числам, и это не придирки — на них я уже ошибся дважды:
 	#  * зверь обязан быть БЫСТРЕЕ охотника, иначе превентивного удара не будет.
-	#    Бонус оружия к инициативе обнуляем, а штраф брони задаём явно: с луком
-	#    (+1) и без штрафа охотник быстрее Ламента, и первый вариант проверки молча
-	#    ничего не проверял;
+	#    Штраф брони задаём явно: без него охотник быстрее Ламента, и первый вариант
+	#    проверки молча ничего не проверял. Бонуса оружия к инициативе больше нет
+	#    (D20): инициативу дают только знаки ранга;
 	#  * зверь обязан ПРОБИТЬ поглощение. С Шипуном урон 2 при поглощении 3 даёт 0,
 	#    и охотник с 1 HP выжил бы без всякого «Феникса». У Ламента урон 7.
 	GameState.reset()
 	GameState.skills["surv_phoenix"] = true
 	var phoenix_weapon: WeaponData = Database.weapon(&"bow")
-	phoenix_weapon.initiative_bonus = 0
 	var phoenix_armor: ArmorData = Database.armor(&"heavy")
 	phoenix_armor.initiative_penalty = 2
 	var phoenix_hunter := SkillEffects.build_hunter(phoenix_weapon, phoenix_armor)

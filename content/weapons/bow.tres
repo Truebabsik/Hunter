@@ -9,5 +9,4 @@ title = "Лук"
 range_id = &"ranged"
 damage_type = &"pierce"
 base_damage = 3
-initiative_bonus = 1
 price = 25

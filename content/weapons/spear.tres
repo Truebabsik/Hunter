@@ -9,5 +9,4 @@ title = "Копьё"
 range_id = &"melee"
 damage_type = &"pierce"
 base_damage = 3
-initiative_bonus = 2
 price = 15

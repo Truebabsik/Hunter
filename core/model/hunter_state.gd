@@ -51,7 +51,9 @@ var bonus_escape_chance: float = 0.0
 ## Навык «Побег без штрафа»: побег не теряет славу (GDD 7.4).
 var escape_penalty_negated: bool = false
 
-## Сумма бонусов инициативы: оружие плюс знаки ранга (GDD 12.9).
+## Сумма бонусов инициативы: знаки ранга (GDD 12.9). Бонуса оружия здесь нет —
+## D20 снял концепт скорости оружия, и поля `initiative_bonus` у оружия больше не
+## существует. В бою это поле не заполняется никем и остаётся нулём.
 var initiative_bonus_total: int = 0
 
 ## Штраф инициативы от брони: тяжёлая даёт −1 (GDD 12.9).
@@ -73,7 +75,7 @@ var perfect_glory_bonus: bool = false
 var all_branches_glory_bonus: bool = false
 
 
-## Инициатива охотника: 5 + бонус оружия + знаки − штраф брони (GDD 2.6, 12.9).
+## Инициатива охотника: 5 + знаки ранга − штраф брони (GDD 2.6, 12.9).
 func initiative() -> int:
 	return 5 + initiative_bonus_total - initiative_penalty
 

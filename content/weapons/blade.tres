@@ -9,5 +9,4 @@ title = "Клинок"
 range_id = &"melee"
 damage_type = &"slash"
 base_damage = 4
-initiative_bonus = 1
 price = 20

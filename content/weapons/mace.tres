@@ -9,5 +9,4 @@ title = "Молот"
 range_id = &"melee"
 damage_type = &"crush"
 base_damage = 5
-initiative_bonus = 0
 price = 30
