@@ -972,7 +972,8 @@ static func _status_mechanics() -> Array[String]:
 	# Три правила §2.1 спеки, каждое своим замером:
 	#   (а) связка: срабатывает только когда И тип, И дистанция попали в запись;
 	#   (б) пустое ranges = «любая дистанция»;
-	#   (в) пустое types = «любой тип».
+	#   (в) пустое types = «любой тип»;
+	#   (г) запись без обоих ограничений срабатывает на всё — потому и запрещена.
 	var d23_mon := MonsterData.new()
 	d23_mon.id = &"d23_probe"
 	d23_mon.title = "Проба записей"
@@ -982,7 +983,10 @@ static func _status_mechanics() -> Array[String]:
 		{"types": ["ice"], "ranges": ["ranged"]},
 		{"types": ["poison"], "ranges": []},
 	]
-	d23_mon.resist_rules = [{"types": [], "ranges": ["melee"]}]
+	d23_mon.resist_rules = [
+		{"types": [], "ranges": ["melee"]},
+		{"types": ["ice"], "ranges": ["ranged"]},
+	]
 	var w_coupled := d23_mon.weakness_modifier(
 		MonsterData.TYPE_ICE, MonsterData.RANGE_RANGED)
 	var w_type_only := d23_mon.weakness_modifier(
@@ -995,19 +999,42 @@ static func _status_mechanics() -> Array[String]:
 		MonsterData.TYPE_SLASH, MonsterData.RANGE_MELEE)
 	var r_wrong_range := d23_mon.resist_modifier(
 		MonsterData.TYPE_SLASH, MonsterData.RANGE_RANGED)
+	var r_coupled := d23_mon.resist_modifier(
+		MonsterData.TYPE_ICE, MonsterData.RANGE_RANGED)
+	var r_wrong_type := d23_mon.resist_modifier(
+		MonsterData.TYPE_POISON, MonsterData.RANGE_RANGED)
 	out.append("D23 связка: лёд+дальний %d, лёд+упор %d, дробящее+дальний %d" % [
 		w_coupled, w_type_only, w_range_only])
 	out.append("D23 стихии: яд в упор %d; резист «любой тип в упор» %d, на дальней %d" % [
 		w_any_range, r_any_type, r_wrong_range])
+	out.append("D23 резист-связка: лёд+дальний %d, яд+дальний %d" % [
+		r_coupled, r_wrong_type])
+	# (г) Запись без обоих ограничений запрещена: она сработала бы на ЛЮБОЙ удар.
+	# Сторож не ищет такую запись в контенте (это валидатор, Task 3) — он
+	# показывает, ПОЧЕМУ она запрещена: измеряет, что она срабатывает на всём.
+	var empty_rule := MonsterData.new()
+	empty_rule.id = &"d23_empty"
+	empty_rule.weakness_rules = [{"types": [], "ranges": []}]
+	var empty_hits := 0
+	for t in MonsterData.PHYSICAL_TYPES:
+		if empty_rule.weakness_modifier(t, MonsterData.RANGE_MELEE) > 0:
+			empty_hits += 1
+	out.append("D23 пустая запись: сработала на %d из %d физических подтипов" % [
+		empty_hits, MonsterData.PHYSICAL_TYPES.size()])
 	# (а) связка даёт ровно +1 и НЕ срабатывает, если совпала одна координата;
 	# (б) запись без ranges работает на любой дистанции;
-	# (в) запись без types работает на любой тип, но только в своей дистанции.
+	# (в) запись без types работает на любой тип, но только в своей дистанции;
+	# (г) пустая запись срабатывает на ВСЕ физические подтипы — доказательство,
+	# что допускать её нельзя (запрет на контенте — валидатор, Task 3).
 	if w_coupled == 1 and w_type_only == 0 and w_range_only == 0 \
-			and w_any_range == 1 and r_any_type == 1 and r_wrong_range == 0:
+			and w_any_range == 1 and r_any_type == 1 and r_wrong_range == 0 \
+			and r_coupled == 1 and r_wrong_type == 0 \
+			and empty_hits == MonsterData.PHYSICAL_TYPES.size():
 		out.append("ок D23: связка «тип И дистанция» и пустые множества работают")
 	else:
-		out.append("ПРОВАЛ D23: связка %d (ждали 1), одна координата %d/%d (ждали 0), любая дистанция %d (ждали 1), любой тип %d (ждали 1), чужая дистанция %d (ждали 0)" % [
-			w_coupled, w_type_only, w_range_only, w_any_range, r_any_type, r_wrong_range])
+		out.append("ПРОВАЛ D23: связка %d (ждали 1), одна координата %d/%d (ждали 0), любая дистанция %d (ждали 1), любой тип %d (ждали 1), чужая дистанция %d (ждали 0), резист-связка %d (ждали 1), чужой тип %d (ждали 0), пустая %d (ждали все)" % [
+			w_coupled, w_type_only, w_range_only, w_any_range, r_any_type, r_wrong_range,
+			r_coupled, r_wrong_type, empty_hits])
 	return out
 
 
