@@ -367,7 +367,7 @@ func _render_prose() -> String:
 		return ""
 	var lines: Array = prose.get("lines", [])
 	if lines.is_empty():
-		return str(prose.get("prose", ""))
+		return _with_reaction(str(prose.get("prose", "")))
 	var highlight := SkillEffects.highlight_count()
 	var hide_decoys := SkillEffects.hide_decoy_count()
 	var core_seen := 0
@@ -384,7 +384,24 @@ func _render_prose() -> String:
 				decoy_hidden += 1
 				continue
 		out.append(text)
-	return " ".join(out)
+	return _with_reaction(" ".join(out))
+
+
+## Реакция удара дописывается последней строкой — и в тумане тоже (см. `_render_prose`).
+## Берётся из `pending_outcome`: это то же состояние «последний исход», которым живёт
+## экран, — второго поля для того же факта быть не должно (AGENTS.md §4). Ставится
+## курсивом, потому что это ответ на удар, а не проза раунда.
+##
+## Живёт строка один раунд: `_on_continue()` чистит `pending_outcome` вместе с ней, и
+## отдельной чистки здесь нет намеренно — второй механизм того же срока разошёлся бы
+## с первым молча.
+func _with_reaction(text: String) -> String:
+	var reaction := str(pending_outcome.get("reaction", ""))
+	if reaction.is_empty():
+		return text
+	if text.is_empty():
+		return "[i]%s[/i]" % reaction
+	return "%s\n[i]%s[/i]" % [text, reaction]
 
 
 func _build_cards() -> void:

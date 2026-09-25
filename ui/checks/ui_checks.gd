@@ -312,6 +312,11 @@ static func smoke(host: Node) -> String:
 
 	var rounds := 0
 	var guard := 0
+	# D19: строка реакции, которую проверка (а) нашла в панели прозы. Нужна проверке
+	# (в): она спрашивает, убрана ли ИМЕННО ЭТА строка со сменой раунда, поэтому
+	# «случайно попала в чужую прозу следующего раунда» не может ни покраснеть, ни
+	# позеленеть по пустой причине.
+	var reaction_seen := ""
 	# Переключаем оружие ПОСРЕДИ боя, чтобы проверить учёт «сменил за весь бой».
 	# Именно здесь ломалось достижение «Победа одним оружием»: экран читал флаг
 	# последнего раунда, а тот обнулялся при переходе к следующему.
@@ -338,8 +343,40 @@ static func smoke(host: Node) -> String:
 				out.append("ПРОВАЛ учёта: смена на раунде %d не запомнена за бой" % rounds)
 		else:
 			screen._submit_guess()
+			# D19: строка реакции обязана доехать до ПАНЕЛИ прозы. Меряем по тексту
+			# панели, а не по одному вызову _render_prose(): проводку до экрана
+			# (`_refresh`) сторожит именно она, а `_render_prose` зовётся здесь
+			# выше — для отчёта, — и зелёная строка отчёта ничего не доказывала бы
+			# про то, что видит игрок.
+			#
+			# Спрашиваем ИСХОД, а не номер раунда. Первый ход дыма нарочно
+			# промахивается (`__нет_такого__`), и промах реакции не даёт по
+			# построению: он не считает урона, значит не знает ни вердикта, ни
+			# ступени (так и написано в `BattleEngine`). Номер раунда здесь был бы
+			# неверен дважды: раунд 1 — промах, а раунд 2 в дыме тратится на СМЕНУ
+			# оружия, где удара нет вовсе. Признак удара — непустой вердикт.
+			var outcome_now: Dictionary = screen.pending_outcome
+			var reaction := str(outcome_now.get("reaction", ""))
+			if str(outcome_now.get("verdict", "")).is_empty():
+				out.append("ок реакции: удар (раунд %d) не назван — реакции и не полагается" % engine.round_index)
+			elif reaction.is_empty():
+				out.append("ПРОВАЛ реакции: названный удар (раунд %d) не дал строки реакции" % engine.round_index)
+			else:
+				reaction_seen = reaction
+				if screen.prose_label.text.contains(reaction):
+					out.append("ок реакции: строка показана под прозой («%s»)" % reaction)
+				else:
+					out.append("ПРОВАЛ реакции: строки «%s» нет в панели прозы" % reaction)
 		if not engine.is_over():
 			screen._on_continue()
+			# D19 (в): строка живёт ОДИН раунд — её снимает `_on_continue()` вместе с
+			# `pending_outcome`, отдельного поля и отдельной чистки нет. Мерим ровно
+			# это: в панели после смены раунда строки быть не должно.
+			if not reaction_seen.is_empty():
+				if screen.prose_label.text.contains(reaction_seen):
+					out.append("ПРОВАЛ реакции: строка «%s» пережила смену раунда" % reaction_seen)
+				else:
+					out.append("ок реакции: со сменой раунда строка убрана")
 		await host.get_tree().process_frame
 
 	# Бой кончился на ПОСЛЕДНЕМ ходу, и цикл выше не позвал _on_continue: он зовётся
@@ -378,6 +415,38 @@ static func smoke(host: Node) -> String:
 		(GameState.dossier_entry(&"hruz")["decoys"] as Array).size(),
 		(GameState.dossier_entry(&"hruz")["weaknesses"] as Array).size()])
 	out.append("уровень досье: %d (0 нет / 1 наблюдение / 2 анализ / 3 мастерство)" % GameState.dossier_level(&"hruz"))
+	# D19, ветвь «читать нечего»: реакция обязана показываться и в тумане — она факт о
+	# ТВОЁМ ударе, а не наблюдение за зверем, и без неё игрок в тумане не увидел бы
+	# ответа на свой удар вовсе. Ветвь `lines.is_empty()` в главном бою не исполняется
+	# ни разу: у `hruz` тумана нет (`fog_enabled` в `hruz_monster.tres` отсутствует —
+	# значит false). Туман есть у `tleun` (`fog_enabled = true`), на нём и проверяем —
+	# ОТДЕЛЬНЫМ экраном, чтобы не сдвигать раунды, счётчики и досье главного боя.
+	var fog_screen: Node = (load("res://ui/screens/battle/battle_screen.tscn") as PackedScene).instantiate()
+	host.add_child(fog_screen)
+	await host.get_tree().process_frame
+	fog_screen.setup_hunt(&"tleun", 0)
+	await host.get_tree().process_frame
+	var fog_engine: BattleEngine = fog_screen.engine
+	var fog_lines: Array = fog_engine.current_prose().get("lines", [])
+	out.append("реакция в тумане: улик в раунде %d, туман %s" % [
+		fog_engine.round_index, str(fog_engine.fog_active)])
+	# Первый вопрос пробы — про САМУ ветвь, а не про показ: если улики в этом раунде не
+	# скрыты, то ветвь «читать нечего» не исполняется, и зелёный показ строки доказывал
+	# бы обычную ветвь, уже проверенную в главном бою. Это провал пробы, а не тихий пропуск.
+	if not fog_lines.is_empty():
+		out.append("ПРОВАЛ пробы тумана: улики не скрыты — ветвь «читать нечего» не проверена")
+	else:
+		fog_screen.selected_guess = fog_engine.current_scenario_id()
+		fog_screen._submit_guess()
+		await host.get_tree().process_frame
+		var fog_reaction := str(fog_screen.pending_outcome.get("reaction", ""))
+		if fog_reaction.is_empty():
+			out.append("ПРОВАЛ реакции в тумане: удар не дал строки")
+		elif fog_screen.prose_label.text.contains(fog_reaction):
+			out.append("ок реакции в тумане: «%s» показана при скрытых уликах" % fog_reaction)
+		else:
+			out.append("ПРОВАЛ реакции в тумане: строки «%s» нет в панели" % fog_reaction)
+	fog_screen.queue_free()
 	Report.write(SMOKE_REPORT, out)
 	return "фаза %s, раундов %d, фактов в досье %d" % [engine.phase, engine.round_index, gained]
 
