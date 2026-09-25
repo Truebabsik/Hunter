@@ -1464,9 +1464,12 @@ static func _status_mechanics() -> Array[String]:
 		var pt := int(ptier)
 		var got_penalty := CityData.death_penalty(pt, false, false)
 		d21_penalty_text.append("%d:%d" % [pt, got_penalty])
-		if got_penalty != int(d21_penalty_expect.get(pt, 0)):
+		# Ожидание читается ТОЛЬКО при наличии ключа: у отсутствующего `get(tier, 0)`
+		# дал бы «а §8.3 ждёт 0» — утверждение, которого дизайн не делал. Пропущенный
+		# ключ называет `_tier_expect_gap` ниже, по имени тира.
+		if d21_penalty_expect.has(pt) and got_penalty != int(d21_penalty_expect[pt]):
 			d21_penalty_fail.append("тир %d: штраф %d, а §8.3 ждёт %d" % [
-				pt, got_penalty, int(d21_penalty_expect.get(pt, 0))])
+				pt, got_penalty, int(d21_penalty_expect[pt])])
 	# Тир, добавленный в ORDER_RANKS без ключа в ожиданиях, обход выше не заметит:
 	# `get(tier, 0)` вернёт 0, а `death_penalty` для тира без записи в таблице
 	# штрафов тоже 0 — «0 против 0» выглядело бы успехом. Состав таблиц сверяется
@@ -1504,10 +1507,10 @@ static func _status_mechanics() -> Array[String]:
 		var ft := int(ftier)
 		var got_first := CityData.death_penalty(ft, true, false)
 		d21_first_text.append("%d:%d" % [ft, got_first])
-		if got_first != int(d21_first_expect.get(ft, 0)):
+		if d21_first_expect.has(ft) and got_first != int(d21_first_expect[ft]):
 			d21_first_fail.append("тир %d «%s»: первый раз %d, а §8.3 ждёт %d" % [
 				ft, CityData.order_tier_title(ft), got_first,
-				int(d21_first_expect.get(ft, 0))])
+				int(d21_first_expect[ft])])
 	var d21_first_gap := _tier_expect_gap(d21_first_expect, "первый раз")
 	if d21_first_gap != "":
 		d21_first_fail.append(d21_first_gap)
@@ -1536,11 +1539,11 @@ static func _status_mechanics() -> Array[String]:
 			var st := int(stier)
 			var got_side := CityData.death_penalty(st, side_first, true)
 			side_row.append("%d:%d" % [st, got_side])
-			if got_side != int(expect_side.get(st, 0)):
+			if expect_side.has(st) and got_side != int(expect_side[st]):
 				d21_side_fail.append("тир %d «%s», %s: штраф %d, а §8.3 ждёт %d" % [
 					st, CityData.order_tier_title(st),
 					"первый раз" if side_first else "повторно",
-					got_side, int(expect_side.get(st, 0))])
+					got_side, int(expect_side[st])])
 		var side_gap := _tier_expect_gap(expect_side, "побочная встреча, %s" % (
 			"первый раз" if side_first else "повторно"))
 		if side_gap != "":
@@ -1663,28 +1666,41 @@ static func _status_mechanics() -> Array[String]:
 
 ## Расхождение между таблицей ожиданий и тирами заказа: текст ПРОВАЛА или "".
 ##
-## Нужна потому, что проверки штрафов обходят `ORDER_RANKS` и читают ожидание через
-## `get(tier, 0)`. Тир, добавленный в `ORDER_RANKS` без ключа в ожиданиях, дал бы
-## `death_penalty = 0` против ожидания `0` — и молчаливое «0 против 0» вместо
-## провала. Пустая таблица ожиданий на непустом `ORDER_RANKS` — тот же случай.
+## Нужна потому, что проверки штрафов ходят по тирам заказа и берут ожидание ПО КЛЮЧУ:
+## у тира без ключа не с чем сравнивать, и сам по себе он не даёт ни одной строки
+## ПРОВАЛА. Утонуть в «0 против 0» тут проще, чем кажется: `death_penalty` для тира
+## без записи в `DEATH_PENALTY_BY_TIER` тоже 0. Пустая таблица ожиданий на непустом
+## `ORDER_RANKS` — тот же случай.
 ##
-## Состав сверяется и по числу, и по именам: числа хватает, чтобы поймать расхождение,
-## но назвать виновника — работа имён, а «ПРОВАЛ» без имени снова отправляет читателя
-## искать причину самому. `label` различает строки одной проверки (таблиц ожиданий у
-## побочной встречи две), чтобы в отчёте было видно, какая именно не сходится.
+## Сверяются МНОЖЕСТВА ключей, а не их количество, и сверка идёт ВСЕГДА. Размера
+## мало: таблица той же размерности, но с посторонним ключом вместо ключа нового
+## тира, проверку размера прошла бы, а обход `ORDER_RANKS` прочёл бы ожидание нового
+## тира через `get(tier, 0)` — снова «0 против 0» и молчание. Ровно эту дыру сторож
+## и заводился закрыть, так что «столько же ключей» здесь не доказательство.
+##
+## Называет ОБЕ стороны — тиры без ожидания и лишние ключи ожиданий: «ПРОВАЛ» без
+## имени снова отправляет читателя искать причину самому, а лишний ключ без имени
+## выглядит как исправная таблица. `label` различает строки одной проверки (таблиц
+## ожиданий у побочной встречи две), чтобы было видно, какая именно не сходится.
 static func _tier_expect_gap(expect: Dictionary, label: String = "") -> String:
-	var tiers := CityData.ORDER_RANKS.size()
-	if expect.size() == tiers:
-		return ""
 	var without: Array[String] = []
 	for key in CityData.ORDER_RANKS.keys():
 		if not expect.has(int(key)):
 			without.append(str(int(key)))
-	var note := ""
+	var extra: Array[String] = []
+	for key in expect.keys():
+		if not CityData.ORDER_RANKS.has(int(key)):
+			extra.append(str(int(key)))
+	if without.is_empty() and extra.is_empty():
+		return ""
+	var parts: PackedStringArray = PackedStringArray()
 	if not without.is_empty():
-		note = " (без ожидания: %s)" % ", ".join(without)
-	return "%sтиров в ORDER_RANKS %d, а в ожиданиях %d%s" % [
-		"" if label.is_empty() else "%s: " % label, tiers, expect.size(), note]
+		parts.append("тиры без ожидания: %s" % ", ".join(without))
+	if not extra.is_empty():
+		parts.append("лишние ключи ожиданий: %s" % ", ".join(extra))
+	return "%sтиров в ORDER_RANKS %d, ключей в ожиданиях %d (%s)" % [
+		"" if label.is_empty() else "%s: " % label,
+		CityData.ORDER_RANKS.size(), expect.size(), "; ".join(parts)]
 
 
 ## Аргумент-число, идущий СРАЗУ за флагом. Если следующего токена нет или это другой
