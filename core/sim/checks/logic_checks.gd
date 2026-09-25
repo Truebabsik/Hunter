@@ -1958,7 +1958,14 @@ static func _hit_reaction() -> Array[String]:
 	var lament := Database.monster(&"lament")
 	var mace: WeaponData = Database.weapon(&"mace")
 	if lament != null and mace != null:
+		# `_weapon_after_death()` зачаровала ЭТОТ ЖЕ ресурс базы (руна — знание, и
+		# зачарование живёт в `Database.weapon(&"mace")`, а не в копии). Снимаем
+		# здесь и печатаем, ЧТО сняли: молчаливая нормализация чужого состояния
+		# сделала бы ветку «без руны» ниже непонятной — она меряет молот, а не
+		# замысел проекта.
+		var mace_rune_before := mace.rune_type
 		mace.disenchant()
+		out.append("реакция: чары общего молота до ветки сборки «%s», сняты явно" % mace_rune_before)
 		var l_bare := DamageCalc.player_damage(
 			mace, lament, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
 		mace.enchant(MonsterData.TYPE_FIRE)
@@ -1970,6 +1977,178 @@ static func _hit_reaction() -> Array[String]:
 			HitReaction.verdict_of(l_bare.type_reasons_sum),
 			HitReaction.verdict_of(l_runed.type_reasons_sum)])
 		mace.disenchant()
+
+	# Сборка: три вердикта дают три РАЗНЫЕ строки, каждая со своей лексикой;
+	# без руны стихийная часть исчезает вместе с запятой; знаков не удваивается.
+	var mon := Database.monster(&"gromun")
+	var wpn: WeaponData = Database.weapon(&"mace")
+	if mon == null or wpn == null:
+		failures.append("нет данных для сборки: вид gromun или оружие mace")
+	else:
+		# Стихийную часть сборщик добавляет по `rune_type` ОРУЖИЯ, а `enchant` пишет
+		# это поле в САМ ресурс базы: проверка `_weapon_after_death` выше оставляет
+		# общий молот зачарованным огнём, и снимает эти чары ветка Ламанта — она
+		# печатает снятое. Здесь молот УЖЕ чист, и это печатается, чтобы «ветка без
+		# руны» не выглядела замером неизвестно чего. Обе стороны правила называются
+		# своими руками: три вердикта идут на ЗАЧАРОВАННОМ молоте (иначе ветка стихии
+		# не исполнялась бы ни разу, и «стихия исчезла» стало бы правдой всегда),
+		# а ветка «без руны» — на чистом.
+		out.append("реакция: молот перед веткой сборки «%s»" % wpn.rune_type)
+		var verdicts := [HitReaction.VERDICT_RESIST, HitReaction.VERDICT_WEAK, HitReaction.VERDICT_NEUTRAL]
+		# Три вердикта идут на ЗАЧАРОВАННОМ молоте — иначе ветка стихии не
+		# исполнялась бы ни разу, и «стихия исчезла» стало бы правдой всегда.
+		var charmed := {}
+		var lines := {}
+		for v in verdicts:
+			# Сброс ПЕРЕД КАЖДОЙ пробой и СВЕЖИЙ генератор на пробу: окно антиповтора
+			# у генератора СТАТИЧЕСКОЕ, и без сброса зачарованная проба видит больше
+			# свежих фраз, чем чистая, — тогда «строка короче» объяснялось бы историей,
+			# а не снятой стихией. Свежий ряд чисел на пробу — так сборку и зовут:
+			# генератор создаётся заново на (раунд, соль), а не переиспользуется.
+			wpn.enchant(MonsterData.TYPE_FIRE)
+			TextGenerator.reset_history()
+			var rng_charmed := RandomNumberGenerator.new()
+			rng_charmed.seed = 20260925
+			charmed[v] = HitReaction.assemble(mon, wpn, StringName(v), 1, false, rng_charmed)
+			wpn.disenchant()
+			TextGenerator.reset_history()
+			var rng_plain := RandomNumberGenerator.new()
+			rng_plain.seed = 20260925
+			lines[v] = HitReaction.assemble(mon, wpn, StringName(v), 1, false, rng_plain)
+			out.append("реакция: «%s» с огнём → %s" % [v, charmed[v]])
+			out.append("реакция: «%s» без руны → %s" % [v, lines[v]])
+		var fire_parts := Database.phrases_for(&"", &"", HitReaction.SLOT_ELEMENT, MonsterData.TYPE_FIRE)
+		# Стихия — РАЗНИЦА между зачарованной и чистой строкой, и пробы выше сведены
+		# к общему состоянию намеренно: ряд чисел один, история сброшена, значит
+		# вводная, носитель, глагол и отпечаток обязаны совпасть, а вся разница —
+		# лежать в стихийной части. Сравнение полное и посимвольное: оно ловит и
+		# потерянную стихию, и потерянную запятую, и стихию, приписанную к чужой
+		# детали, — не повторяя шаблон сборки второй копией в проверке.
+		#
+		# Ищем САМУЮ ДЛИННУЮ подошедшую деталь, а не первую: у огня есть «гасит искра»
+		# и глагол «гасит», и поиск «первой попавшейся» нашёл бы глагол — проверка
+		# сравнила бы хвост не с той деталью и краснела бы на верной строке.
+		for _v in verdicts:
+			var c_line: String = charmed[_v]
+			var expected: String = lines[_v]
+			var el_text := ""
+			for p in fire_parts:
+				var part := str(p.text)
+				if part.length() > el_text.length() and c_line.contains(part):
+					el_text = part
+			if el_text == "":
+				failures.append("зачарованная строка вердикта «%s» потеряла стихию огня: %s" % [_v, c_line])
+			elif c_line != expected.trim_suffix(".") + ", " + el_text + ".":
+				failures.append("строка вердикта «%s» со стихией — не «чистая плюс , %s.»: «%s» против «%s»" % [
+					_v, el_text, c_line, expected])
+		# Сцепка «, <стихия>.» — сравнение строк, а не сборка: она верна, пока в
+		# детали нет запятой. Деталь с запятой сделала бы «двойную запятую» вопросом
+		# данных, а §5 спеки объявляет её вопросом правила.
+		for rune_id in [MonsterData.TYPE_FIRE, MonsterData.TYPE_ICE, MonsterData.TYPE_POISON]:
+			for p in Database.phrases_for(&"", &"", HitReaction.SLOT_ELEMENT, rune_id):
+				if str(p.text).contains(","):
+					failures.append("стихийная деталь «%s» руны «%s» содержит запятую — её нельзя сцепить запятой" % [
+						p.text, rune_id])
+		var carriers := Database.phrases_for(mon.id, &"", HitReaction.SLOT_CARRIER, &"")
+		for kv in lines.keys():
+			var line: String = lines[kv]
+			if line.contains("  ") or line.contains(",,") or line.contains("—  —") \
+					or line.contains("..") or line.ends_with(" ") or line.begins_with(" "):
+				failures.append("строка «%s» собрана грязно: %s" % [kv, line])
+			# Швы шаблона: за носителем обязан идти пробел и глагол, а не сразу «—»
+			# (склейка «носитель + отпечаток» теряет глагол и читается как опечатка).
+			# Носитель ищем по САМОМУ тексту строки, а не сверяя пул глаголов: иначе
+			# проверка ловила бы чужой пул глаголов вместо этого шва (проверено
+			# мутацией «глагол взят из чужого класса» — она красила обе ветки).
+			for pc in carriers:
+				# Носитель может встретиться в строке не один раз (например, как часть
+				# отпечатка), поэтому проверяем ВСЕ вхождения: шов за носителем верен,
+				# если хотя бы одно из них продолжается пробелом. Поиск «первого»
+				# вхождения верную строку покрасил бы, а слипшуюся — пропустил.
+				var from := 0
+				var seen := false
+				var seam_ok := false
+				var tail := ""
+				while true:
+					var at := line.find(str(pc.text), from)
+					if at < 0:
+						break
+					seen = true
+					tail = line.substr(at + str(pc.text).length())
+					if tail.substr(0, 1) == " ":
+						seam_ok = true
+						break
+					from = at + 1
+				if seen and not seam_ok:
+					if tail.begins_with(HitReaction.P_BEFORE_WEAPON):
+						failures.append("в строке вердикта «%s» за носителем сразу идёт отпечаток, а глагола нет: %s" % [kv, line])
+					else:
+						failures.append("в строке вердикта «%s» носитель слипся с соседним словом: %s" % [kv, line])
+			if not line.ends_with("."):
+				failures.append("строка вердикта «%s» не заканчивается точкой: %s" % [kv, line])
+		if lines[HitReaction.VERDICT_RESIST] == lines[HitReaction.VERDICT_WEAK]:
+			failures.append("резист и уязвимость дали одну строку — приёмка не выполнена")
+		if lines[HitReaction.VERDICT_NEUTRAL] == lines[HitReaction.VERDICT_RESIST] \
+				or lines[HitReaction.VERDICT_NEUTRAL] == lines[HitReaction.VERDICT_WEAK]:
+			failures.append("нейтральная строка совпала с одной из двух")
+		# Без руны стихийной части нет. Меряем ИМЕННО ОТСУТСТВИЕ ЧАСТИ, а не только
+		# отсутствие висячей запятой: обрубок «, .» — довод о пунктуации, а приёмка
+		# говорит о стихии. Проверяем все три руны, а не только огонь: чистая строка
+		# не имеет права нести ни одной стихийной детали.
+		var no_rune: String = lines[HitReaction.VERDICT_NEUTRAL]
+		if no_rune.contains(", .") or no_rune.contains(",."):
+			failures.append("без руны осталась висячая запятая: %s" % no_rune)
+		for rune_id in [MonsterData.TYPE_FIRE, MonsterData.TYPE_ICE, MonsterData.TYPE_POISON]:
+			var elements := Database.phrases_for(&"", &"", HitReaction.SLOT_ELEMENT, rune_id)
+			for p in elements:
+				if no_rune.contains(str(p.text)):
+					failures.append("без руны в строке осталась стихийная часть «%s» руны «%s»: %s" % [
+						p.text, rune_id, no_rune])
+		# Обе стороны стихийной ветки, ещё раз и одним взглядом: со стихией строка
+		# обязана быть чистой плюс «, <стихия>.», без стихии — не нести стихии вовсе.
+		# Пробы выше сведены к общему состоянию, поэтому строки сравнимы целиком.
+		var c_neutral: String = charmed[HitReaction.VERDICT_NEUTRAL]
+		if c_neutral == lines[HitReaction.VERDICT_NEUTRAL]:
+			failures.append("зачарованный и чистый молот дали ОДНУ строку — стихия не добавилась: %s" % c_neutral)
+		# Детерминизм: та же соль — та же строка. Окно антиповтора у генератора
+		# СТАТИЧЕСКОЕ и переживает вызовы, поэтому перед каждой пробой историю
+		# сбрасываем: без сброса второй прогон видит фразы первого и меряет окно,
+		# а не соль — и «не детерминирована» было бы правдой о проверке, а не о сборке.
+		var rng_a := RandomNumberGenerator.new()
+		rng_a.seed = 7
+		TextGenerator.reset_history()
+		var one := HitReaction.assemble(mon, wpn, HitReaction.VERDICT_WEAK, 2, false, rng_a)
+		var rng_b := RandomNumberGenerator.new()
+		rng_b.seed = 7
+		TextGenerator.reset_history()
+		var two := HitReaction.assemble(mon, wpn, HitReaction.VERDICT_WEAK, 2, false, rng_b)
+		if one != two:
+			failures.append("сборка не детерминирована: «%s» против «%s»" % [one, two])
+		# Вводная примерки перебивает ступень серии.
+		if HitReaction.intro_role(HitReaction.VERDICT_RESIST, 3, true) != &"swap":
+			failures.append("примерка не перебила ступень серии")
+		# Обход ОБЕИХ сторон порога: «>= 3» и «== 3» на одной пробе run = 3 не
+		# различить, поэтому третья ступень спрашивается и на четвёртой серии.
+		for run_hard in [3, 4]:
+			if HitReaction.intro_role(HitReaction.VERDICT_RESIST, run_hard, false) != &"resist_hard":
+				failures.append("серия из %d ударов не выбрала «resist_hard», а «%s»" % [
+					run_hard, HitReaction.intro_role(HitReaction.VERDICT_RESIST, run_hard, false)])
+		# Лексика своего класса: строка обязана содержать глагол ИМЕННО своего
+		# вердикта. Иначе «три разные строки» выполнялись бы разными носителями,
+		# а класс исхода остался бы неотличим.
+		for v in [HitReaction.VERDICT_RESIST, HitReaction.VERDICT_WEAK, HitReaction.VERDICT_NEUTRAL]:
+			var verbs := Database.phrases_for(&"", &"", HitReaction.SLOT_VERB, StringName(v))
+			var found := false
+			for p in verbs:
+				if str(lines[v]).contains(str(p.text)):
+					found = true
+					break
+			if not found:
+				failures.append("строка вердикта «%s» не содержит ни одного своего глагола: %s" % [
+					v, lines[v]])
+		# Общий ресурс базы оставляем чистым: чужая проверка не обязана знать, что мы
+		# его зачаровали, а порядок ветвей в харнессе может измениться.
+		wpn.disenchant()
 
 	if failures.is_empty():
 		out.append("ок реакции: вердикт следует знаку суммы причин, элемент его не подменяет")

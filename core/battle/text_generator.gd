@@ -42,7 +42,7 @@ static func generate(
 	var core_slots: Dictionary = {}
 	for sig in scenario.signals:
 		core_slots[sig.slot] = true
-		var phrase := _pick_phrase(monster.id, scenario.id, sig.slot, Phrase.ROLE_CORE, rng)
+		var phrase := pick_phrase(monster.id, scenario.id, sig.slot, Phrase.ROLE_CORE, rng)
 		if phrase == null:
 			lines.append(_fallback_line(sig, Phrase.ROLE_CORE))
 			continue
@@ -55,7 +55,7 @@ static func generate(
 	for lead in _eligible_decoys(monster, scenario.id, core_slots, decoy_slots):
 		if decoy_slots.size() >= budget:
 			break
-		var phrase := _pick_phrase(monster.id, lead.scenario_id, lead.slot, Phrase.ROLE_DECOY, rng)
+		var phrase := pick_phrase(monster.id, lead.scenario_id, lead.slot, Phrase.ROLE_DECOY, rng)
 		decoy_slots[lead.slot] = true
 		if phrase == null:
 			lines.append(_fallback_line(lead, Phrase.ROLE_DECOY))
@@ -134,7 +134,10 @@ static func _fallback_line(sig: SignalData, role: StringName) -> Dictionary:
 
 
 ## Взвешенный выбор фразы с окном антиповтора.
-static func _pick_phrase(
+##
+## Публичная, потому что взвешенный выбор фразы — правило пула, и вторая его копия
+## разошлась бы молча (её зовёт и сборка реакции D19).
+static func pick_phrase(
 	monster_id: StringName,
 	scenario_id: StringName,
 	slot: StringName,
