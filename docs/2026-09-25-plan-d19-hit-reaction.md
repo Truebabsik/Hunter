@@ -474,15 +474,9 @@ cmd /c "F:\WORK\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe --he
 
 - [ ] **Step 4: Реализовать сборку**
 
-В `core/battle/hit_reaction.gd`:
+В `core/battle/hit_reaction.gd` — **только знаки препинания**: слоты `SLOT_*` здесь уже есть (их завела задача 2, чтобы валидатор не держал вторую копию строк), объявлять их снова нельзя.
 
 ```gdscript
-const SLOT_CARRIER := &"reaction_carrier"
-const SLOT_VERB := &"reaction_verb"
-const SLOT_WEAPON := &"reaction_weapon"
-const SLOT_ELEMENT := &"reaction_element"
-const SLOT_INTRO := &"reaction_intro"
-
 ## Пунктуация принадлежит СБОРЩИКУ, а не данным: иначе знак пришлось бы дублировать
 ## в каждой строке CSV, и «двойная запятая» стала бы вопросом данных, а не правила.
 const P_AFTER_INTRO := ". "
