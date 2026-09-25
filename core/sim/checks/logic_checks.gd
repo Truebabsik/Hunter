@@ -48,9 +48,19 @@ const HIT_REACTION_REPORT := "_probe_reaction.txt"
 ## ЗАПИСЬЮ, а не берутся из текущего прогона: замер ревьюера, на котором поймана
 ## связь («проза расходилась в 5 раундах из 10»), снят на этих же числах, и повтор
 ## обязан воспроизводить ИМЕННО его, а не свежий случай.
+##
+## ДЛИНА ЗАМЕРА — 20 РАУНДОВ, И ЭТО ИЗМЕРЕНИЕ, А НЕ ЗАПАС НА ГЛАЗОК. На десяти
+## раундах проба не вакуумна, но тонка: мутация «реакция берёт ОБЩЕЕ окно голоса»
+## (`TextGenerator.VOICE_REACTION` → `VOICE_PROSE` в `hit_reaction.gd`) давала 1
+## расхождение из 10 — зелёный результат был достижим малой правкой контента.
+## Причина нелинейности: окно антиповтора — 24 id, и на коротком замере реакция
+## вытесняет лишь часть тех фраз, которые проза ещё возьмёт, а дальше вытесненными
+## оказываются почти все. Измерено той же мутацией по 36 парам «сид × бой»:
+## 10 раундов → 1 расхождение; 15 → 7; 20 → от 4 до 14, минимум 4. Взят 20:
+## минимум по всем парам выше требуемых трёх с запасом, а время пробы — секунды.
 const PROSE_VOICE_RUN_SEED := 20260922
 const PROSE_VOICE_BATTLE := 7
-const PROSE_VOICE_ROUNDS := 10
+const PROSE_VOICE_ROUNDS := 20
 const LOOP_REPORT := "_loop_out.txt"
 const LOOP_TRACE := "_loop_trace.txt"
 ## Сводка скана по сидам и полные отчёты всех его прогонов. Два файла, а не один:
@@ -561,6 +571,20 @@ static func _status_from_content() -> Array[String]:
 ##   2. «в руке» указывает на своё оружие, а не на проданное или потерянное;
 ##   3. зачарование не переезжает в СЛЕДУЮЩИЙ забег (руна лежит в ресурсе базы,
 ##      а не в состоянии забега, поэтому сброс её не снимает).
+##
+## ОБЩИЙ РЕСУРС БАЗЫ ВОЗВРАЩАЕТСЯ КАК БЫЛ (`_strip_mace`), и это не стилистика.
+## Раньше эта проба чаруя ОБЩИЙ `Database.weapon(&"mace")` насовсем, а снимали за неё
+## ДВА разных места: конец этой пробы и ветка Ламанта в `_hit_reaction`. Из-за этого
+## клауза «молот базы пришёл в пробу зачарованным» сторожила не пробу, а ПОРЯДОК
+## ВЕТВЕЙ: пока уборка была хотя бы где-то, до боевой пробы ресурс доезжал чистым.
+## Измерено мутацией: убрать уборку только отсюда — клауза МОЛЧИТ, потому что ресурс
+## успевает вычистить ветка Ламанта (`_t9_I_mace_leak.txt`); убрать из обоих мест —
+## клауза называет «fire» (`_t9_J_mace_leak_both.txt`). Поэтому уборка теперь одна
+## функция, и обе пробы ходят через неё: потерять её в одном месте незаметно нельзя.
+##
+## ПОЧЕМУ НЕ `duplicate()`. Проба проверяет именно СОСТОЯНИЕ ОБЩЕГО РЕСУРСА базы:
+## «руна — знание, поэтому зачарование живёт в базе и переживает смерть». На копии
+## она не проверяла бы ничего — спрашивала бы у копии, которую сама же и зачаровала.
 static func _weapon_after_death() -> Array[String]:
 	var out: Array[String] = []
 	GameState.reset()
@@ -569,7 +593,6 @@ static func _weapon_after_death() -> Array[String]:
 	var mace: WeaponData = Database.weapon(&"mace")
 	mace.enchant(&"fire")
 	GameState.equipped_weapon = &"mace"
-
 	# Смерть при живой благодати: богиня возвращает, забег продолжается.
 	var result := HuntResult.new()
 	result.monster_id = &"hruz"
@@ -617,8 +640,18 @@ static func _weapon_after_death() -> Array[String]:
 		out.append("ок зачарования: знание руны есть, оружие чистое — зачаровать можно за ход")
 	else:
 		out.append("ПРОВАЛ зачарования: руна действует, а знания нет")
+	# Возвращаем общий ресурс базы как взяли — через ОДНО место уборки.
+	_strip_mace()
 	return out
-##
+
+
+## Снять чары с ОБЩЕГО молота базы. Одна функция, а не строки в каждой пробе:
+## пока уборка жила в двух местах, снятие в одном из них можно было потерять
+## незаметно — второе прикрывало (измерено, см. шапку `_weapon_after_death`).
+static func _strip_mace() -> void:
+	Database.weapon(&"mace").disenchant()
+
+
 ## Туман включён ровно у одного вида — Тлеуна (`fog_enabled`, ключ «Плюнет туманом»),
 ## поэтому проверка идёт на нём, а не на подставном виде: важно, что механика
 ## работает с настоящим контентом.
@@ -1977,13 +2010,14 @@ static func _hit_reaction() -> Array[String]:
 	var lament := Database.monster(&"lament")
 	var mace: WeaponData = Database.weapon(&"mace")
 	if lament != null and mace != null:
-		# `_weapon_after_death()` зачаровала ЭТОТ ЖЕ ресурс базы (руна — знание, и
-		# зачарование живёт в `Database.weapon(&"mace")`, а не в копии). Снимаем
-		# здесь и печатаем, ЧТО сняли: молчаливая нормализация чужого состояния
-		# сделала бы ветку «без руны» ниже непонятной — она меряет молот, а не
-		# замысел проекта.
+		# На входе молот ЧИСТ: `_weapon_after_death` возвращает общий ресурс как
+		# взяла, и уборка у неё с этой ровно одна — `_strip_mace`. Здесь чары всё
+		# равно снимаются и печатается, ЧТО снято: ветка ниже делится на «без руны»
+		# и «с огнём», и читателю не нужно выяснять, откуда взялось состояние.
+		# Пустая строка в печати — ожидаемый результат; раньше тут стояло «fire»,
+		# и это был след того, что уборку делала именно эта ветка, а не проба.
 		var mace_rune_before := mace.rune_type
-		mace.disenchant()
+		_strip_mace()
 		out.append("реакция: чары общего молота до ветки сборки «%s», сняты явно" % mace_rune_before)
 		var l_bare := DamageCalc.player_damage(
 			mace, lament, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
@@ -2015,13 +2049,13 @@ static func _hit_reaction() -> Array[String]:
 		failures.append("нет данных для сборки: вид gromun или оружие mace")
 	else:
 		# Стихийную часть сборщик добавляет по `rune_type` ОРУЖИЯ, а `enchant` пишет
-		# это поле в САМ ресурс базы: проверка `_weapon_after_death` выше оставляет
-		# общий молот зачарованным огнём, и снимает эти чары ветка Ламанта — она
-		# печатает снятое. Здесь молот УЖЕ чист, и это печатается, чтобы «ветка без
-		# руны» не выглядела замером неизвестно чего. Обе стороны правила называются
-		# своими руками: три вердикта идут на ЗАЧАРОВАННОМ молоте (иначе ветка стихии
-		# не исполнялась бы ни разу, и «стихия исчезла» стало бы правдой всегда),
-		# а ветка «без руны» — на чистом.
+		# это поле в САМ ресурс базы. Здесь молот чист, и это ПЕЧАТАЕТСЯ, чтобы
+		# «ветка без руны» не выглядела замером неизвестно чего. Чистота — следствие
+		# того, что `_weapon_after_death` вернула ресурс как взяла, а ветка Ламанта
+		# сняла свои чары через тот же `_strip_mace`; порядок ветвей к этому больше
+		# не при чём. Обе стороны правила называются своими руками: три вердикта идут
+		# на ЗАЧАРОВАННОМ молоте (иначе ветка стихии не исполнялась бы ни разу, и
+		# «стихия исчезла» стало бы правдой всегда), а ветка «без руны» — на чистом.
 		out.append("реакция: молот перед веткой сборки «%s»" % wpn.rune_type)
 		var verdicts := [HitReaction.VERDICT_RESIST, HitReaction.VERDICT_WEAK, HitReaction.VERDICT_NEUTRAL]
 		var charmed := {}
@@ -2334,11 +2368,16 @@ static func _reaction_parts(mon: MonsterData, wpn: WeaponData, verdict: StringNa
 ## (`battle_engine.gd`, ветвь `read_correct`), то есть на раунд приходится ДВЕ сборки
 ## против ОДНОЙ боевой. Порядок «реакция раунда k между прозой k и k+1» — это бой, и
 ## он измерен ОТДЕЛЬНО, временным боевым пробоем: 0 расхождений из 10 во всех 14 парах
-## «7 видов × молот/лук» против 1–5 расхождений до правки (артефакт
-## `_probe_mutation_t7_shared_voice_battle_before.txt`). Отличие намеренное: лишняя
-## сборка нагружает окна СИЛЬНЕЕ боевой последовательности, поэтому проба
-## чувствительнее боя, а не равна ему. Ложное утверждение «здесь ровно боевой порядок»
-## стояло в первой редакции этого комментария и убрано: проба — сторож изоляции.
+## «7 видов × молот/лук». Числа ДО правки — в артефакте
+## `_probe_mutation_t7_shared_voice_battle_before.txt`, и он лежит в КОРНЕ проекта, а
+## не рядом с отчётами плана; в нём от 1 до 4 расхождений из 10 на пару. «1–5» —
+## это ПЕРВЫЙ замер ревьюера на паре gromun × лук (5 из 10), а не диапазон артефакта:
+## смешивать эти два замера нельзя. Артефакта after-замера нет вовсе — пробой был
+## временным, и «0 из 10» живёт в отчёте задачи 7 и в воспроизведении ревьюера.
+## Отличие намеренное: лишняя сборка нагружает окна СИЛЬНЕЕ боевой последовательности,
+## поэтому проба чувствительнее боя, а не равна ему. Ложное утверждение «здесь ровно
+## боевой порядок» стояло в первой редакции этого комментария и убрано: проба — сторож
+## изоляции.
 ##
 ## Почему это проверка ГОЛОСА, а не «проверки воспроизводимости». Числа у обоих
 ## прогонов одни и те же (сид на раунд), меняется только ИСТОРИЯ выбора: во втором
@@ -2462,15 +2501,21 @@ static func _reaction_texts(mon: MonsterData, weapon: WeaponData) -> Array[Strin
 	return lines
 
 
-## Текстовый генератор раунда — тем же правилом, что `SeedSource.round_rng` и соль
-## `&"text"` у движка (`BattleEngine._round_rng(round, &"text")`). Живёт здесь, а не
-## берётся у движка: проба обязана получать ряд чисел, НЕ завися от того, звали ли
-## прозу из движка, — иначе она мерила бы побочный эффект вызова, а не историю.
+## Текстовый генератор раунда — ТЕМ ЖЕ правилом, что у движка, и правило
+## спрашивается у его владельца, а не переписывается сюда.
+##
+## Раньше здесь стояла ВТОРАЯ копия формулы `hash("%d:%d:%d:%s")` из
+## `SeedSource.round_rng`. Обоснование было такое: «проба обязана получать ряд чисел,
+## НЕ завися от того, звали ли прозу из движка, — иначе она мерила бы побочный эффект
+## вызова». Обоснование не работает: `SeedSource.round_rng` — ЧИСТАЯ функция без
+## побочек, она не помнит вызовов и не расходует поток, поэтому копия защищала не от
+## побочного эффекта, а от правки формулы. Цена: правка соли или формулы в
+## `SeedSource` разошлась бы с пробой МОЛЧА — проба продолжила бы считать старым
+## правилом, и «числа у обоих прогонов одни и те же» перестало бы быть правдой.
+## Теперь правило одно (AGENTS.md §4): тот же конструктор, та же соль `&"text"`.
 static func _text_rng(round_index: int) -> RandomNumberGenerator:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("%d:%d:%d:%s" % [
-		PROSE_VOICE_RUN_SEED, PROSE_VOICE_BATTLE, round_index, &"text"])
-	return rng
+	return SeedSource.new(PROSE_VOICE_RUN_SEED, PROSE_VOICE_BATTLE).round_rng(
+		round_index, &"text")
 
 
 ## Реакция и серия в настоящем бою (D19): мост «правило → исход».
@@ -2500,6 +2545,32 @@ static func _reaction_in_battle(
 	if mon == null or bow == null or mace == null or armor == null:
 		failures.append("нет данных для боя: hruz/bow/mace/light")
 		return out
+
+	# Вид — ЖИВУЧИЙ ДВОЙНИК, и это не удобство, а условие честности пробы. Проба
+	# берёт НАСТОЯЩИЙ ресурс базы (`Database.monster(&"hruz")`, `max_hp = 12`), а
+	# `BattleEngine.setup` кладёт `monster_hp = monster.max_hp`; удар молотом с руной
+	# огня снимает 4, поэтому зверь умирает РОВНО НА ТРЕТЬЕМ ударе. Правило
+	# `steps == [1, 2, 3]` держалось только потому, что `is_over()` спрашивается в
+	# начале итерации: четвёртой ступени не спрашивают, но и третьей бы не случилось,
+	# поднимись урон до 6 или упади `max_hp` — проба краснела бы на ВЕРНОМ коде
+	# (измерено: подъём урона молота до 8 при настоящем ресурсе даёт ступени `[1, 2]`
+	# и «жизней у зверя осталось 0» — артефакт `_t9_B1_dmg8_real_loop4_expect4.txt`).
+	# Приём тот же, что у соседних проб прозы (`_prose_rounds`, `_reaction_texts`):
+	# `duplicate()` + высокий `max_hp`, а не второй способ.
+	#
+	# ПОБОЧНЫЙ ЭФФЕКТ, честно и ЗАМЕРЕНО: у Хруза `phases` пуст
+	# (`content/monsters/hruz_monster.tres`), поэтому `phase_for_hp` возвращает `{}` и
+	# на настоящем `max_hp = 12`, и на двойнике — фазы у него нет ни в одном раунде,
+	# и это печатается ниже, а не подразумевается. Общее правило при этом остаётся:
+	# `phase_for_hp` считает долю `hp / max_hp`, поэтому у вида С фазами двойник
+	# держал бы первую фазу, то есть проба мерила бы достижимый первый раунд, но НЕ
+	# сторожила бы фазовые переопределения слабостей — их сторожат другие пробы
+	# (фазы Ламанта в `_rune_rule`).
+	var mon_durable: MonsterData = mon.duplicate()
+	mon_durable.max_hp = 100000
+	var durable_phase := mon_durable.phase_for_hp(mon_durable.max_hp)
+	out.append("реакция в бою: вид «%s» для боя взят двойником max_hp=%d (в базе %d); фаз в .tres %d, фаза на полном HP — %s" % [
+		mon.id, mon_durable.max_hp, mon.max_hp, mon.phases.size(), durable_phase.get("id", "—")])
 
 	# Руна НЕ накладывается на общий ресурс базы: `enchant` пишет поле в сам ресурс,
 	# и зачарованный огнём молот утёк бы в чужие пробы (на этом в этой ветке уже
@@ -2536,7 +2607,7 @@ static func _reaction_in_battle(
 		var wpn: WeaponData = pair[0]
 		var want: StringName = pair[1]
 		var probe_dmg := DamageCalc.player_damage(
-			wpn, mon, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+			wpn, mon_durable, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
 		var probe_verdict := HitReaction.verdict_of(probe_dmg.type_reasons_sum)
 		out.append("реакция в бою: %s → сумма причин %+d, вердикт «%s»" % [
 			label, probe_dmg.type_reasons_sum, probe_verdict])
@@ -2549,7 +2620,7 @@ static func _reaction_in_battle(
 	# добавила второй тип удара), и охват проверяется на самой полной форме шаблона.
 	var engine := BattleEngine.new()
 	engine.seed_source = SeedSource.new(4242, 1)
-	engine.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
+	engine.setup(mon_durable, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	engine.advance_round()
 	var hit := engine.submit_read(engine.current_scenario_id(), true)
 	var hit_run := int(hit.get("verdict_run", 0))
@@ -2581,7 +2652,7 @@ static func _reaction_in_battle(
 			failures.append("примерка не взяла вводную группы «swap»: «%s»" % swap_text)
 
 	# --- Промах: расчёта нет, значит нет ни вердикта, ни ступени, ни строки.
-	var miss := _missed_outcome(mon, mace_fire, armor)
+	var miss := _missed_outcome(mon_durable, mace_fire, armor)
 	out.append("реакция в бою: промах — вердикт «%s», серия %d, строка «%s»" % [
 		miss["verdict"], miss["run"], miss["text"]])
 	if StringName(miss["verdict"]) != &"" or str(miss["text"]) != "" or int(miss["run"]) != 0:
@@ -2592,7 +2663,7 @@ static func _reaction_in_battle(
 	# действительно доходит до строки — иначе ступень считалась бы, но не читалась.
 	var series := BattleEngine.new()
 	series.seed_source = SeedSource.new(99, 3)
-	series.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
+	series.setup(mon_durable, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	var steps: Array[int] = []
 	var series_texts: Array[String] = []
 	for i in 3:
@@ -2619,7 +2690,7 @@ static func _reaction_in_battle(
 	# проверила бы вовсе, а выглядела бы проверяющей).
 	var flip := BattleEngine.new()
 	flip.seed_source = SeedSource.new(11, 9)
-	flip.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
+	flip.setup(mon_durable, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	flip.advance_round()
 	var flip_first := StringName(flip.submit_read(flip.current_scenario_id(), true).get("verdict", &""))
 	var flip_second := &""
@@ -2643,7 +2714,7 @@ static func _reaction_in_battle(
 	# такими ударами обязан оставить вторую ступень второй.
 	var streak := BattleEngine.new()
 	streak.seed_source = SeedSource.new(7, 5)
-	streak.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
+	streak.setup(mon_durable, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	var before := 0
 	var after := 0
 	if not streak.is_over():
@@ -2662,10 +2733,10 @@ static func _reaction_in_battle(
 	# увидел бы «снова» на первом же ударе.
 	var reused := BattleEngine.new()
 	reused.seed_source = SeedSource.new(3, 4)
-	reused.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
+	reused.setup(mon_durable, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	reused.advance_round()
 	var first_battle := int(reused.submit_read(reused.current_scenario_id(), true).get("verdict_run", 0))
-	reused.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
+	reused.setup(mon_durable, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	reused.advance_round()
 	var second_battle := int(reused.submit_read(reused.current_scenario_id(), true).get("verdict_run", 0))
 	out.append("реакция в бою: новая битва тем же движком — серия %d, затем %d" % [
