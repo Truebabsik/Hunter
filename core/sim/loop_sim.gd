@@ -23,10 +23,16 @@ class_name LoopSim
 ## экран уничтожается при каждом возвращении в город, и прогон без сцен его не видел.
 ## Теперь состояние — в `GameState.advice_bought` (Task 3б), поэтому замер обязан его
 ## читать. Цифры — те, что печатает отчёт: шесть советов стоят 80 монет, а весь набор
-## по прайсу — 675, из которых бот платит 605 (молот, лук и лёгкая броня бесплатны по
-## F3). В первой редакции здесь стояло «80 из 620» — цена набора без бесплатных
+## по прайсу — 675, из которых бот платит 605: молот (30) и лук (25) бесплатны по F3, а
+## лёгкая броня (15) — потому что лежит в `GameState.owned_armors` с начала забега, и это
+## НЕ F3. В первой редакции здесь стояло «80 из 620» — цена набора без бесплатных
 ## позиций; числа разъехались потому, что комментарий считали по спеке, а не по прайсу
 ## игры. Сторож прайса — сам отчёт: строка «цена по прайсу» печатает факт.
+##
+## 705 монет, которые печатает «доход всего … потрачено», — это траты ВСЕГО забега, а не
+## цена набора: сверх набора бот после его закрытия берёт четыре ствола (меч 20 + копьё 25
+## + праща 15 + чакрам 40 = 100), то есть 605 + 100 = 705. Сходится и по числу операций:
+## 18 платных позиций набора + 4 ствола = 22 траты в строке «контроль экономики».
 const MUST_BUY := {
 	"skills": [&"read_signal", &"read_double", &"read_triple",
 		&"wpn_dmg1", &"wpn_dmg2", &"wpn_dmg3",
@@ -67,31 +73,34 @@ const MUST_BUY_KINDS := {
 ## (_must_buy_data_problems): забытая здесь позиция не покупалась бы никогда и молча
 ## висела бы в знаменателе набора.
 const BUY_ORDER := [
-	# Ранг 0 и всё, у чего требования ранга нет, — по цене.
-	{"kind": "advice", "id": "shipun"},       # 5
-	{"kind": "advice", "id": "gromun"},       # 10
-	{"kind": "advice", "id": "tleun"},        # 10
-	{"kind": "armor", "id": "light"},         # 15, был с начала (F3)
-	{"kind": "advice", "id": "skorb"},        # 15
-	{"kind": "advice", "id": "ashmother"},    # 15
-	{"kind": "skills", "id": "read_signal"},  # 20
-	{"kind": "runes", "id": "wpn_mod"},       # 20
-	{"kind": "weapons", "id": "bow"},         # 25, был с начала (F3)
-	{"kind": "skills", "id": "wpn_dmg1"},     # 25
-	{"kind": "skills", "id": "surv_armor1"},  # 25
-	{"kind": "advice", "id": "lament"},       # 25
-	{"kind": "weapons", "id": "mace"},        # 30, был с начала (F3)
-	{"kind": "armor", "id": "heavy"},         # 40
+	# Ранг 0 и всё, у чего требования ранга нет, — по цене. Цены здесь НЕ дублируются:
+	# их печатает отчёт (таблица набора) из данных игры — `_must_buy_price`, тот же
+	# источник, из которого покупка берёт сумму. Копия цены в комментарии разошлась бы
+	# с прайсом молча (в этой таблице уже стояли числа, снятые до подорожания Копья).
+	{"kind": "advice", "id": "shipun"},
+	{"kind": "advice", "id": "gromun"},
+	{"kind": "advice", "id": "tleun"},
+	{"kind": "armor", "id": "light"},         # был с начала забега (owned_armors)
+	{"kind": "advice", "id": "skorb"},
+	{"kind": "advice", "id": "ashmother"},
+	{"kind": "skills", "id": "read_signal"},
+	{"kind": "runes", "id": "wpn_mod"},
+	{"kind": "weapons", "id": "bow"},         # был с начала (F3)
+	{"kind": "skills", "id": "wpn_dmg1"},
+	{"kind": "skills", "id": "surv_armor1"},
+	{"kind": "advice", "id": "lament"},
+	{"kind": "weapons", "id": "mace"},        # был с начала (F3)
+	{"kind": "armor", "id": "heavy"},
 	# Ранг 1.
-	{"kind": "skills", "id": "read_double"},  # 40
-	{"kind": "skills", "id": "wpn_dmg2"},     # 45
-	{"kind": "skills", "id": "surv_armor2"},  # 45
+	{"kind": "skills", "id": "read_double"},
+	{"kind": "skills", "id": "wpn_dmg2"},
+	{"kind": "skills", "id": "surv_armor2"},
 	# Ранг 2.
-	{"kind": "skills", "id": "read_triple"},  # 60
+	{"kind": "skills", "id": "read_triple"},
 	# Ранг 3.
-	{"kind": "runes", "id": "wpn_crit2"},     # 65
-	{"kind": "skills", "id": "wpn_dmg3"},     # 70
-	{"kind": "skills", "id": "surv_armor3"},  # 70
+	{"kind": "runes", "id": "wpn_crit2"},
+	{"kind": "skills", "id": "wpn_dmg3"},
+	{"kind": "skills", "id": "surv_armor3"},
 ]
 
 
@@ -620,7 +629,11 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		if must_buy_done_at < 0 and must_buy_got.size() >= _must_buy_total():
 			must_buy_done_at = GameState.rank
 		min_coins = mini(min_coins, GameState.coins)
-		if GameState.rank >= 5 and reached_legend_at < 0:
+		# Последний ранг — тот, выше которого рангов нет: берётся из `GameState.RANKS`,
+		# а не числом «5». Число здесь уже стояло дважды, и шестой ранг сломал бы
+		# «Легенду достигнуто» молча: ранг 5 перестал бы быть последним, а проба
+		# осталась бы зелёной на недостижимом условии.
+		if GameState.rank >= _legend_rank() and reached_legend_at < 0:
 			reached_legend_at = hunt_no
 			legend_day = GameState.day
 		# --- Граница забега ---
@@ -1395,12 +1408,22 @@ func _must_buy_summary(got: Dictionary, start: Dictionary, done_at: int, spent: 
 		out.append("узкий набор: НЕ отслеживается %d позиций на %d: состояния покупки в GameState нет, поэтому в счёте «куплено» их нет" % [
 			unseen_count, unseen_price])
 	# Что докуплено ПОСЛЕ Легенды. Это и есть «набор не закрывается»: если такие
-	# позиции есть, значит узкий набор собирался не по пути, а после цели.
+	# позиции есть, значит узкий набор собирался не по пути, а после цели. Ранг снова
+	# берётся из `GameState.RANKS` — см. `_legend_rank`.
 	var at_legend: Array[String] = []
 	for done_key in got.keys():
-		if int(got[done_key]) >= 5:
+		if int(got[done_key]) >= _legend_rank():
 			at_legend.append(String(done_key))
 	at_legend.sort()
-	out.append("докуплено после Легенды (ранг 5): %s" % [
-		"нет" if at_legend.is_empty() else ", ".join(at_legend)])
+	out.append("докуплено после Легенды (ранг %d): %s" % [
+		_legend_rank(), "нет" if at_legend.is_empty() else ", ".join(at_legend)])
 	return out
+
+
+## Номер последнего ранга — «Легенда». Один источник на файл: `GameState.RANKS`, тот же
+## список, из которого игра считает `rank_title` и порог следующего ранга. Числом «5»
+## ранг стоял здесь дважды, и шестой ранг сломал бы обе проверки МОЛЧА: «Легенда
+## достигнута» перестала бы срабатывать, а «докуплено после Легенды» считало бы рангом
+## Легенды не последний ранг.
+func _legend_rank() -> int:
+	return GameState.RANKS.size() - 1
