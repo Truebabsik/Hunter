@@ -2219,6 +2219,15 @@ static func _hit_reaction() -> Array[String]:
 		# его зачаровали, а порядок ветвей в харнессе может измениться.
 		wpn.disenchant()
 
+	# Мост «правило → исход»: до этой задачи `submit_read` не заполнял ни вердикта,
+	# ни строки, поэтому охват и серия проверяются НАСТОЯЩИМ боем, а не сборкой.
+	out.append_array(_reaction_in_battle(
+		Database.monster(&"gromun"),
+		Database.weapon(&"bow"),
+		Database.weapon(&"mace"),
+		Database.armor(&"light"),
+		failures))
+
 	if failures.is_empty():
 		out.append("ок реакции: вердикт следует знаку суммы причин, элемент его не подменяет")
 	else:
@@ -2245,6 +2254,178 @@ static func _reaction_parts(mon: MonsterData, wpn: WeaponData, verdict: StringNa
 		var pool: Array = buckets[name]
 		parts.append("%s=%s" % [name, pool[0].text if not pool.is_empty() else "ПУСТО"])
 	return ", ".join(parts)
+
+
+## Реакция и серия в настоящем бою (D19): мост «правило → исход».
+##
+## Сборка проверяется отдельно и без боя; здесь утверждается то, чего сборка не
+## докажет: `submit_read` кладёт в исход вердикт, ступень и строку, промах не даёт
+## НИЧЕГО, ступень растёт на одинаковых вердиктах, сбрасывается сменой вердикта и
+## НЕ сбрасывается промахом, а `setup()` начинает новую серию с первой ступени.
+static func _reaction_in_battle(
+	mon: MonsterData,
+	bow: WeaponData,
+	mace: WeaponData,
+	armor: ArmorData,
+	failures: Array[String]
+) -> Array[String]:
+	var out: Array[String] = []
+	if mon == null or bow == null or mace == null or armor == null:
+		failures.append("нет данных для боя: gromun/bow/mace/light")
+		return out
+
+	# --- Охват: удар даёт вердикт, ступень и строку.
+	var engine := BattleEngine.new()
+	engine.seed_source = SeedSource.new(4242, 1)
+	engine.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	engine.advance_round()
+	var hit := engine.submit_read(engine.current_scenario_id(), true)
+	var hit_run := int(hit.get("verdict_run", 0))
+	var hit_text := str(hit.get("reaction", ""))
+	out.append("реакция в бою: удар — вердикт «%s», серия %d, строка «%s»" % [
+		hit.get("verdict", &""), hit_run, hit_text])
+	if StringName(hit.get("verdict", &"")) != HitReaction.VERDICT_RESIST:
+		failures.append("лук по громуну дал вердикт «%s», а ждали резист" % hit.get("verdict", &""))
+	if hit_run != 1:
+		failures.append("первый удар дал серию %d, а ждали 1" % hit_run)
+	if not hit_text.ends_with(HitReaction.P_END):
+		failures.append("удар не дал строки реакции: «%s»" % hit_text)
+
+	# --- Примерка: верное чтение без удара. Вердикт тот же, значит серия ПРОДОЛЖАЕТСЯ,
+	# а вводная берётся из группы «swap»: смена инструмента перебивает ступень.
+	# Навык быстрой смены у охотника выключен (третий аргумент по умолчанию), иначе
+	# примерка стала бы ударом и проба сторожила бы не тот путь.
+	if not engine.is_over():
+		engine.advance_round()
+		var swap := engine.submit_read(engine.current_scenario_id(), false)
+		var swap_text := str(swap.get("reaction", ""))
+		var swap_run := int(swap.get("verdict_run", 0))
+		out.append("реакция в бою: примерка — вердикт «%s», серия %d, строка «%s»" % [
+			swap.get("verdict", &""), swap_run, swap_text])
+		if swap_run != 2:
+			failures.append("примерка дала серию %d, а ждали 2: вердикт не сменился" % swap_run)
+		if not _line_starts_with_role(swap_text, &"swap"):
+			failures.append("примерка не взяла вводную группы «swap»: «%s»" % swap_text)
+
+	# --- Промах: расчёта нет, значит нет ни вердикта, ни ступени, ни строки.
+	var misser := BattleEngine.new()
+	misser.seed_source = SeedSource.new(4242, 1)
+	misser.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	misser.advance_round()
+	var miss := misser.submit_read(_other_scenario(mon, misser.current_scenario_id()), true)
+	var miss_verdict := StringName(miss.get("verdict", &""))
+	var miss_text := str(miss.get("reaction", ""))
+	var miss_run := int(miss.get("verdict_run", 0))
+	out.append("реакция в бою: промах — вердикт «%s», серия %d, строка «%s»" % [
+		miss_verdict, miss_run, miss_text])
+	if miss_verdict != &"" or miss_text != "" or miss_run != 0:
+		failures.append("промах дал реакцию, а не должен: вердикт «%s», серия %d, строка «%s»" % [
+			miss_verdict, miss_run, miss_text])
+
+	# --- Серия: ступени 1 → 2 → 3 на ОДНОМ вердикте, и вводная каждой ступени
+	# действительно доходит до строки — иначе ступень считалась бы, но не читалась.
+	var series := BattleEngine.new()
+	series.seed_source = SeedSource.new(99, 3)
+	series.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	var steps: Array[int] = []
+	var series_texts: Array[String] = []
+	for i in 3:
+		if series.is_over():
+			break
+		series.advance_round()
+		var o := series.submit_read(series.current_scenario_id(), true)
+		steps.append(int(o.get("verdict_run", 0)))
+		series_texts.append(str(o.get("reaction", "")))
+	out.append("реакция в бою: серия — ступени %s, строки «%s»" % [
+		str(steps), "» / «".join(series_texts)])
+	if steps != [1, 2, 3]:
+		failures.append("ступени серии %s, а ждали [1, 2, 3] (жизней у зверя осталось %d)" % [
+			str(steps), series.monster_hp])
+	for i in steps.size():
+		var role := HitReaction.intro_role(HitReaction.VERDICT_RESIST, steps[i], false)
+		if not _line_starts_with_role(series_texts[i], role):
+			failures.append("строка ступени %d не начинается вводной роли «%s»: %s" % [
+				steps[i], role, series_texts[i]])
+
+	# --- Смена вердикта возвращает ПЕРВУЮ ступень: молот бьёт в слабость ближнего боя,
+	# лук — в резист дистанции. Без этого серия росла бы на любом чередовании.
+	var flip := BattleEngine.new()
+	flip.seed_source = SeedSource.new(11, 9)
+	flip.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	flip.advance_round()
+	var flip_first := StringName(flip.submit_read(flip.current_scenario_id(), true).get("verdict", &""))
+	var flip_second := &""
+	var flip_run := 0
+	if not flip.is_over():
+		flip.advance_round()
+		flip.equip_weapon(mace)
+		var o2 := flip.submit_read(flip.current_scenario_id(), true)
+		flip_second = StringName(o2.get("verdict", &""))
+		flip_run = int(o2.get("verdict_run", 0))
+	out.append("реакция в бою: смена вердикта — «%s»/1, затем «%s»/%d" % [
+		flip_first, flip_second, flip_run])
+	if flip_first != HitReaction.VERDICT_RESIST or flip_second != HitReaction.VERDICT_WEAK \
+			or flip_run != 1:
+		failures.append("смена вердикта не начала серию заново: «%s»/1, затем «%s»/%d, а ждали resist/1 → weak/1" % [
+			flip_first, flip_second, flip_run])
+
+	# --- Промах серию НЕ сбрасывает: он не проверяет оружие, значит стену не отменяет.
+	# Чистой функцией этого не показать — правило живёт в порядке ветвей `submit_read`.
+	var streak := BattleEngine.new()
+	streak.seed_source = SeedSource.new(7, 5)
+	streak.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	var before := 0
+	var after := 0
+	if not streak.is_over():
+		streak.advance_round()
+		before = int(streak.submit_read(streak.current_scenario_id(), true).get("verdict_run", 0))
+		streak.advance_round()
+		streak.submit_read(_other_scenario(mon, streak.current_scenario_id()), true)
+		streak.advance_round()
+		after = int(streak.submit_read(streak.current_scenario_id(), true).get("verdict_run", 0))
+	out.append("реакция в бою: промах между ударами — серия %d → %d" % [before, after])
+	if before != 1 or after != 2:
+		failures.append("промах сбросил серию: до промаха %d, после %d, а ждали 1 и 2" % [before, after])
+
+	# --- Новая битва начинается с первой ступени: тот же объект движка, второй
+	# `setup()`. Иначе вторая битва сессии продолжила бы серию первой, и игрок
+	# увидел бы «снова» на первом же ударе.
+	var reused := BattleEngine.new()
+	reused.seed_source = SeedSource.new(3, 4)
+	reused.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	reused.advance_round()
+	var first_battle := int(reused.submit_read(reused.current_scenario_id(), true).get("verdict_run", 0))
+	reused.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	reused.advance_round()
+	var second_battle := int(reused.submit_read(reused.current_scenario_id(), true).get("verdict_run", 0))
+	out.append("реакция в бою: новая битва тем же движком — серия %d, затем %d" % [
+		first_battle, second_battle])
+	if first_battle != 1 or second_battle != 1:
+		failures.append("новая битва продолжила серию: %d, затем %d, а ждали 1 и 1" % [
+			first_battle, second_battle])
+
+	return out
+
+
+## Начинается ли строка вводной ИМЕННО этой роли. Сравнивается с ПУЛОМ, а не с
+## текстом одной фразы: правка пула не должна ломать проверку ступени, а совпадение
+## строк двух ступеней по случайности выбора не должно её зеленеть.
+static func _line_starts_with_role(line: String, role: StringName) -> bool:
+	if line == "":
+		return false
+	for p in Database.phrases_for(&"", &"", HitReaction.SLOT_INTRO, role):
+		if line.begins_with(str(p.text) + HitReaction.P_AFTER_INTRO):
+			return true
+	return false
+
+
+## Другой сценарий того же зверя: промахнуться надо ОСОЗНАННО, а не пустой строкой —
+## промах по `&""` прошёл бы и на сломанном подборе сценариев.
+static func _other_scenario(mon: MonsterData, current: StringName) -> StringName:
+	for s in mon.scenarios:
+		if s.id != current:
+			return s.id
+	return &""
 
 
 ## Расхождение между таблицей ожиданий и тирами заказа: текст ПРОВАЛА или "".

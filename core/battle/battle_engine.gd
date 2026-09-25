@@ -133,6 +133,12 @@ var _ineffective_streak: int = 0
 var _hint_shown: bool = false
 var _counter_used_ids: Dictionary = {}
 
+## Серия одинаковых вердиктов подряд (D19): усиливает вводную. Сбрасывается сменой
+## вердикта и НЕ сбрасывается промахом — промах не проверяет оружие, значит стену
+## не отменяет.
+var _last_verdict: StringName = &""
+var _verdict_run: int = 0
+
 
 func setup(p_monster: MonsterData, p_hunter: HunterState, p_weapon: WeaponData) -> void:
 	monster = p_monster
@@ -162,6 +168,8 @@ func setup(p_monster: MonsterData, p_hunter: HunterState, p_weapon: WeaponData) 
 	_ineffective_streak = 0
 	_hint_shown = false
 	_counter_used_ids.clear()
+	_last_verdict = &""
+	_verdict_run = 0
 	fog_active = monster.fog_enabled
 	ticking_left = monster.ticking_damage
 	current_phase_id = &""
@@ -445,6 +453,12 @@ func submit_read(guess_scenario: StringName, attack: bool = true) -> Dictionary:
 		"second_wind": 0,
 		"phoenix": false,
 		"phase_id": String(current_phase_id),
+		# Реакция на удар (D19). Объявлены пустыми ПО УМОЛЧАНИЮ, и ветки для промаха
+		# нет намеренно: промах не считает урона, значит не знает ни вердикта, ни
+		# ступени, и оставить их пустыми — то же самое, что «не дал реакции».
+		"verdict": &"",
+		"verdict_run": 0,
+		"reaction": "",
 		# Факты для досье (GDD 5.2). Ядро их только называет — записывает GameState.
 		"fact_scenario": String(_current_scenario.id),
 		"fact_signals": _core_signal_labels(),
@@ -520,6 +534,27 @@ func submit_read(guess_scenario: StringName, attack: bool = true) -> Dictionary:
 		# Контр-приём — реакция на серию верных чтений, а не на удар: он открывается
 		# и в ход, потраченный на смену инструмента.
 		_try_counter(outcome)
+
+		# Реакция на удар (D19): вердикт — знак СУММЫ ПРИЧИН вида, а не типовой
+		# множитель. У руны в резист множитель обнуляется (элемент гасит штраф), а
+		# сумма причин остаётся отрицательной, и проза обязана сказать «резист».
+		# Путь один для удара и примерки: отличается только `not attack`.
+		#
+		# Соль `&"reaction"` — ОТДЕЛЬНАЯ, не `&"text"`. `SeedSource.round_rng` создаёт
+		# свежий генератор на каждую пару (раунд, соль), поэтому дело не в «расходе
+		# потока», а в независимости: с общей солью правка в прозе раунда молча
+		# сдвигала бы слова реакции.
+		var verdict := HitReaction.verdict_of(dmg.type_reasons_sum)
+		if verdict == _last_verdict:
+			_verdict_run += 1
+		else:
+			_last_verdict = verdict
+			_verdict_run = 1
+		outcome["verdict"] = verdict
+		outcome["verdict_run"] = _verdict_run
+		outcome["reaction"] = HitReaction.assemble(
+			monster, weapon, verdict, _verdict_run, not attack,
+			_round_rng(round_index, &"reaction"))
 	else:
 		# Промах: зверь бьёт своим сценарием. Броня смягчает урон и здесь (GDD 12.6),
 		# кроме непробиваемых сценариев — от них спасает только чтение (GDD 4.4).
