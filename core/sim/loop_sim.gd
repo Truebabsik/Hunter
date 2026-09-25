@@ -18,11 +18,11 @@ class_name LoopSim
 ## Руны читаются через навыки: руна в игре — это навык (`SkillsData.RUNE_SKILLS`),
 ## отдельного поля «куплена руна» нет, и выдумывать его замеру незачем.
 ##
-## Советы Старика перечислены, хотя замер их НЕ ВИДИТ: состояния покупки совета в
-## GameState нет (оно живёт в экране города, `city_screen.advice_bought`), а прогон
-## цикла идёт без сцен. Поэтому у них источник состояния «none»: в счёт «куплено»
-## они не входят, и отчёт говорит об этом прямо, а не молчит — иначе «куплено N из
-## M» читалось бы как «набор закрыт».
+## Советы Старика входят в набор наравне с остальным. Раньше они стояли с источником
+## «none»: состояние покупки совета жило в экране города (`city_screen.advice_bought`),
+## экран уничтожается при каждом возвращении в город, и прогон без сцен его не видел.
+## Теперь состояние — в `GameState.advice_bought` (Task 3б), поэтому замер обязан его
+## читать: 6 советов — это 80 монет из 620, и «набор закрыт» без них неправда.
 const MUST_BUY := {
 	"skills": [&"read_signal", &"read_double", &"read_triple",
 		&"wpn_dmg1", &"wpn_dmg2", &"wpn_dmg3",
@@ -42,8 +42,53 @@ const MUST_BUY_KINDS := {
 	"weapons": {"title": "оружие", "prefix": "weapon", "source": "weapon", "price_from": "weapon"},
 	"runes": {"title": "руна", "prefix": "rune", "source": "skill", "price_from": "skill"},
 	"armor": {"title": "броня", "prefix": "armor", "source": "armor", "price_from": "armor"},
-	"advice": {"title": "совет", "prefix": "advice", "source": "none", "price_from": "advice"},
+	"advice": {"title": "совет", "prefix": "advice", "source": "advice", "price_from": "advice"},
 }
+
+
+## Порядок покупок бота: ЧТО покупать и в каком порядке. Это тоже ДАННЫЕ, а не условие
+## в коде, и по той же причине, что MUST_BUY: приёмка этапа 3 спрашивает «закрывается
+## ли узкий набор по ходу пути», и ответ обязан быть следствием экономики, а не вкуса
+## бота. Раньше бот брал четыре фиксированных навыка, все стволы и `surv_armor2` —
+## восемь отслеживаемых позиций набора он не покупал даже при 225 монетах в кошельке,
+## и «набор закрывается» измеряло его политику.
+##
+## Правило порядка: по возрастанию ТРЕБУЕМОГО РАНГА (у навыка это поле `rank`;
+## у оружия, брони и совета требования ранга в игре нет, поэтому они идут первыми),
+## внутри ранга — по цене от дешёвой. Так в отчёте видны три разных ответа приёмки:
+## «закрыт по пути» (все позиции закрыты до ранга 5), «закрыт после Легенды» и
+## «не закрыт вовсе» — по одному счётчику их не различить.
+##
+## Таблица ОБЯЗАНА покрывать MUST_BUY целиком, и это проверяется, а не подразумевается
+## (_must_buy_data_problems): забытая здесь позиция не покупалась бы никогда и молча
+## висела бы в знаменателе набора.
+const BUY_ORDER := [
+	# Ранг 0 и всё, у чего требования ранга нет, — по цене.
+	{"kind": "advice", "id": "shipun"},       # 5
+	{"kind": "advice", "id": "gromun"},       # 10
+	{"kind": "advice", "id": "tleun"},        # 10
+	{"kind": "armor", "id": "light"},         # 15, был с начала (F3)
+	{"kind": "advice", "id": "skorb"},        # 15
+	{"kind": "advice", "id": "ashmother"},    # 15
+	{"kind": "skills", "id": "read_signal"},  # 20
+	{"kind": "runes", "id": "wpn_mod"},       # 20
+	{"kind": "weapons", "id": "bow"},         # 25, был с начала (F3)
+	{"kind": "skills", "id": "wpn_dmg1"},     # 25
+	{"kind": "skills", "id": "surv_armor1"},  # 25
+	{"kind": "advice", "id": "lament"},       # 25
+	{"kind": "weapons", "id": "mace"},        # 30, был с начала (F3)
+	{"kind": "armor", "id": "heavy"},         # 40
+	# Ранг 1.
+	{"kind": "skills", "id": "read_double"},  # 40
+	{"kind": "skills", "id": "wpn_dmg2"},     # 45
+	{"kind": "skills", "id": "surv_armor2"},  # 45
+	# Ранг 2.
+	{"kind": "skills", "id": "read_triple"},  # 60
+	# Ранг 3.
+	{"kind": "runes", "id": "wpn_crit2"},     # 65
+	{"kind": "skills", "id": "wpn_dmg3"},     # 70
+	{"kind": "skills", "id": "surv_armor3"},  # 70
+]
 
 
 ## Как играет бот.
@@ -59,6 +104,29 @@ class Player:
 
 
 func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
+	# Проверка ДАННЫХ набора — один раз на прогон, а не на каждого бота: опечатка в
+	# MUST_BUY, в MUST_BUY_KINDS или в BUY_ORDER от игрока не зависит, и печатать её
+	# дважды значило бы прятать её в повторе.
+	out.append("--- узкий набор: проверка данных ---")
+	var data_problems := _must_buy_data_problems()
+	if data_problems.is_empty():
+		out.append("набор: позиций %d, все категории описаны, все id есть в данных, BUY_ORDER покрывает набор" % _must_buy_total())
+	else:
+		for problem in data_problems:
+			out.append("ПРОВАЛ набора: %s" % problem)
+		# Категория без строки в MUST_BUY_KINDS — единственная поломка, после которой
+		# отчёт построить НЕЛЬЗЯ: имени и источника у неё нет, и `_must_buy_source`
+		# падает на первом же обращении. Измерено: прогон обрывался SCRIPT ERROR, а на
+		# диске оставался ОБРЕЗАННЫЙ отчёт — начало бота без итогов, то есть числа,
+		# которые читаются как измерение. Поэтому прогон останавливается сам, и в
+		# отчёте остаётся причина, а не половина результата.
+		#
+		# Опечатка в id или расхождение с BUY_ORDER прогон НЕ останавливают: там
+		# измерение остаётся осмысленным, а строка «ПРОВАЛ набора» называет, какая
+		# именно позиция выпала.
+		if not _must_buy_kinds_complete():
+			return
+
 	var players := [
 		Player.new("новичок (лук, чтение 45%)", 0.45, false),
 		Player.new("опытный (лучший инструмент, чтение 75%)", 0.75, true),
@@ -137,6 +205,10 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	## Сколько боёв кончилось окончательной смертью (срок богини вышел). Нужен для
 	## контроля суммы: каждый бой обязан дать ровно один исход.
 	var run_overs := 0
+	## Охота, на которой забег кончился окончательной смертью. 0 — не кончился.
+	## Считается, а не только печатается: цикл обязан на ней ОСТАНОВИТЬСЯ, иначе
+	## отчёт складывает охоты двух забегов в одно состояние, которого игра не создаёт.
+	var run_over_hunt := 0
 	var rank_history: Array[String] = []
 	var reached_legend_at := -1
 	## Сколько раз бот ходил на каждый вид. Нужен для ротации заказов: без неё
@@ -157,6 +229,11 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 			break
 		var mon_key := String(mon.id)
 		order_seen[mon_key] = int(order_seen.get(mon_key, 0)) + 1
+		# Выбор заказа — строкой в ОТЧЁТ, а не только в трассу: правило выбора обязано
+		# быть проверяемым, а не заявленным. Здесь видно и тир, и на чём он выбран.
+		out.append("выбор заказа: охота %d — %s, тир %d «%s», %s" % [
+			hunt_no, mon.title, int(order["tier"]),
+			CityData.order_tier_title(int(order["tier"])), String(order.get("pick_note", ""))])
 
 		# --- След (нарратив; проверяем, что он вообще собирается)
 		var is_repeat := GameState.kill_counts(mon.id) > 0
@@ -280,7 +357,7 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		total_income += sold
 		bag_sold += sold
 		bag_lost_value += result.bag_lost
-		coins_spent += _spend_coins(player)
+		coins_spent += _spend_coins()
 		# Учёт узкого набора — ПОСЛЕ трат, а не до: иначе позиция, купленная на
 		# этой охоте, была бы записана рангом предыдущей.
 		_note_must_buy(must_buy_got)
@@ -290,7 +367,38 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		if GameState.rank >= 5 and reached_legend_at < 0:
 			reached_legend_at = hunt_no
 			legend_day = GameState.day
+		# --- Граница забега ---
+		#
+		# В игре окончательная смерть ЗАКАНЧИВАЕТ забег: `Outcome.RUN_OVER` →
+		# `game_root._on_new_run` → `GameState.reset()` (слава 0, ранг 0). Продолжать
+		# после неё — считать славу, которую игра обнулила, то есть описывать
+		# слияние двух забегов. Так отчётные «25 охот, слава 62» оказывались числом,
+		# которого игра не создаёт.
+		#
+		# Место проверки — ПОСЛЕ `result.apply()` и трат: apply начисляет славу и
+		# пересчитывает ранг, смерть обнуляет кошелёк и ношу, а бот после боя
+		# докупает набор. Остановка раньше показала бы состояние, которого после
+		# охоты уже нет.
+		#
+		# Дни после срока сами по себе не запрещены: N — бюджет, а не таймер
+		# (GDD 1.3.1, «срок вышел — возвращать некому»). Поэтому выход ровно по
+		# `run_over` и ни по чему другому.
+		if result.run_over:
+			run_over_hunt = hunt_no
+			break
 
+	# Граница забега — ПЕРВОЙ строкой итогов: она объясняет, что означают все числа
+	# ниже. Два случая различаются словами, а не оттенком: «забег кончился» — это
+	# окончательная смерть, после которой чисел больше нет; «забег не кончился за N
+	# охот» — отведённые охоты кончились, а забег жив. Без этого различия
+	# «ЛЕГЕНДА НЕ ДОСТИГНУТА» читается как «дошёл и не хватило», хотя в первом
+	# случае забега, в котором можно было дойти, уже нет.
+	if run_over_hunt > 0:
+		out.append("забег кончился: охота %d, день %d, слава %d, ранг %s (срок богини вышел, смерть окончательна)" % [
+			run_over_hunt, GameState.day, GameState.glory, GameState.rank_title()])
+	else:
+		out.append("забег не кончился за %d охот (день %d, слава %d)" % [
+			hunt_no, GameState.day, GameState.glory])
 	out.append("охот проведено: %d (побед %d, побегов %d, поражений %d)" % [
 		hunt_no, victories, escapes, defeats])
 	out.append("попыток побега: %d, удачных: %d" % [escapes_attempted, escapes_succeeded])
@@ -370,48 +478,97 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		out.append("  " + rank_history[i])
 
 
-## Какой заказ берём: самый дорогой, но с РОТАЦИЕЙ видов внутри тира.
+## Какой заказ берём: ВЫСШИЙ ДОСТУПНЫЙ ТИР, по которому бот может ударить слабостью,
+## а внутри тира — вид, на которого ходили РЕЖЕ ВСЕГО.
 ##
-## Почему не «первый из максимального тира», как было. Раньше бот брал `usable[0]`
-## среди заказов высшего доступного тира, то есть вид, который в таблице идёт
-## первым. Это дало за прогон 4 Скорба подряд и 3 Ламента при том, что Пепел-Мать
-## (тот же тир 2) не встретилась ни разу: 907 монет против 767 в кривой спеки.
+## Почему не «высший тир» безусловно, как было. На ранге 4 высший тир — легендарный
+## (Ламант), и у него валидатор находит тупик: НИ ОДНА пара «тип × дистанция» не
+## проходит без резиста, а штраф за смерть на нём — 12 (вдвое больше элитного). Бот,
+## идущий к Легенде, так не играет: он отдавал славу в стену, и она колебалась 48–63
+## при том, что в кошельке лежали неистраченные 225 монет.
 ##
-## Расхождение было не в ценах, а в ТОМ, ЧТО МЫ МЕРИЛИ. Кривая §12.12 описывает
-## путь с ротацией видов — 1 Хруз, 3 Шипуна, 3 Громуна, 1 Тлеун, 2 Скорба,
-## 2 Пепел-Матери, 1 Ламент. Бот же всегда брал самый дорогой заказ, и три
-## Ламента по 180 монет дали больше, чем весь спекулятивный бюджет.
+## Свойство вида берётся ТО ЖЕ, которым игра выбирает инструмент, —
+## `MonsterData.weakness_modifier(type, range)` по СВОИМ стволам (та же пара
+## «тип И дистанция», см. `_hits_weakness`). Свой список «тупиковых видов» здесь
+## был бы второй копией правила и разошёлся бы с игрой молча — ровно так в проекте
+## уже разъезжались названия типов урона и формулы навыков.
 ##
-## Ротация нужна и по второй причине: без неё бот НИКОГДА не встречает новый вид,
-## а значит не наполняет досье и не проходит через «первую встречу» — то есть
-## прогон не касается половины механик. Проверка, которая всегда ходит на одного
-## и того же зверя, меряет не игру, а одну арену.
+## Если открытых заказов нет вовсе — берётся НИЗШИЙ доступный тир: бот фармит славу
+## тем, что есть, а не стоит на месте. Это видно строкой выбора в отчёте.
 ##
-## Правило: среди заказов высшего доступного тира берём тот вид, на которого
-## ходили РЕЖЕ ВСЕГО. При равенстве — первый по таблице (устойчиво между прогонами).
-## Фильтр по загруженности обязателен: в таблице есть виды без файлов, и выбор
-## «пустого» заказа молча обрывал прогон.
+## Почему ротация видов внутри тира. Раньше бот брал `usable[0]` среди заказов
+## высшего тира, то есть вид, который в таблице идёт первым. Это дало за прогон
+## 4 Скорба подряд и 3 Ламента при том, что Пепел-Мать (тот же тир 2) не встретилась
+## ни разу: 907 монет против 767 в кривой спеки. Расхождение было не в ценах, а в ТОМ,
+## ЧТО МЫ МЕРИЛИ: кривая §12.12 описывает путь с ротацией видов. Без ротации бот
+## НИКОГДА не встречает новый вид, а значит не наполняет досье и не проходит через
+## «первую встречу» — проверка, всегда ходящая на одного зверя, меряет одну арену.
+##
+## Фильтр по данным обязателен: в таблице есть виды без файлов, и выбор «пустого»
+## заказа молча обрывал прогон.
 func _pick_order(order_seen: Dictionary) -> Dictionary:
-	var orders := CityData.available_monsters(GameState.rank)
 	var usable: Array = []
-	for o in orders:
+	for o in CityData.available_monsters(GameState.rank):
 		if Database.monster(StringName(o["monster_id"])) != null:
 			usable.append(o)
 	if usable.is_empty():
 		return {}
-	var best_tier := 0
+	# Заказы, по которым бот может ударить слабостью СВОИМ оружием. Пара ствола
+	# описывается для отчёта: видно, чем именно открыт тир.
+	var candidates: Array = []
 	for o in usable:
-		best_tier = maxi(best_tier, int(o["tier"]))
+		var pair := _weakness_pair(o)
+		if not pair.is_empty():
+			candidates.append({"order": o, "pair": pair})
+	var fallback := candidates.is_empty()
+	if fallback:
+		var low_tier := 1 << 30
+		for o in usable:
+			low_tier = mini(low_tier, int(o["tier"]))
+		for o in usable:
+			if int(o["tier"]) == low_tier:
+				candidates.append({"order": o, "pair": ""})
+	var best_tier := -1
+	for c in candidates:
+		best_tier = maxi(best_tier, int(c["order"]["tier"]))
 	var best: Dictionary = {}
 	var best_seen := -1
-	for o in usable:
+	var best_pair := ""
+	for c in candidates:
+		var o: Dictionary = c["order"]
 		if int(o["tier"]) != best_tier:
 			continue
 		var seen := int(order_seen.get(String(o["monster_id"]), 0))
 		if best.is_empty() or seen < best_seen:
-			best = o
+			best = o.duplicate()
 			best_seen = seen
+			best_pair = String(c["pair"])
+	# Причина выбора едет вместе с заказом в отчёт: «почему этот тир» — часть
+	# измерения, и отдельным полем её не подделать.
+	if fallback:
+		best["pick_note"] = "низший доступный тир: слабости не открыты ни одним своим стволом"
+	else:
+		best["pick_note"] = "слабость открыта: %s" % best_pair
 	return best
+
+
+## Свой ствол, которым бот пробьёт слабость этого заказа: описание «Молот (дробящий,
+## упор)» или пустая строка, если такого ствола нет.
+##
+## Перебор идёт по `GameState.owned_weapons`, тем же свойством и в том же порядке, что
+## `_equip_best_tool`: заказ открыт ровно тем оружием, которое бот в бой и возьмёт.
+func _weakness_pair(order: Dictionary) -> String:
+	var mon: MonsterData = Database.monster(StringName(order["monster_id"]))
+	if mon == null:
+		return ""
+	for id in GameState.owned_weapons:
+		var w: WeaponData = Database.weapon(id)
+		if w == null:
+			continue
+		if _hits_weakness(mon, w):
+			return "%s (%s, %s)" % [
+				w.title, CityData.type_ru(w.damage_type), CityData.range_ru(w.range_id)]
+	return ""
 
 
 func _simulate_read(
@@ -450,47 +607,191 @@ func _equip_best_tool(mon: MonsterData) -> void:
 		var w: WeaponData = Database.weapon(id)
 		if w == null:
 			continue
-		if mon.weakness_modifier(w.damage_type, w.range_id) > 0:
+		if _hits_weakness(mon, w):
 			GameState.equipped_weapon = w.id
 			return
 
 
-## Бот тратит монеты: сначала обязательные навыки, потом снаряжение.
-func _spend_coins(player: Player) -> int:
+## Пробивает ли этот ствол слабость вида: пара «тип И дистанция» оружия попадает
+## хотя бы в одну запись уязвимости. ОДНО правило на двоих — по нему бот выбирает
+## заказ (`_pick_order`) и берёт инструмент в бой (`_equip_best_tool`). Две копии
+## сравнения разошлись бы молча, и «открытый» заказ оказался бы закрыт в бою.
+##
+## Тип берётся базовый (`damage_type`), а не `damage_types()` с руной: замер рун на
+## оружие не накладывает (см. отчёт Task 3в), и широкое сравнение назвало бы пару,
+## которой `_equip_best_tool` в бой не возьмёт, — строка выбора в отчёте стала бы
+## неправдой.
+func _hits_weakness(mon: MonsterData, w: WeaponData) -> bool:
+	return mon.weakness_modifier(w.damage_type, w.range_id) > 0
+
+
+## Бот тратит монеты: сначала узкий набор в порядке BUY_ORDER, потом оружие вне набора.
+##
+## Политика покупок у обоих ботов ОДНА: иначе «набор закрывается» снова мерило бы
+## вкус конкретного бота, а не экономику. Различаются боты чтением и выбором
+## инструмента (`Player.smart_tools`) — это и есть разница между «так играет любой»
+## и «так играет умелый».
+func _spend_coins() -> int:
 	var spent := 0
-	var priority: Array[StringName] = []
-	if player.smart_tools:
-		priority = [&"read_signal", &"surv_hp1", &"read_double", &"wpn_dmg1"]
-	else:
-		priority = [&"surv_hp1", &"read_signal", &"wpn_dmg1", &"surv_armor1"]
-	for sid in priority:
-		var s := SkillsData.find_skill(sid)
-		if s.is_empty() or GameState.has_skill(sid):
+	for entry in BUY_ORDER:
+		spent += _buy_must_buy(String(entry["kind"]), String(entry["id"]))
+	# Оружие вне набора — ПОСЛЕ набора. Пока минимум не собран, монеты, ушедшие на
+	# пращу или чакрам, отвечают не на вопрос приёмки, а на вопрос «что бот любит»:
+	# именно на этом прежний замер терял часть набора при полном кошельке.
+	if not _must_buy_complete():
+		return spent
+	var off_set: Array[StringName] = []
+	for id in Database.weapons.keys():
+		off_set.append(StringName(id))
+	# По цене от дешёвой: тот же порядок, что у BUY_ORDER, иначе выбор «что купить
+	# раньше» зависел бы от порядка ключей в словаре базы.
+	off_set.sort_custom(func(a, b): return Database.weapon(a).price < Database.weapon(b).price)
+	for sid in off_set:
+		var w: WeaponData = Database.weapon(sid)
+		if w == null or w.id in GameState.owned_weapons:
 			continue
-		if GameState.rank >= int(s["rank"]) and GameState.can_afford(int(s["price"])):
-			GameState.buy_skill(sid, int(s["price"]))
-			spent += int(s["price"])
-	# Снаряжение после навыков.
-	if player.smart_tools:
-		for id in Database.weapons.keys():
-			var w: WeaponData = Database.weapons[id]
-			if w.id in GameState.owned_weapons:
-				continue
-			if w.price > 0 and GameState.spend_coins(w.price):
-				GameState.owned_weapons.append(w.id)
-				spent += w.price
-	if GameState.rank >= 3 and not (GameState.has_skill(&"surv_armor2")):
-		var s2 := SkillsData.find_skill(&"surv_armor2")
-		if not s2.is_empty() and GameState.can_afford(int(s2["price"])):
-			GameState.buy_skill(&"surv_armor2", int(s2["price"]))
-			spent += int(s2["price"])
+		if w.price > 0 and GameState.spend_coins(w.price):
+			GameState.owned_weapons.append(w.id)
+			spent += w.price
 	return spent
 
 
-## Откуда берётся «куплено ли» для категории набора: none значит «замер этого не
-## видит» (советы Старика — их состояние живёт в экране города, не в GameState).
+## Купить одну позицию набора, если она ещё не куплена и покупка возможна. Возвращает
+## потраченное (0 — покупки не было).
+##
+## Покупка идёт ЧЕРЕЗ ПРАВИЛА ИГРЫ, а не через их копию: навык — `SkillsData.can_buy`
+## и `GameState.buy_skill` (ровно так покупает экран города), совет — `GameState.buy_advice`
+## (цена и списание внутри, второй копии цены нет), оружие и броня — `GameState.spend_coins`.
+## Своя проверка «хватает ли монет и дорос ли ранг» разошлась бы с игрой молча — как уже
+## расходилась цена совета.
+##
+## Оружие бот НЕ берёт в руки при покупке: у неопытного бота инструмент остаётся тем,
+## чем он назван (лук), а опытный выбирает пару под зверя в `_equip_best_tool`.
+func _buy_must_buy(kind: String, id: String) -> int:
+	var sid := StringName(id)
+	match kind:
+		"skills", "runes":
+			var skill := SkillsData.find_skill(sid)
+			if skill.is_empty():
+				return 0
+			# Тот же вопрос, что задаёт экран города перед покупкой: хватает монет,
+			# не куплено, ранг дорос. Своя копия этих трёх условий разошлась бы с
+			# игрой молча — как уже расходилась цена совета.
+			var check := SkillsData.can_buy(sid, GameState.coins, GameState.rank, GameState.skills)
+			if not bool(check["ok"]):
+				return 0
+			var skill_price := int(skill["price"])
+			if not GameState.buy_skill(sid, skill_price):
+				return 0
+			return skill_price
+		"weapons":
+			if sid in GameState.owned_weapons:
+				return 0
+			var w: WeaponData = Database.weapon(sid)
+			if w == null or w.price <= 0 or not GameState.spend_coins(w.price):
+				return 0
+			GameState.owned_weapons.append(w.id)
+			return w.price
+		"armor":
+			if sid in GameState.owned_armors:
+				return 0
+			var a: ArmorData = Database.armor(sid)
+			if a == null or a.price <= 0 or not GameState.spend_coins(a.price):
+				return 0
+			GameState.owned_armors.append(a.id)
+			return a.price
+		"advice":
+			# Потраченное берём разницей кошелька: цену читает и списывает
+			# `buy_advice` в GameState, и вторая копия цены здесь не нужна.
+			var before := GameState.coins
+			if not GameState.buy_advice(sid):
+				return 0
+			return before - GameState.coins
+	return 0
+
+
+## Собран ли узкий набор целиком. Спрашивается по MUST_BUY через `_must_buy_owned` —
+## тот же источник, что у счётчика отчёта, поэтому «купить оружие вне набора» не может
+## начаться раньше, чем набор закрыт по мнению счётчика.
+func _must_buy_complete() -> bool:
+	for kind in MUST_BUY.keys():
+		for id in MUST_BUY[kind]:
+			if not _must_buy_owned(kind, id):
+				return false
+	return true
+
+
+## Откуда берётся «куплено ли» для категории набора. Источников ровно четыре, и все
+## они — состояние забега в GameState: навыки (вместе с рунами), оружие, броня, совет.
+## Строка «none» осталась для случая, которого сегодня нет: замер обязан молчать о
+## позиции, а не считать её закрытой, если состояния в игре нет вовсе.
 func _must_buy_source(kind: String) -> String:
 	return String(MUST_BUY_KINDS[kind]["source"])
+
+
+## Проверка САМИХ данных набора — в отчёт, а не в лог. Раньше обещание «категория без
+## строки в MUST_BUY_KINDS сломает прогон громко» жило только комментарием: неизвестный
+## ключ давал пустую строку, позиция молча оставалась в знаменателе и никогда не
+## отмечалась, а прогон выглядел здоровым. Три случая:
+##  1. категория из MUST_BUY не описана в MUST_BUY_KINDS — её позиции никто не читает;
+##  2. у id нет данных в игре (SkillsData.find_skill, Database.weapon/armor,
+##     CityData.ADVICE_PRICES) — опечатка в id;
+##  3. BUY_ORDER и MUST_BUY не совпадают множествами — забытая в порядке покупок
+##     позиция не покупалась бы никогда.
+func _must_buy_data_problems() -> Array[String]:
+	var out: Array[String] = []
+	for kind in MUST_BUY.keys():
+		if not MUST_BUY_KINDS.has(kind):
+			out.append("категория «%s» есть в MUST_BUY, но не описана в MUST_BUY_KINDS: её позиции никто не читает" % kind)
+			continue
+		for id in MUST_BUY[kind]:
+			var source := _must_buy_missing_source(kind, String(id))
+			if not source.is_empty():
+				out.append("id «%s» (категория «%s»): данных нет — %s" % [String(id), kind, source])
+	var in_set := {}
+	for kind in MUST_BUY.keys():
+		for id in MUST_BUY[kind]:
+			in_set["%s:%s" % [kind, String(id)]] = true
+	var in_order := {}
+	for entry in BUY_ORDER:
+		in_order["%s:%s" % [String(entry["kind"]), String(entry["id"])]] = true
+	for key in in_set.keys():
+		if not in_order.has(key):
+			out.append("позиция «%s» есть в MUST_BUY, но не в BUY_ORDER: бот её не купит" % key)
+	for key in in_order.keys():
+		if not in_set.has(key):
+			out.append("позиция «%s» есть в BUY_ORDER, но не в MUST_BUY: бот купит лишнее" % key)
+	return out
+
+
+## Все ли категории набора описаны в MUST_BUY_KINDS. Отдельная функция, а не проверка
+## «нет ли такой строки» по месту: имя категории — то, без чего не работает ни источник
+## состояния (`_must_buy_source`), ни подпись в таблице отчёта.
+func _must_buy_kinds_complete() -> bool:
+	for kind in MUST_BUY.keys():
+		if not MUST_BUY_KINDS.has(kind):
+			return false
+	return true
+
+
+## Где искать данные позиции набора: пустая строка — всё на месте, иначе имя источника,
+## в котором позиции нет. Ровно те источники, из которых позиция потом и покупается.
+func _must_buy_missing_source(kind: String, id: String) -> String:
+	var sid := StringName(id)
+	match kind:
+		"skills":
+			return "" if not SkillsData.find_skill(sid).is_empty() else "SkillsData.find_skill"
+		"runes":
+			if SkillsData.find_skill(sid).is_empty():
+				return "SkillsData.find_skill"
+			return "" if SkillsData.RUNE_SKILLS.has(id) else "SkillsData.RUNE_SKILLS"
+		"weapons":
+			return "" if Database.weapon(sid) != null else "Database.weapon"
+		"armor":
+			return "" if Database.armor(sid) != null else "Database.armor"
+		"advice":
+			return "" if CityData.ADVICE_PRICES.has(id) else "CityData.ADVICE_PRICES"
+	return "MUST_BUY_KINDS (категории «%s» нет в таблице)" % kind
 
 
 ## Ключ позиции в счётчике: «категория:id». По нему же строится таблица отчёта,
@@ -500,8 +801,9 @@ func _must_buy_key(kind: String, id: String) -> String:
 
 
 ## Куплена ли позиция набора (или была у бота с начала). Источник — GameState, и
-## только он: поле, выдуманное в замере, измерило бы выдумку. Источников ровно три,
-## и они записаны в MUST_BUY_KINDS: навыки (вместе с рунами), оружие, броня.
+## только он: поле, выдуманное в замере, измерило бы выдумку. Источников ровно
+## четыре, и они записаны в MUST_BUY_KINDS: навыки (вместе с рунами), оружие, броня,
+## совет Старика.
 func _must_buy_owned(kind: String, id: Variant) -> bool:
 	var sid := StringName(id)
 	match _must_buy_source(kind):
@@ -511,6 +813,8 @@ func _must_buy_owned(kind: String, id: Variant) -> bool:
 			return sid in GameState.owned_weapons
 		"armor":
 			return sid in GameState.owned_armors
+		"advice":
+			return GameState.advice_bought.has(String(id))
 	return false
 
 
@@ -534,9 +838,9 @@ func _must_buy_price(kind: String, id: String) -> int:
 
 
 ## Отмечает купленное из узкого набора: «категория:id» -> ранг, на котором позиция
-## впервые оказалась у бота. Оружие, броня и навыки читаются из GameState — у него
-## есть ВСЁ нужное: `has_skill`, `owned_weapons`, `owned_armors` (проверено
-## разведкой, выдумывать поля не надо).
+## впервые оказалась у бота. Оружие, броня, навыки и советы читаются из GameState — у
+## него есть ВСЁ нужное: `has_skill`, `owned_weapons`, `owned_armors`, `advice_bought`
+## (проверено разведкой, выдумывать поля не надо).
 ##
 ## Ранг берётся на момент отметки, то есть на конец охоты, в которой покупка
 ## случилась: точнее прогон не знает — бот тратит монеты ПОСЛЕ боя, а ранг к тому
@@ -551,9 +855,9 @@ func _note_must_buy(got: Dictionary) -> void:
 				got[key] = GameState.rank
 
 
-## Сколько позиций набора замер ОТСЛЕЖИВАЕТ. Советы в счёт не входят (см.
-## MUST_BUY_KINDS.source): «закрыт» по позиции, которой прогон не видит, — не
-## измерение, а объявленный заранее результат.
+## Сколько позиций набора замер ОТСЛЕЖИВАЕТ. Источник «none» (позиция, состояния
+## которой в игре нет вовсе) в счёт не входит: «закрыт» по позиции, которой прогон не
+## видит, — не измерение, а объявленный заранее результат. Сегодня таких нет.
 func _must_buy_total() -> int:
 	var total := 0
 	for kind in MUST_BUY.keys():
@@ -605,8 +909,12 @@ func _must_buy_summary(got: Dictionary, start: Dictionary, done_at: int, spent: 
 	var tracked := price - unseen_price
 	out.append("узкий набор: цена по прайсу %d, отслеживается %d, закрыто на %d (заплачено %d, стартовые по F3 бесплатны), осталось докупить на %d" % [
 		price, tracked, closed, paid, tracked - closed])
-	out.append("узкий набор: НЕ отслеживаются советы Старика — %d позиций на %d: состояния покупки совета в GameState нет (оно живёт в экране города), поэтому в счёте «куплено» их нет" % [
-		unseen_count, unseen_price])
+	# Строка о неотслеживаемом — ТОЛЬКО когда такое есть: сегодня источников четыре
+	# и все они в GameState. Постоянная строка «НЕ отслеживаются советы Старика»
+	# после Task 3б стала бы ложью, которую читают как оговорку к счётчику.
+	if unseen_count > 0:
+		out.append("узкий набор: НЕ отслеживается %d позиций на %d: состояния покупки в GameState нет, поэтому в счёте «куплено» их нет" % [
+			unseen_count, unseen_price])
 	# Что докуплено ПОСЛЕ Легенды. Это и есть «набор не закрывается»: если такие
 	# позиции есть, значит узкий набор собирался не по пути, а после цели.
 	var at_legend: Array[String] = []
