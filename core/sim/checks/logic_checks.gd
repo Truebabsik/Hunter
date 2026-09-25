@@ -756,6 +756,7 @@ const D23_CONTENT := {
 		"weak": [
 			{"types": ["poison"], "ranges": []},
 			{"types": ["fire"], "ranges": ["ranged"]},
+			{"types": ["slash"], "ranges": ["ranged"]},
 		],
 		"resist": [
 			{"types": [], "ranges": ["melee"]},
@@ -787,6 +788,7 @@ const D23_CONTENT := {
 	"skorb": {
 		"weak": [
 			{"types": ["fire"], "ranges": []},
+			{"types": ["crush"], "ranges": ["ranged"]},
 		],
 		"resist": [
 			{"types": [], "ranges": ["melee"]},
