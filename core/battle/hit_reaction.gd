@@ -57,8 +57,15 @@ const DETAIL_SLOTS := [SLOT_CARRIER, SLOT_VERB, SLOT_WEAPON, SLOT_ELEMENT, SLOT_
 ## (точка после вводной), `P_BEFORE_VERB` (пробел после носителя),
 ## `P_BEFORE_WEAPON` (тире после глагола), `P_BEFORE_ELEMENT` (запятая после
 ## отпечатка, когда руна добавила тип) и `P_END` (точка после стихии и после
-## отпечатка без руны). Незакрытый предлог перед разделителем обрывает фразу:
-## «наковальня равнодушен к — опёрённый жгут» (измерено на `rx.verb.resist.04`).
+## отпечатка без руны). Незакрытый предлог перед разделителем обрывает фразу.
+##
+## Это ИСПРАВЛЕННЫЙ ДЕФЕКТ, и в пуле его БОЛЬШЕ НЕТ. Глагол был `равнодушен к`, и
+## строка читалась «наковальня равнодушен к — опёрённый жгут» (измерено на
+## `rx.verb.resist.04`); теперь там `держит удар`, и `равнодушен к` в
+## `content/phrases/*.csv` не встречается ни разу (0 вхождений). Пример назван как
+## история правила, а не как живая строка: искать `равнодушен к` в пуле нечего.
+## Действующие примеры формы — `же` («Всё так же»), `так` («И снова так»), `мимо`
+## («Снова мимо») ниже: они из живого пула.
 ##
 ## Список ОДИН на проект и живёт здесь, рядом с шаблоном: правило принадлежит
 ## шаблону, а спрашивает его сторож формы в `ContentValidator._check_reactions`.
@@ -113,12 +120,17 @@ const DETAIL_STOP_WORDS := [
 ]
 
 
+## Сколько ступеней серии существует. Спрашивают и `intro_role`, и покрытие пула:
+## иначе новая ступень не попадёт в проверку молча.
+const INTRO_MAX_RUN := 3
+
+
 ## Группа вводной: ступень серии, но примерка перебивает ступень — смена оружия
 ## без удара не повтор удара.
 static func intro_role(verdict: StringName, run: int, is_swap: bool) -> StringName:
 	if is_swap:
 		return &"swap"
-	if run >= 3:
+	if run >= INTRO_MAX_RUN:
 		return StringName("%s_hard" % verdict)
 	if run == 2:
 		return StringName("%s_again" % verdict)
@@ -147,10 +159,18 @@ static func assemble(
 ) -> String:
 	if monster == null or weapon == null:
 		return ""
-	var intro := TextGenerator.pick_phrase(&"", &"", SLOT_INTRO, intro_role(verdict, run, is_swap), rng)
-	var carrier := TextGenerator.pick_phrase(monster.id, &"", SLOT_CARRIER, &"", rng)
-	var verb := TextGenerator.pick_phrase(&"", &"", SLOT_VERB, verdict, rng)
-	var print_weapon := TextGenerator.pick_phrase(&"", &"", SLOT_WEAPON, StringName(weapon.id), rng)
+	# Голос `VOICE_REACTION` у ВСЕХ пяти деталей: у реакции своё окно антиповтора, и
+	# детали удара не имеют права вытеснять из общего окна id прозы раунда. Соль
+	# случайности (`&"reaction"`) разводит только потоки чисел — историю выбора она
+	# не разводит вовсе, поэтому голос передаётся явно.
+	var intro := TextGenerator.pick_phrase(
+		&"", &"", SLOT_INTRO, intro_role(verdict, run, is_swap), rng, TextGenerator.VOICE_REACTION)
+	var carrier := TextGenerator.pick_phrase(
+		monster.id, &"", SLOT_CARRIER, &"", rng, TextGenerator.VOICE_REACTION)
+	var verb := TextGenerator.pick_phrase(
+		&"", &"", SLOT_VERB, verdict, rng, TextGenerator.VOICE_REACTION)
+	var print_weapon := TextGenerator.pick_phrase(
+		&"", &"", SLOT_WEAPON, StringName(weapon.id), rng, TextGenerator.VOICE_REACTION)
 	if intro == null or carrier == null or verb == null or print_weapon == null:
 		return ""
 	var line: String = str(intro.text) + P_AFTER_INTRO \
@@ -164,7 +184,7 @@ static func assemble(
 	# расходится молча (AGENTS.md §4).
 	if weapon.damage_types().size() > 1:
 		var element := TextGenerator.pick_phrase(
-			&"", &"", SLOT_ELEMENT, StringName(weapon.rune_type), rng)
+			&"", &"", SLOT_ELEMENT, StringName(weapon.rune_type), rng, TextGenerator.VOICE_REACTION)
 		if element != null:
 			line += P_BEFORE_ELEMENT + str(element.text)
 	return line + P_END

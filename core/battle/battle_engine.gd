@@ -649,6 +649,13 @@ func current_prose() -> Dictionary:
 	return _current_prose
 
 
+## Сценарий текущего раунда. Отдельный читатель, а не поле: проба независимости
+## прозы (D19, задача 7) обязана звать `TextGenerator.generate` СВОИМИ руками —
+## иначе она читала бы побочный результат чужого вызова, а не то, что сама собрала.
+func current_scenario() -> ScenarioData:
+	return _current_scenario
+
+
 func current_scenario_id() -> StringName:
 	return _current_scenario.id if _current_scenario != null else &""
 

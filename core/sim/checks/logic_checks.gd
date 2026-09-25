@@ -44,6 +44,13 @@ const RUNE_RULE_RUNED_DAMAGE := 6
 ## затирать приёмочный `_probe_out.txt`. Иначе зелёный и сломанный прогоны
 ## окажутся в одном файле, и по нему нельзя будет сказать, что именно проверялось.
 const HIT_REACTION_REPORT := "_probe_reaction.txt"
+## Проба независимости прозы от реакции (D19, задача 7). Сиды зафиксированы
+## ЗАПИСЬЮ, а не берутся из текущего прогона: замер ревьюера, на котором поймана
+## связь («проза расходилась в 5 раундах из 10»), снят на этих же числах, и повтор
+## обязан воспроизводить ИМЕННО его, а не свежий случай.
+const PROSE_VOICE_RUN_SEED := 20260922
+const PROSE_VOICE_BATTLE := 7
+const PROSE_VOICE_ROUNDS := 10
 const LOOP_REPORT := "_loop_out.txt"
 const LOOP_TRACE := "_loop_trace.txt"
 ## Сводка скана по сидам и полные отчёты всех его прогонов. Два файла, а не один:
@@ -1952,9 +1959,21 @@ static func _hit_reaction() -> Array[String]:
 		failures.append("проба не воспроизводит расхождение: множитель %+d не обнулился, значит элемент не погасил штраф" % runed.type_multiplier)
 	plain.disenchant()
 
-	# ЖИВОЙ СЛУЧАЙ — свидетельством, без утверждения: Ламант с руной. Тупик
-	# Ламанта открыт вопросом §14.1, и утверждение покраснело бы, когда дизайн
-	# его решит. Строку печатаем: она показывает, что расхождение не выдумано.
+	# ЖИВОЙ СЛУЧАЙ — свидетельством, без утверждения ИСХОДА: Ламант с руной. Тупик
+	# Ламанта открыт вопросом §14.1, и утверждение «здесь резист» покраснело бы,
+	# когда дизайн его решит. Строку печатаем: она показывает, что расхождение не
+	# выдумано.
+	#
+	# Но «печатается» не значит «не сторожится». Раньше свидетель печатался и НЕ
+	# попадал в `failures` ни одной строкой: если бы ветвь исчезла (вид не загрузился,
+	# ресурс вернул null), приёмка (§11.1) цитировала бы строку, которой в отчёте уже
+	# нет, и никто бы этого не заметил. Поэтому ветвь утверждает РОВНО то, что создаёт
+	# сама: руна добавила «+1» элемента и подняла итог. Без этого свидетель печатал бы
+	# два равных числа, и «расхождения нет» читалось бы как результат, которого
+	# в отчёте нет. Краснота проверена достижимой мутацией: `element_bonus := 0`
+	# в `DamageCalc.player_damage` даёт равные итоги, и строка ниже краснеет
+	# (артефакт `_probe_mutation_t7_lament_witness.txt`). Исход («резист») остаётся
+	# свидетельством в отчёте, а не утверждением.
 	var lament := Database.monster(&"lament")
 	var mace: WeaponData = Database.weapon(&"mace")
 	if lament != null and mace != null:
@@ -1976,6 +1995,16 @@ static func _hit_reaction() -> Array[String]:
 			l_runed.total, l_runed.type_multiplier, l_runed.type_reasons_sum,
 			HitReaction.verdict_of(l_bare.type_reasons_sum),
 			HitReaction.verdict_of(l_runed.type_reasons_sum)])
+		# Утверждение о САМОМ СЛУЧАЕ, а не о его исходе (§14.1): ветвь обязана
+		# утверждать то, что создаёт сама. Иначе свидетель печатал бы два равных
+		# числа, и «расхождения нет» читалось бы как результат, которого в отчёте
+		# нет. Краснота проверена достижимой мутацией: условие `hit_type !=
+		# weapon.damage_type` в `DamageCalc.player_damage` заменено на `false` —
+		# «+1» элемента не набирается (`element_bonus` остаётся нулём), и строка
+		# ниже краснеет (артефакт `_probe_mutation_t7_lament_witness.txt`).
+		if l_runed.total <= l_bare.total:
+			failures.append("живой случай выродился: руна не подняла итог (%d против %d) — свидетель Ламанта больше не воспроизводит расхождение" % [
+				l_runed.total, l_bare.total])
 		mace.disenchant()
 
 	# Сборка: три вердикта дают три РАЗНЫЕ строки, каждая со своей лексикой;
@@ -2228,6 +2257,14 @@ static func _hit_reaction() -> Array[String]:
 		Database.armor(&"light"),
 		failures))
 
+	# Независимость прозы раунда от сборки реакции. Живёт ЗДЕСЬ, а не в `--prose`:
+	# связь проявляется только в настоящем бою (окно антиповтора наполняется обоими
+	# голосами подряд), а `--prose` и `--repeat` боя не запускают вовсе.
+	out.append_array(_prose_independent_of_reaction(
+		Database.monster(&"gromun"),
+		Database.weapon(&"bow"),
+		failures))
+
 	if failures.is_empty():
 		out.append("ок реакции: вердикт следует знаку суммы причин, элемент его не подменяет")
 	else:
@@ -2254,6 +2291,135 @@ static func _reaction_parts(mon: MonsterData, wpn: WeaponData, verdict: StringNa
 		var pool: Array = buckets[name]
 		parts.append("%s=%s" % [name, pool[0].text if not pool.is_empty() else "ПУСТО"])
 	return ", ".join(parts)
+
+
+## Проза раунда НЕ зависит от того, собирали ли реакцию удара (D19).
+##
+## Это сторож обещания «отдельная соль = независимость»: соль `&"reaction"` разводит
+## ПОТОКИ ЧИСЕЛ, но история антиповтора была ОБЩЕЙ, и 4–5 деталей реакции за удар
+## вытесняли из общего окна id прозы. Измерено на настоящем бою: при одинаковых
+## сидах проза расходилась в 5 раундах из 10, и ни один режим ветки этого не видел
+## (`--loop`/`--sim` прозы не содержат, `--prose`/`--repeat` боя не запускают).
+##
+## Схема — по брифу задачи 7: сбросить историю → проза N раундов фиксированными
+## генераторами → запомнить; снова сбросить → СОБРАТЬ реакции тем же оружием →
+## та же проза теми же сидами. Строки обязаны совпасть ДОСЛОВНО.
+##
+## ПОЧЕМУ РЕАКЦИЯ СОБИРАЕТСЯ ПЕРЕД КАЖДЫМ РАУНДОМ, А НЕ ВСЯ СРАЗУ. Это измеренный
+## урок, а не стилистика: первая редакция пробы сгоняла все 10 реакций в начало
+## второго прогона — и она КРАСНЕЛА на исправленном коде (7 расхождений из 10).
+## Причина: 40 вытесненных id реакции выбивали из окна прозы фразы, которые первый
+## прогон ещё не успел взять, то есть проба мерила не бой, а состояние окна, которого
+## игра не создаёт. В бою реакция раунда k стоит МЕЖДУ прозой раунда k и раунда k+1,
+## и ровно так она здесь и собирается.
+##
+## Почему это проверка ГОЛОСА, а не «проверки воспроизводимости». Числа у обоих
+## прогонов одни и те же (сид на раунд), меняется только ИСТОРИЯ выбора: во втором
+## прогоне окно наполняется деталями реакции. Если окно общее — проза уезжает;
+## если у голоса своё окно — не уезжает вовсе.
+static func _prose_independent_of_reaction(
+	mon: MonsterData,
+	weapon: WeaponData,
+	failures: Array[String]
+) -> Array[String]:
+	var out: Array[String] = []
+	if mon == null or weapon == null:
+		failures.append("нет данных для пробы независимости прозы: вид или оружие")
+		return out
+	# Вид — КОПИЯ: проба меряет ПРОЗУ и не имеет права упереться в смерть зверя.
+	var clean := _prose_rounds(mon, weapon, false)
+	var warmed := _prose_rounds(mon, weapon, true)
+	var diff := 0
+	var first := 0
+	for i in clean.size():
+		if clean[i] == warmed[i]:
+			continue
+		diff += 1
+		if first == 0:
+			first = i + 1
+	if diff != 0:
+		failures.append("реакция изменила прозу раунда: «%s» против «%s»" % [
+			clean[first - 1], warmed[first - 1]])
+	out.append("проза и реакция: раундов %d, расхождений %d (первое на раунде %d)" % [
+		clean.size(), diff, first])
+	# Вторая половина пробы: механизм обязан быть ЖИВЫМ. Если сборка реакции
+	# перестанет брать фразы (пустой пул, сломанный голос), «расхождений 0» выйдет
+	# даром — окно просто нечем будет вытеснять.
+	var reactions := _reaction_texts(mon, weapon)
+	var non_empty := 0
+	for t in reactions:
+		if t != "":
+			non_empty += 1
+	out.append("проза и реакция: в замере собрано непустых строк реакции %d из %d" % [
+		non_empty, reactions.size()])
+	if non_empty == 0:
+		failures.append("проба независимости прозы вакуумна: ни одна реакция не собралась")
+	return out
+
+
+## Проза `PROSE_VOICE_ROUNDS` раундов боя на ОДНИХ И ТЕХ ЖЕ (раунд, соль) генераторах.
+##
+## `warm_reactions = false` — история сброшена, проза идёт первой; `true` — перед прозой
+## каждого раунда собирается реакция удара ровно тем генератором, которым её собирает
+## движок (`&"reaction"`). Всё остальное совпадает побайтово: тот же вид-копия, то же
+## оружие, те же числа.
+static func _prose_rounds(mon: MonsterData, weapon: WeaponData, warm_reactions: bool) -> Array[String]:
+	TextGenerator.reset_history()
+	var mono: MonsterData = mon.duplicate()
+	mono.max_hp = 100000
+	var hunter := HunterState.new()
+	hunter.max_hp = 100000
+	hunter.hp = hunter.max_hp
+	var engine := BattleEngine.new()
+	engine.seed_source = SeedSource.new(PROSE_VOICE_RUN_SEED, PROSE_VOICE_BATTLE)
+	engine.setup(mono, hunter, weapon)
+	var prose: Array[String] = []
+	for i in PROSE_VOICE_ROUNDS:
+		if engine.is_over():
+			break
+		if warm_reactions:
+			HitReaction.assemble(mono, weapon, HitReaction.verdict_of(-1), 1, false,
+				engine._round_rng(engine.round_index, &"reaction"))
+		prose.append(str(TextGenerator.generate(
+			mono, engine.current_scenario(), _text_rng(engine.round_index)).get("prose", "")))
+		if engine.submit_read(engine.current_scenario_id(), true).is_empty():
+			break
+		engine.advance_round()
+	return prose
+
+
+## Тексты реакций того же боя — «механизм жив». Пустая строка значит «шаблон не
+## собран», и тогда проба независимости выше зеленела бы даром.
+static func _reaction_texts(mon: MonsterData, weapon: WeaponData) -> Array[String]:
+	var mono: MonsterData = mon.duplicate()
+	mono.max_hp = 100000
+	var hunter := HunterState.new()
+	hunter.max_hp = 100000
+	hunter.hp = hunter.max_hp
+	var engine := BattleEngine.new()
+	engine.seed_source = SeedSource.new(PROSE_VOICE_RUN_SEED, PROSE_VOICE_BATTLE)
+	engine.setup(mono, hunter, weapon)
+	var lines: Array[String] = []
+	for i in PROSE_VOICE_ROUNDS:
+		if engine.is_over():
+			break
+		lines.append(HitReaction.assemble(mono, weapon, HitReaction.verdict_of(-1), 1, false,
+			engine._round_rng(engine.round_index, &"reaction")))
+		if engine.submit_read(engine.current_scenario_id(), true).is_empty():
+			break
+		engine.advance_round()
+	return lines
+
+
+## Текстовый генератор раунда — тем же правилом, что `SeedSource.round_rng` и соль
+## `&"text"` у движка (`BattleEngine._round_rng(round, &"text")`). Живёт здесь, а не
+## берётся у движка: проба обязана получать ряд чисел, НЕ завися от того, звали ли
+## прозу из движка, — иначе она мерила бы побочный эффект вызова, а не историю.
+static func _text_rng(round_index: int) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%d:%d:%d:%s" % [
+		PROSE_VOICE_RUN_SEED, PROSE_VOICE_BATTLE, round_index, &"text"])
+	return rng
 
 
 ## Реакция и серия в настоящем бою (D19): мост «правило → исход».
