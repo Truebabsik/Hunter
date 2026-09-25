@@ -4,7 +4,7 @@
 
 **Goal:** Боевая проза честно называет исход удара игрока — тип наткнулся на защиту, нашёл щель или прошёл нейтрально — не добавляя подсказок, UI и не меняя ни одного числа боя.
 
-**Architecture:** Вердикт считается в ядре из знака типового множителя (`DamageResult.type_multiplier`) и уезжает в исход действия идентификатором. Слова собираются из **деталей** — новый CSV в `content/phrases/` по существующей схеме, поэтому загрузчик не меняется, — а сборка живёт рядом с генератором прозы и зовёт его же взвешенный выбор. Показ — строкой под прозой раунда, вне тумана: реакция это факт о твоём ударе, а не наблюдение за зверем.
+**Architecture:** Вердикт считается в ядре из знака **суммы причин** вида (поле `DamageResult.type_reasons_sum`, добавляется этой задачей: `type_multiplier` для вердикта не годится — в нём сидит безусловный «+1» руны и в резист гасит штраф) и уезжает в исход действия идентификатором. Слова собираются из **деталей** — новый CSV в `content/phrases/` по существующей схеме, поэтому загрузчик не меняется, — а сборка живёт рядом с генератором прозы и зовёт его же взвешенный выбор. Показ — строкой под прозой раунда, вне тумана: реакция это факт о твоём ударе, а не наблюдение за зверем.
 
 **Tech Stack:** Godot 4.7.2, GDScript. Проверки — headless-режимы, отчёты читаются файлами.
 
@@ -20,6 +20,8 @@
 - Ожидаемый красный `--validate` — **ровно три ламантовы строки** (§14.1). Не глушить и не «чинить».
 - Обёртка проверок читает вердикт внутри отчётов: строка, начинающаяся с «ПРОВАЛ», маркеры `VALIDATION FAILED`/`SMOKE FAILED`/`LOAD FAILED` и `SCRIPT ERROR` на stderr ломают вердикт.
 - **Чужие незакоммиченные файлы не трогать**: `art/monsters/hruz.png`, `docs/ART_*.md`, `docs/dizain_hunter_old.md`, `*.bat`.
+- **Новый `class_name` не виден headless-прогону, пока не пересобран кеш глобальных классов.** Признак — `Parse Error: Identifier "<Имя>" not declared`. Лечение: один раз `--headless --import`, затем обычный прогон. Относится ко всякой задаче, создающей файл с `class_name`.
+- **Общая база оружия остаётся зачарованной после пробы `_weapon_after_death`** (`logic_checks.gd`): она чарует ОБЩИЙ `Database.weapon(&"mace")` огнём и не снимает чары. Пробы задач 4–5 идут позже в том же процессе, поэтому **перед своим замером оружия обязаны снять чары** (`disenchant()`) и утверждать то состояние, которое сами подготовили. `duplicate()` не спасает — чары копируются.
 - **Каждая новая проверка показывается КРАСНОЙ мутацией** с сохранённым отчётом. Зелёная проверка без показанной красноты не принимается.
 
 ## Файловая структура
@@ -42,11 +44,15 @@
 
 **Files:**
 - Create: `core/battle/hit_reaction.gd`
+- Modify: `core/battle/damage_result.gd` (новое поле `type_reasons_sum`)
+- Modify: `core/battle/damage_calc.gd` (заполнение поля в том же цикле, что считает множитель)
 - Modify: `core/sim/checks/logic_checks.gd` (новая функция `_hit_reaction()`, вызов из `probe()` рядом с `_rune_rule()`)
 - Modify: `docs/dizain_hunter.md` (§11.10 — таблица порогов; история изменений)
 
+**Files — отступление от первой редакции брифа, решение координатора:** `damage_result.gd` и `damage_calc.gd` в списке не стояли, потому что первая редакция спеки называла источником вердикта `type_multiplier` — **это была ошибка**: он начинается с `element_bonus` и суммирует причины поверх элемента (`damage_calc.gd:110-116`), поэтому знак множителя не означает «тип сработал / не сработал». Голой суммы причин в результате нет, её надо завести.
+
 **Interfaces:**
-- Produces: `HitReaction.VERDICT_RESIST` / `VERDICT_WEAK` / `VERDICT_NEUTRAL` (`StringName`), `HitReaction.verdict_of(type_multiplier: int) -> StringName`.
+- Produces: `HitReaction.VERDICT_RESIST` / `VERDICT_WEAK` / `VERDICT_NEUTRAL` (`StringName`), `HitReaction.verdict_of(reasons_sum: int) -> StringName`, поле `DamageResult.type_reasons_sum: int`.
 
 - [ ] **Step 1: Заглушка класса — чтобы краснота была НАЗВАННОЙ, а не падением**
 
@@ -58,10 +64,11 @@ class_name HitReaction
 ## Вердикт удара игрока (D19): тип удара наткнулся на защиту зверя, нашёл щель
 ## или прошёл нейтрально.
 ##
-## Вердикт — про ТИП, а не про силу удара. Руна даёт безусловный «+1» (D04),
-## который приходит даже в резист: судя по числу, проза обещала бы щель там, где
-## её нет. Поэтому источник вердикта — знак типового множителя, то есть сумма
-## причин «слабость +1 / резист −1», а не итог и не текст разбора.
+## Вердикт — про ТИП, а не про силу удара. Источник — сумма причин «слабость +1 /
+## резист −1» (поле `DamageResult.type_reasons_sum`), БЕЗ безусловного «+1» элемента
+## руны (D04): в `type_multiplier` элемент уже прибавлен и в резист гасит штраф,
+## поэтому удар руной в стену даёт там ноль — и по множителю проза сказала бы
+## «нейтрально» там, где разбор называет резист (измерено на Ламанте).
 
 const VERDICT_RESIST := &"resist"
 const VERDICT_WEAK := &"weak"
@@ -69,43 +76,60 @@ const VERDICT_NEUTRAL := &"neutral"
 
 
 ## ЗАГЛУШКА: возвращает «нейтрально» всегда. Настоящее правило — шаг 4.
-static func verdict_of(_type_multiplier: int) -> StringName:
+static func verdict_of(_reasons_sum: int) -> StringName:
 	return VERDICT_NEUTRAL
 ```
+
+Шаг 1 не заканчивается на заглушке: **поле обязано существовать до красного прогона**, иначе проба не скомпилируется и краснота будет падением разбора. В `core/battle/damage_result.gd` рядом с `type_multiplier`:
+
+```gdscript
+## Сумма причин вида («слабость +1 / резист −1») БЕЗ безусловного «+1» элемента
+## руны (D04). Отдельно от `type_multiplier`, потому что там элемент уже прибавлен
+## и в резист гасит его: удар руной в стену поднимает итог, ничего не пробивая.
+## Вердикт удара (D19) обязан смотреть на реакцию ТИПА, а не на итог с элементом.
+var type_reasons_sum: int = 0
+```
+
+Поле пока остаётся нулевым — заполнение на шаге 4. Поэтому ветвь пробы про руну в резист на красном прогоне покраснеет **по имени** («получили neutral»), а не упадёт.
 
 - [ ] **Step 2: Написать проверку правила**
 
 В `core/sim/checks/logic_checks.gd` рядом с `_rune_rule()`:
 
 ```gdscript
-## Правило реакции на удар (D19): вердикт — знак типового множителя, а не итог
-## удара. Отдельная ветвь про руну в резист: число растёт (элемент безусловен,
-## D04), а вердикт обязан остаться «резист» — иначе проза обещает щель, которой нет.
+## Правило реакции на удар (D19): вердикт — знак СУММЫ ПРИЧИН вида, а не итог
+## удара и не типовой множитель. Отдельная ветвь про руну в резист: итог растёт
+## (элемент безусловен, D04), множитель при этом обнуляется, а вердикт обязан
+## остаться «резист» — иначе проза называет стену нейтралью.
 static func _hit_reaction() -> Array[String]:
 	var out: Array[String] = []
 	var failures: Array[String] = []
 
 	var cases := [
-		{"mult": -2, "want": HitReaction.VERDICT_RESIST},
-		{"mult": -1, "want": HitReaction.VERDICT_RESIST},
-		{"mult": 0, "want": HitReaction.VERDICT_NEUTRAL},
-		{"mult": 1, "want": HitReaction.VERDICT_WEAK},
-		{"mult": 3, "want": HitReaction.VERDICT_WEAK},
+		{"sum": -2, "want": HitReaction.VERDICT_RESIST},
+		{"sum": -1, "want": HitReaction.VERDICT_RESIST},
+		{"sum": 0, "want": HitReaction.VERDICT_NEUTRAL},
+		{"sum": 1, "want": HitReaction.VERDICT_WEAK},
+		{"sum": 3, "want": HitReaction.VERDICT_WEAK},
 	]
 	for c in cases:
-		var got := HitReaction.verdict_of(int(c["mult"]))
-		out.append("реакция: множитель %+d → %s" % [int(c["mult"]), got])
+		var got := HitReaction.verdict_of(int(c["sum"]))
+		out.append("реакция: сумма причин %+d → %s" % [int(c["sum"]), got])
 		if got != StringName(c["want"]):
-			failures.append("множитель %+d дал «%s», а ждали «%s»" % [
-				int(c["mult"]), got, c["want"]])
+			failures.append("сумма причин %+d дала «%s», а ждали «%s»" % [
+				int(c["sum"]), got, c["want"]])
 
-	# Руна в РЕЗИСТ: итог выше базового, а вердикт — «резист».
+	# РАСХОЖДЕНИЕ, ради которого проба и написана: удар руной в стену. Стена
+	# резистит БАЗОВЫЙ тип, руна нейтральна — значит итог растёт на «+1» элемента,
+	# разбор называет резист, а множитель обнуляется (элемент гасит штраф).
+	# Вердикт обязан остаться «резист»: если считать по множителю, проза скажет
+	# «нейтрально» там, где разбор называет стену.
 	var wall := MonsterData.new()
 	wall.id = &"reaction_wall"
 	wall.title = "Проба стены"
 	wall.max_hp = 20
 	wall.armor = 0
-	wall.resist_rules = [{"types": [String(MonsterData.TYPE_ICE)], "ranges": []}]
+	wall.resist_rules = [{"types": [String(MonsterData.TYPE_CRUSH)], "ranges": []}]
 	var plain := WeaponData.new()
 	plain.id = &"reaction_plain"
 	plain.range_id = MonsterData.RANGE_MELEE
@@ -116,18 +140,40 @@ static func _hit_reaction() -> Array[String]:
 	plain.enchant(MonsterData.TYPE_ICE)
 	var runed := DamageCalc.player_damage(
 		plain, wall, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
-	var verdict := HitReaction.verdict_of(runed.type_multiplier)
-	out.append("реакция: руна в резист — урон %d (без чар %d), множитель %+d → %s" % [
-		runed.total, bare.total, runed.type_multiplier, verdict])
+	var verdict := HitReaction.verdict_of(runed.type_reasons_sum)
+	out.append("реакция: руна в резист — урон %d (без чар %d), множитель %+d, сумма причин %+d, разбор [%s] → %s" % [
+		runed.total, bare.total, runed.type_multiplier, runed.type_reasons_sum,
+		", ".join(runed.type_reasons), verdict])
 	if verdict != HitReaction.VERDICT_RESIST:
 		failures.append("руна в резист дала вердикт «%s», а ждали «резист»" % verdict)
 	if runed.total <= bare.total:
 		failures.append("проба не воспроизводит случай: руна не подняла урон (%d против %d)" % [
 			runed.total, bare.total])
+	if runed.type_multiplier >= 0:
+		failures.append("проба не воспроизводит расхождение: множитель %+d не обнулился, значит элемент не погасил штраф" % runed.type_multiplier)
 	plain.disenchant()
 
+	# ЖИВОЙ СЛУЧАЙ — свидетельством, без утверждения: Ламант с руной. Тупик
+	# Ламанта открыт вопросом §14.1, и утверждение покраснело бы, когда дизайн
+	# его решит. Строку печатаем: она показывает, что расхождение не выдумано.
+	var lament := Database.monster(&"lament")
+	var mace: WeaponData = Database.weapon(&"mace")
+	if lament != null and mace != null:
+		mace.disenchant()
+		var l_bare := DamageCalc.player_damage(
+			mace, lament, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		mace.enchant(MonsterData.TYPE_FIRE)
+		var l_runed := DamageCalc.player_damage(
+			mace, lament, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		out.append("реакция: Ламант молотом — без чар %d (множитель %+d, сумма %+d), с огнём %d (множитель %+d, сумма %+d) → %s / %s" % [
+			l_bare.total, l_bare.type_multiplier, l_bare.type_reasons_sum,
+			l_runed.total, l_runed.type_multiplier, l_runed.type_reasons_sum,
+			HitReaction.verdict_of(l_bare.type_reasons_sum),
+			HitReaction.verdict_of(l_runed.type_reasons_sum)])
+		mace.disenchant()
+
 	if failures.is_empty():
-		out.append("ок реакции: вердикт следует знаку множителя, элементы его не подменяют")
+		out.append("ок реакции: вердикт следует знаку суммы причин, элемент его не подменяет")
 	else:
 		out.append("ПРОВАЛ реакции: %s" % "; ".join(failures))
 	Report.write(HIT_REACTION_REPORT, out)
@@ -142,26 +188,42 @@ static func _hit_reaction() -> Array[String]:
 cmd /c "F:\WORK\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe --headless --path F:\WORK\hunter --quit-after 900 -- --probe --log-file F:\WORK\hunter\_glog.txt"
 ```
 
-Ожидается в `_probe_out.txt` строка `ПРОВАЛ реакции:` с причинами «множитель −1 дал „нейтрально“» и подобными, и **обязательно** строка `реакция: руна в резист — урон N (без чар M)` с `N > M`: если она не воспроизводит рост числа, значит проба построена неверно и проверять нечего.
+Ожидается в `_probe_out.txt` строка `ПРОВАЛ реакции:` с причинами вида «сумма причин −1 дала „нейтрально“» (поле ещё нулевое) и, **обязательно**, строка `реакция: руна в резист — урон N (без чар M), множитель +0, сумма причин −1` с `N > M`. Если роста числа нет или множитель не обнулился, проба не воспроизводит расхождение, ради которого написана, — разбирайся с пробой, а не подгоняй ожидание.
 
 - [ ] **Step 4: Реализовать правило**
 
-В `core/battle/hit_reaction.gd` заменить заглушку:
+Сначала заполнить поле в `core/battle/damage_calc.gd` — **тем же циклом**, что считает множитель: правило подписи причины («`+1` — плюс, иначе минус») обязано остаться в одном месте, вторая его копия запрещена.
 
 ```gdscript
-## Вердикт по знаку типового множителя — суммы причин «слабость +1 / резист −1»
-## (`DamageResult.type_multiplier`). Ноль — взаимодействия нет.
-static func verdict_of(type_multiplier: int) -> StringName:
-	if type_multiplier < 0:
+	var summed := element_bonus
+	var reasons_sum := 0
+	for i in range(phase_reason_count, r.type_reasons.size()):
+		if "+1" in r.type_reasons[i]:
+			summed += 1
+			reasons_sum += 1
+		else:
+			summed -= 1
+			reasons_sum -= 1
+	r.type_reasons_sum = reasons_sum
+	r.type_multiplier = summed
+```
+
+`type_multiplier` сохраняет прежний смысл — меняется только то, что рядом появляется вторая сумма. Затем в `core/battle/hit_reaction.gd` заменить заглушку:
+
+```gdscript
+## Вердикт по знаку СУММЫ ПРИЧИН вида («слабость +1 / резист −1») без «+1» элемента
+## руны (D04). Ноль — взаимодействия нет.
+static func verdict_of(reasons_sum: int) -> StringName:
+	if reasons_sum < 0:
 		return VERDICT_RESIST
-	if type_multiplier > 0:
+	if reasons_sum > 0:
 		return VERDICT_WEAK
 	return VERDICT_NEUTRAL
 ```
 
 - [ ] **Step 5: Прогнать — ожидается ЗЕЛЁНОЕ**
 
-Та же команда. Ожидается `ок реакции: вердикт следует знаку множителя, элементы его не подменяют` и отсутствие `ПРОВАЛ` в отчёте.
+Та же команда. Ожидается `ок реакции: вердикт следует знаку суммы причин, элемент его не подменяет` и отсутствие `ПРОВАЛ` в отчёте. В отчёте обязана быть строка про Ламант: у неё **сумма причин одинаковая (−1) при разном множителе** — это и есть свидетельство, что расхождение не выдумано.
 
 - [ ] **Step 6: Показать красноту мутацией**
 
@@ -169,13 +231,23 @@ static func verdict_of(type_multiplier: int) -> StringName:
 
 - [ ] **Step 7: Правка дизайна — пороги заменены знаком**
 
-В `docs/dizain_hunter.md` §11.10 таблицу порогов (`≤ 30 %` / `≥ 150 %`) заменить на правило знака с объяснением: при целых `±1` слабость к базе около пяти — это `+20 %`, а не `+150 %`, поэтому прежние пороги не сработали бы ни разу. В историю изменений добавить запись **v1.10.11**.
+В `docs/dizain_hunter.md` §11.10 таблицу порогов (`≤ 30 %` / `≥ 150 %`) заменить на правило знака с объяснением из двух частей: (1) при целых `±1` слабость к базе около пяти — это `+20 %`, а не `+150 %`, поэтому прежние пороги не сработали бы ни разу; (2) источник вердикта — **сумма причин без «+1» элемента руны**, потому что в `type_multiplier` элемент уже прибавлен и в резист гасит штраф (иначе удар руной в стену читался бы как нейтральный). В историю изменений добавить запись **v1.10.11**.
 
-- [ ] **Step 8: Коммит**
+- [ ] **Step 8: Проверить, что числа не поехали**
+
+```
+cmd /c "F:\WORK\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe --headless --path F:\WORK\hunter --quit-after 2400 -- --loop 25 --log-file F:\WORK\hunter\_glog.txt"
+```
+
+Ожидается SHA256 `_loop_out.txt` **равный** `AD17FB96B388B35D2C79779B630866E6F548E57FC5EEBB880FD89A7A21DB5F58`: поле новое, числа не меняются. Другое значение — стоп.
+
+**Если прогон падает `Parse Error: Identifier "HitReaction" not declared`** — это кеш глобальных классов, а не ошибка кода: новый `class_name` не виден прогону, пока кеш не пересобран. Выполнить один раз `--headless --import` и повторить прогон. Это относится ко всем задачам D19, создающим новые файлы с `class_name`.
+
+- [ ] **Step 9: Коммит**
 
 ```bash
-git add core/battle/hit_reaction.gd core/sim/checks/logic_checks.gd docs/dizain_hunter.md
-git commit -m "D19: вердикт удара — знак типового множителя; пороги §11.10 заменены"
+git add core/battle/hit_reaction.gd core/battle/damage_result.gd core/battle/damage_calc.gd core/sim/checks/logic_checks.gd docs/dizain_hunter.md
+git commit -m "D19: вердикт удара — знак суммы причин вида (без «+1» элемента); пороги §11.10 заменены"
 ```
 
 ---
@@ -592,7 +664,7 @@ var _verdict_run: int = 0
 2. В `submit_read`, **после** того как `dmg` посчитан (внутри `if read_correct:`), добавить в `outcome` три поля. Для удара и для примерки — одинаково, отличается только `is_swap`:
 
 ```gdscript
-		var verdict := HitReaction.verdict_of(dmg.type_multiplier)
+		var verdict := HitReaction.verdict_of(dmg.type_reasons_sum)
 		if verdict == _last_verdict:
 			_verdict_run += 1
 		else:
