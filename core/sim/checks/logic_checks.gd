@@ -20,6 +20,11 @@ const ART_REPORT := "_art_out.txt"
 const REPEAT_REPORT := "_repeat_out.txt"
 const PROSE_REPORT := "_prose_out.txt"
 const PROBE_REPORT := "_probe_out.txt"
+## Отдельный файл у сторожа правила руны. Почему не строки внутри `_probe_out.txt`:
+## красноту сторожа показывают МУТАЦИЕЙ, и сохранённые отчёты мутаций не должны
+## затирать приёмочный отчёт `--probe` — иначе «зелёный прогон» и «сломанный прогон»
+## окажутся в одном файле, и по нему нельзя будет сказать, что именно проверялось.
+const RUNE_RULE_REPORT := "_probe_rune_rule.txt"
 const LOOP_REPORT := "_loop_out.txt"
 const LOOP_TRACE := "_loop_trace.txt"
 ## Сводка скана по сидам и полные отчёты всех его прогонов. Два файла, а не один:
@@ -457,6 +462,7 @@ static func probe() -> String:
 	out.append_array(_second_wind_preemptive())
 	out.append_array(_fog_mechanics())
 	out.append_array(_weapon_after_death())
+	out.append_array(_rune_rule())
 	Report.write(PROBE_REPORT, out)
 	return out[0]
 
@@ -481,7 +487,7 @@ static func _status_from_content() -> Array[String]:
 	# (`клинок_физ` и прочие) НЕ переименовываются вместе с подписью: на них держатся
 	# артефакты прежних замеров, а «Клинок» → «Меч» — переименование только `title`.
 	var weapon: WeaponData = Database.weapon(&"blade").duplicate()
-	weapon.rune_type = &"poison"
+	weapon.enchant(&"poison")
 
 	var found_blind := false
 	var sighted_signals := 0
@@ -534,7 +540,7 @@ static func _weapon_after_death() -> Array[String]:
 	# Даём игроку арсенал и чары: без этого проверка была бы про пустоту.
 	GameState.owned_weapons.append(&"blade")
 	var mace: WeaponData = Database.weapon(&"mace")
-	mace.rune_type = &"fire"
+	mace.enchant(&"fire")
 	GameState.equipped_weapon = &"mace"
 
 	# Смерть при живой благодати: богиня возвращает, забег продолжается.
@@ -1019,7 +1025,7 @@ static func _status_mechanics() -> Array[String]:
 	sword.range_id = MonsterData.RANGE_MELEE
 	sword.damage_type = MonsterData.TYPE_SLASH
 	sword.base_damage = 4
-	sword.rune_type = MonsterData.TYPE_FIRE
+	sword.enchant(MonsterData.TYPE_FIRE)
 	var fire_eater := MonsterData.new()
 	fire_eater.id = &"d04_mon"
 	fire_eater.title = "Проба огня"
@@ -1079,9 +1085,9 @@ static func _status_mechanics() -> Array[String]:
 		runed.range_id = MonsterData.RANGE_MELEE
 		runed.damage_type = MonsterData.TYPE_CRUSH
 		runed.base_damage = 4
-		runed.rune_type = element_type
+		runed.enchant(element_type)
 		var no_rune: WeaponData = runed.duplicate()
-		no_rune.rune_type = &""
+		no_rune.disenchant()
 		var with_rune := DamageCalc.player_damage(
 			runed, bare, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
 		var without_rune := DamageCalc.player_damage(
@@ -1689,6 +1695,157 @@ static func _status_mechanics() -> Array[String]:
 			str(bought_first), str(bought_second), wallet_after_first,
 			str(GameState.advice_bought.get("lament", false))])
 	GameState.reset()
+	return out
+
+
+## Сторож ПРАВИЛА РУНЫ: «руна ДОБАВЛЯЕТ второй тип урона, а не заменяет базовый».
+##
+## Зачем отдельная проверка. Правило записано в одном месте
+## (`WeaponData.damage_types_with`), и вторая копия жила в `DamageCalc`: список типов
+## удара собирался там заново. Копия совпадала с источником, поэтому расхождения не
+## было видно, а разошлась бы она молча — ровно тот класс дефектов, о котором
+## `AGENTS.md` §4. Здесь проверяется, что копии больше нет.
+##
+## ПОЧЕМУ ЧЕТЫРЕ ВЕТВИ, А НЕ ОДНА. Первые три держат правило со стороны СПИСКА:
+## наложили — типов два; сняли — снова один; руна равна базовому типу — по-прежнему
+## один (иначе удар удвоился бы сам с собой). Четвёртая держит его со стороны УРОНА,
+## и она здесь главная.
+##
+## Почему мало списка. После того как `DamageCalc` начал СПРАШИВАТЬ список у оружия,
+## проверка «список совпадает с источником» стала бы тавтологией: она сравнивала бы
+## функцию саму с собой и осталась бы зелёной при любой второй копии внутри расчёта.
+## Поэтому боевая ветвь меряет УРОН по виду, уязвимому к типу руны: без руны удар
+## одинарный и точный, с руной он несёт и базовый подтип, и тип руны, а уязвимость
+## вида признаёт только второй. Отсюда равенство «с руной минус без руны = 2»:
+## «+1» элемента руны (D04) и «+1» за сработавшую уязвимость к нему.
+##
+## Но и этой мерки мало, и это измерено, а не предположено. Разница ОТНОСИТЕЛЬНАЯ:
+## она сравнивает два удара тем же оружием, поэтому лишний тип, попавший в ОБА удара,
+## поднимает оба замера одинаково и в разнице не виден (мутация 2d — копия считает
+## базовый подтип дважды — оставляла сторожа ЗЕЛЁНЫМ). Поэтому рядом стоит вторая,
+## АБСОЛЮТНАЯ мерка: «+1» элемента руны на ГОЛОМ виде, где за тип не прибавляет
+## ничто, кроме самой руны. Разница обязана быть ровно 1, и лишний тип в ударе с
+## руной ломает уже её (мутация 2e — лишний тип, добавляемый только при руне, —
+## названа обеими мерками).
+##
+## Остаточная слепота, названная честно: копия, которая добавляет лишний базовый
+## подтип СИММЕТРИЧНО (и с руной, и без) и при этом саму руну не теряет, не видна
+## ни одной из двух мерок — в разнице она сокращается. Такую копию поймает только
+## сверка разбора с источником, а это снова сравнение функции с собой. Мутации
+## 1, 2, 2b, 3, 4, 2e показаны красными и сохранены в `_probe_mutation_*.txt`.
+##
+## Вид синтетический, а не из контента: уязвимость обязана быть РОВНО к типу руны и
+## без резистов к базовому подтипу, иначе разницу урона объясняло бы что-то ещё.
+static func _rune_rule() -> Array[String]:
+	var out: Array[String] = []
+	var failures: Array[String] = []
+
+	var monster := MonsterData.new()
+	monster.id = &"rune_rule_probe"
+	monster.title = "Проба правила руны"
+	monster.max_hp = 20
+	monster.armor = 0
+	# Уязвим ТОЛЬКО ко льду, и ледяной руной по нему бьют. Дробящий подтип
+	# нейтрален: тогда лишний тип в списке удара виден уроном, а не догадкой.
+	monster.weakness_rules = [{"types": [String(MonsterData.TYPE_ICE)], "ranges": []}]
+
+	var rune: StringName = MonsterData.TYPE_ICE
+	var weapon := WeaponData.new()
+	weapon.id = &"rune_rule_blade"
+	weapon.range_id = MonsterData.RANGE_MELEE
+	weapon.damage_type = MonsterData.TYPE_CRUSH
+	weapon.base_damage = 4
+
+	# 1. Незачарованное оружие бьёт ровно своим базовым подтипом.
+	var clean: Array[StringName] = weapon.damage_types()
+	out.append("руна: без чар типов %s" % str(clean))
+	if clean.size() != 1 or clean[0] != MonsterData.TYPE_CRUSH:
+		failures.append("без чар список типов %s, а ждали только «дробящий»" % str(clean))
+
+	# 2. Чары ДОБАВЛЯЮТ второй тип, а не заменяют базовый.
+	weapon.enchant(rune)
+	var enchanted: Array[StringName] = weapon.damage_types()
+	out.append("руна: после enchant(%s) типов %s" % [rune, str(enchanted)])
+	if enchanted.size() != 2 or enchanted[0] != MonsterData.TYPE_CRUSH \
+			or enchanted[1] != rune:
+		failures.append("чары дали %s, а ждали «дробящий» и «%s»" % [str(enchanted), rune])
+
+	# 3. Снятие чар возвращает ровно один базовый тип.
+	weapon.disenchant()
+	var stripped: Array[StringName] = weapon.damage_types()
+	out.append("руна: после disenchant() типов %s" % str(stripped))
+	if stripped.size() != 1 or stripped[0] != MonsterData.TYPE_CRUSH:
+		failures.append("после снятия чар список типов %s, а ждали только «дробящий»" % str(stripped))
+
+	# 4. Руна, равная базовому типу, список НЕ удваивает: удар остаётся одинарным.
+	# Это не запрет хранить такую руну — `damage_types_with` кладёт её как есть,
+	# а в типы удара не пускает. Проверяется именно отсутствие дубля: иначе удар
+	# по своему же подтипу получал бы «+1 элемента руны» на ровном месте.
+	weapon.enchant(MonsterData.TYPE_CRUSH)
+	var same: Array[StringName] = weapon.damage_types()
+	out.append("руна: руна, равная базовому типу, даёт типов %s" % str(same))
+	if same.size() != 1 or same[0] != MonsterData.TYPE_CRUSH:
+		failures.append("руна, равная базовому типу, дала %s, а ждали один «дробящий»" % str(same))
+	weapon.disenchant()
+
+	# 5а. ОТНОСИТЕЛЬНАЯ мерка: урон по виду, уязвимому к типу руны, с руной и без
+	# неё.
+	var bare := DamageCalc.player_damage(
+		weapon, monster, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	weapon.enchant(rune)
+	var runed := DamageCalc.player_damage(
+		weapon, monster, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	var reason_text := ", ".join(runed.type_reasons)
+	out.append("руна: урон по уязвимому ко льду виду — без чар %d, с чарами %d, разбор [%s]" % [
+		bare.total, runed.total, reason_text])
+	if runed.total - bare.total != 2:
+		failures.append("чары изменили урон на %d, а ждали +2 (урон без чар %d, с чарами %d)" % [
+			runed.total - bare.total, bare.total, runed.total])
+	# Разбор обязан НАЗВАТЬ тип руны слабостью: иначе второй тип попал в число, но
+	# не был проверен на уязвимость вида — то есть правило выполнено наполовину.
+	var named := false
+	for reason in runed.type_reasons:
+		if "слабость:" in reason and "лёд" in reason and reason.ends_with("+1"):
+			named = true
+	if not named:
+		failures.append("разбор не назвал слабость по типу руны: [%s]" % reason_text)
+	weapon.disenchant()
+
+	# 5б. АБСОЛЮТНАЯ мерка: «+1» элемента руны на ГОЛОМ виде — ни уязвимостей, ни
+	# резистов, ни панциря. Нужна потому, что разница выше ОТНОСИТЕЛЬНАЯ, и копию,
+	# которая типов не теряет, а ДОБАВЛЯЕТ, она не видит: лишний тип симметрично
+	# поднимает оба замера, и разница остаётся прежней (измерено мутацией 2d —
+	# сторож был ЗЕЛЁНЫЙ, то есть дыра настоящая, а не воображаемая).
+	#
+	# Здесь лишний тип виден: на голом виде урона за тип не прибавляет ничто, кроме
+	# самого элемента руны, поэтому разница обязана быть ровно 1 (D04).
+	var bare_monster := MonsterData.new()
+	bare_monster.id = &"rune_rule_bare"
+	bare_monster.title = "Проба правила руны"
+	bare_monster.max_hp = 20
+	bare_monster.armor = 0
+	var plain_weapon := WeaponData.new()
+	plain_weapon.id = &"rune_rule_plain"
+	plain_weapon.range_id = MonsterData.RANGE_MELEE
+	plain_weapon.damage_type = MonsterData.TYPE_CRUSH
+	plain_weapon.base_damage = 4
+	var plain_bare := DamageCalc.player_damage(
+		plain_weapon, bare_monster, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	plain_weapon.enchant(rune)
+	var plain_runed := DamageCalc.player_damage(
+		plain_weapon, bare_monster, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	out.append("руна: «+1» элемента на голом виде — без чар %d, с чарами %d, разбор [%s]" % [
+		plain_bare.total, plain_runed.total, ", ".join(plain_runed.type_reasons)])
+	if plain_runed.total - plain_bare.total != 1:
+		failures.append("на голом виде чары изменили урон на %d, а ждали ровно +1 (урон без чар %d, с чарами %d)" % [
+			plain_runed.total - plain_bare.total, plain_bare.total, plain_runed.total])
+	plain_weapon.disenchant()
+
+	if failures.is_empty():
+		out.append("ок правила руны: чары добавляют второй тип, снимаются и доходят до урона")
+	else:
+		out.append("ПРОВАЛ правила руны: %s" % "; ".join(failures))
+	Report.write(RUNE_RULE_REPORT, out)
 	return out
 
 

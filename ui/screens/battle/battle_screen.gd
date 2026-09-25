@@ -562,11 +562,14 @@ func _submit_swap(w: WeaponData) -> void:
 
 ## Сменить или снять руну БЕЗ удара. Руна живёт на оружии, поэтому правим сам
 ## ресурс: иначе следующее обновление экрана вернуло бы старую.
+##
+## «Снять» и «наложить» — одно правило, прочитанное в две стороны, и живёт оно на
+## оружии: `WeaponData.enchant` / `disenchant`. Экран выбирает, ЧТО наложить.
 func _submit_swap_rune(rune_type: StringName) -> void:
 	if selected_guess == &"" or engine.is_over() or not pending_outcome.is_empty():
 		return
 	engine.equip_weapon(weapon)
-	weapon.rune_type = rune_type
+	weapon.enchant(rune_type)
 	staged_rune = rune_type
 	_switched_weapon = true
 	_submit_guess(false)
@@ -667,7 +670,7 @@ func _on_continue() -> void:
 			GameState.equipped_weapon = prepared.id
 			weapon = prepared
 	if staged_rune != weapon.rune_type:
-		weapon.rune_type = staged_rune
+		weapon.enchant(staged_rune)
 	_submit_guess()
 
 

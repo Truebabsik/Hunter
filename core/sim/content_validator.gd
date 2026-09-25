@@ -311,7 +311,7 @@ func _check_runes() -> Array:
 	probe.damage_type = MonsterData.TYPE_CRUSH
 	if CityData.effective_damage_type(probe) != MonsterData.TYPE_CRUSH:
 		out.append("руны: незачарованное оружие бьёт не своим базовым типом")
-	probe.rune_type = &"ice"
+	probe.enchant(&"ice")
 	if CityData.effective_damage_type(probe) != &"ice":
 		out.append("руны: главный тип зачарованного оружия — не тип руны")
 
@@ -385,7 +385,7 @@ func _damage_with(rune_type: StringName, mon: MonsterData) -> int:
 	var w := WeaponData.new()
 	w.id = &"rune_probe"
 	w.damage_type = MonsterData.TYPE_CRUSH
-	w.rune_type = rune_type
+	w.enchant(rune_type)
 	w.base_damage = 3
 	w.range_id = MonsterData.RANGE_MELEE
 	var res := DamageCalc.player_damage(

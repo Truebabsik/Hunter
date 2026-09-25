@@ -335,6 +335,9 @@ func _simulate_guess(
 ## Оружие сборки — из базы, а не собранное с нуля. Копия обязательна: руна
 ## пишется В РЕСУРС, а Database отдаёт один и тот же объект, поэтому без копии
 ## руна одной сборки протекла бы в остальные и в сам справочник.
+##
+## Чары накладываются через `WeaponData.enchant`: как пишется `rune_type` — правило
+## оружия, а не симулятора, и копий у него быть не должно.
 func _make_tool(load: Dictionary) -> WeaponData:
 	var src: WeaponData = Database.weapon(StringName(load.get("weapon", "bow")))
 	if src == null:
@@ -342,7 +345,7 @@ func _make_tool(load: Dictionary) -> WeaponData:
 	var w: WeaponData = src.duplicate()
 	var rune_type: StringName = StringName(load.get("rune", &""))
 	if rune_type != &"":
-		w.rune_type = rune_type
+		w.enchant(rune_type)
 	return w
 
 

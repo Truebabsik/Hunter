@@ -248,11 +248,15 @@ func _on_take(weapon_id: StringName) -> void:
 
 ## Наложить руну на текущее оружие. Руна живёт на ОРУЖИИ, поэтому меняем
 ## у ресурса: иначе следующая охота начнётся со старой руной.
+##
+## Как именно накладываются чары, решает не экран, а оружие: `WeaponData.enchant`
+## — единственное место, где пишется `rune_type`. Здесь остаётся выбор ПРЕДМЕТА,
+## а не правило зачарования.
 func _on_rune(rune_type: StringName) -> void:
 	var w: WeaponData = Database.weapon(GameState.equipped_weapon)
 	if w == null:
 		return
-	w.rune_type = rune_type
+	w.enchant(rune_type)
 	_rebuild()
 
 
