@@ -4,9 +4,9 @@
 
 [resource]
 script = ExtResource("1_wpn")
-id = &"crossbow"
-title = "Арбалет"
+id = &"sling"
+title = "Праща"
 range_id = &"ranged"
-damage_type = &"pierce"
-base_damage = 4
-price = 35
+damage_type = &"crush"
+base_damage = 3
+price = 15

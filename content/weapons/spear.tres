@@ -8,5 +8,5 @@ id = &"spear"
 title = "Копьё"
 range_id = &"melee"
 damage_type = &"pierce"
-base_damage = 3
-price = 15
+base_damage = 4
+price = 25

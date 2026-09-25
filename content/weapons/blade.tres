@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_wpn")
 id = &"blade"
-title = "Клинок"
+title = "Меч"
 range_id = &"melee"
 damage_type = &"slash"
 base_damage = 4
