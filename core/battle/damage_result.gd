@@ -8,6 +8,11 @@ var weapon_damage: int = 0
 var reading_bonus: int = 0
 var combo_bonus: int = 0
 var type_multiplier: int = 0
+## Сумма причин вида («слабость +1 / резист −1») БЕЗ безусловного «+1» элемента
+## руны (D04). Отдельно от `type_multiplier`, потому что там элемент уже прибавлен
+## и в резист гасит его: удар руной в стену поднимает итог, ничего не пробивая.
+## Вердикт удара (D19) обязан смотреть на реакцию ТИПА, а не на итог с элементом.
+var type_reasons_sum: int = 0
 var monster_armor: int = 0
 var crit_bonus: int = 0
 var crit: bool = false

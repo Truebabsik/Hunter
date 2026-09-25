@@ -39,6 +39,11 @@ const RUNE_RULE_REPORT := "_probe_rune_rule.txt"
 ## а не подстроиться.
 const RUNE_RULE_BARE_DAMAGE := 5
 const RUNE_RULE_RUNED_DAMAGE := 6
+## Отдельный файл у сторожа реакции на удар (D19) — по той же причине, что и у
+## сторожа правила руны: красноту показывают МУТАЦИЕЙ, и отчёт мутации не должен
+## затирать приёмочный `_probe_out.txt`. Иначе зелёный и сломанный прогоны
+## окажутся в одном файле, и по нему нельзя будет сказать, что именно проверялось.
+const HIT_REACTION_REPORT := "_probe_reaction.txt"
 const LOOP_REPORT := "_loop_out.txt"
 const LOOP_TRACE := "_loop_trace.txt"
 ## Сводка скана по сидам и полные отчёты всех его прогонов. Два файла, а не один:
@@ -477,6 +482,7 @@ static func probe() -> String:
 	out.append_array(_fog_mechanics())
 	out.append_array(_weapon_after_death())
 	out.append_array(_rune_rule())
+	out.append_array(_hit_reaction())
 	Report.write(PROBE_REPORT, out)
 	return out[0]
 
@@ -1883,6 +1889,93 @@ static func _rune_rule() -> Array[String]:
 	else:
 		out.append("ПРОВАЛ правила руны: %s" % "; ".join(failures))
 	Report.write(RUNE_RULE_REPORT, out)
+	return out
+
+
+## Правило реакции на удар (D19): вердикт — знак СУММЫ ПРИЧИН вида, а не итог
+## удара и не типовой множитель. Отдельная ветвь про руну в резист: итог растёт
+## (элемент безусловен, D04), множитель при этом обнуляется, а вердикт обязан
+## остаться «резист» — иначе проза называет стену нейтралью.
+static func _hit_reaction() -> Array[String]:
+	var out: Array[String] = []
+	var failures: Array[String] = []
+
+	var cases := [
+		{"sum": -2, "want": HitReaction.VERDICT_RESIST},
+		{"sum": -1, "want": HitReaction.VERDICT_RESIST},
+		{"sum": 0, "want": HitReaction.VERDICT_NEUTRAL},
+		{"sum": 1, "want": HitReaction.VERDICT_WEAK},
+		{"sum": 3, "want": HitReaction.VERDICT_WEAK},
+	]
+	for c in cases:
+		var got := HitReaction.verdict_of(int(c["sum"]))
+		out.append("реакция: сумма причин %+d → %s" % [int(c["sum"]), got])
+		if got != StringName(c["want"]):
+			failures.append("сумма причин %+d дала «%s», а ждали «%s»" % [
+				int(c["sum"]), got, c["want"]])
+
+	# РАСХОЖДЕНИЕ, ради которого проба и написана: удар руной в стену. Стена
+	# резистит БАЗОВЫЙ тип, руна нейтральна — значит итог растёт на «+1» элемента,
+	# разбор называет резист, а множитель обнуляется (элемент гасит штраф).
+	# Вердикт обязан остаться «резист»: если считать по множителю, проза скажет
+	# «нейтрально» там, где разбор называет стену.
+	var wall := MonsterData.new()
+	wall.id = &"reaction_wall"
+	wall.title = "Проба стены"
+	wall.max_hp = 20
+	wall.armor = 0
+	wall.resist_rules = [{"types": [String(MonsterData.TYPE_CRUSH)], "ranges": []}]
+	var plain := WeaponData.new()
+	plain.id = &"reaction_plain"
+	plain.range_id = MonsterData.RANGE_MELEE
+	plain.damage_type = MonsterData.TYPE_CRUSH
+	plain.base_damage = 4
+	var bare := DamageCalc.player_damage(
+		plain, wall, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	plain.enchant(MonsterData.TYPE_ICE)
+	var runed := DamageCalc.player_damage(
+		plain, wall, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+	var verdict := HitReaction.verdict_of(runed.type_reasons_sum)
+	out.append("реакция: руна в резист — урон %d (без чар %d), множитель %+d, сумма причин %+d, разбор [%s] → %s" % [
+		runed.total, bare.total, runed.type_multiplier, runed.type_reasons_sum,
+		", ".join(runed.type_reasons), verdict])
+	if verdict != HitReaction.VERDICT_RESIST:
+		failures.append("руна в резист дала вердикт «%s», а ждали «резист»" % verdict)
+	if runed.total <= bare.total:
+		failures.append("проба не воспроизводит случай: руна не подняла урон (%d против %d)" % [
+			runed.total, bare.total])
+	# Сторож самого расхождения: множитель обязан быть ИМЕННО нулевым (элемент
+	# погасил штраф), иначе ветвь доказывает не то, ради чего написана. В бриф
+	# эта строка попала как `>= 0`, и это опечатка: она краснела бы на требуемом
+	# «множитель +0» (см. шаг 3 брифа) и зелёный прогон был бы недостижим.
+	if runed.type_multiplier != 0:
+		failures.append("проба не воспроизводит расхождение: множитель %+d не обнулился, значит элемент не погасил штраф" % runed.type_multiplier)
+	plain.disenchant()
+
+	# ЖИВОЙ СЛУЧАЙ — свидетельством, без утверждения: Ламант с руной. Тупик
+	# Ламанта открыт вопросом §14.1, и утверждение покраснело бы, когда дизайн
+	# его решит. Строку печатаем: она показывает, что расхождение не выдумано.
+	var lament := Database.monster(&"lament")
+	var mace: WeaponData = Database.weapon(&"mace")
+	if lament != null and mace != null:
+		mace.disenchant()
+		var l_bare := DamageCalc.player_damage(
+			mace, lament, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		mace.enchant(MonsterData.TYPE_FIRE)
+		var l_runed := DamageCalc.player_damage(
+			mace, lament, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		out.append("реакция: Ламант молотом — без чар %d (множитель %+d, сумма %+d), с огнём %d (множитель %+d, сумма %+d) → %s / %s" % [
+			l_bare.total, l_bare.type_multiplier, l_bare.type_reasons_sum,
+			l_runed.total, l_runed.type_multiplier, l_runed.type_reasons_sum,
+			HitReaction.verdict_of(l_bare.type_reasons_sum),
+			HitReaction.verdict_of(l_runed.type_reasons_sum)])
+		mace.disenchant()
+
+	if failures.is_empty():
+		out.append("ок реакции: вердикт следует знаку суммы причин, элемент его не подменяет")
+	else:
+		out.append("ПРОВАЛ реакции: %s" % "; ".join(failures))
+	Report.write(HIT_REACTION_REPORT, out)
 	return out
 
 

@@ -107,12 +107,21 @@ static func player_damage(
 	# Число обязано сходиться с суммой слагаемых: если разбор называет причины,
 	# их сумма плюс элемент руны и есть множитель. Это защита от расхождения
 	# текста и числа — и от потери «+1 руны» при будущих правках.
+	#
+	# Вторая сумма — ТОЛЬКО причины, без «+1» руны: это источник вердикта удара
+	# (D19, `DamageResult.type_reasons_sum`). Считается ЗДЕСЬ ЖЕ намеренно:
+	# правило подписи причины («+1» — плюс, иначе минус) обязано остаться в одном
+	# месте, а его вторая копия разошлась бы с этой молча (AGENTS §4).
 	var summed := element_bonus
+	var reasons_sum := 0
 	for i in range(phase_reason_count, r.type_reasons.size()):
 		if "+1" in r.type_reasons[i]:
 			summed += 1
+			reasons_sum += 1
 		else:
 			summed -= 1
+			reasons_sum -= 1
+	r.type_reasons_sum = reasons_sum
 	r.type_multiplier = summed
 
 	r.monster_armor = monster.armor
