@@ -470,7 +470,7 @@ git commit -m "D19: пул деталей реакции (посев) и про�
 cmd /c "F:\WORK\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe --headless --path F:\WORK\hunter --quit-after 900 -- --probe --log-file F:\WORK\hunter\_glog.txt"
 ```
 
-Ожидается падение разбора (`HitReaction.assemble` ещё нет) — это не годная краснота. Поэтому **сначала добавить в `hit_reaction.gd` заглушки и константы**: `SLOT_CARRIER` / `SLOT_VERB` / `SLOT_WEAPON` / `SLOT_ELEMENT` / `SLOT_INTRO` (значения из шага 4), `assemble(...) -> String` возвращающую `""`, и `intro_role(verdict, _run, _is_swap) -> StringName` возвращающую `verdict`. Затем прогнать: ожидается `ПРОВАЛ реакции` с причинами про одинаковые строки, грязную сборку и ненайденный глагол — то есть проверки есть, сборки нет.
+Ожидается падение разбора (`HitReaction.assemble` ещё нет) — это не годная краснота. Поэтому **сначала добавить в `hit_reaction.gd` заглушки**: `assemble(...) -> String` возвращающую `""`, и `intro_role(verdict, _run, _is_swap) -> StringName` возвращающую `verdict`. Слоты `SLOT_CARRIER` / `SLOT_VERB` / `SLOT_WEAPON` / `SLOT_ELEMENT` / `SLOT_INTRO` **уже объявлены там задачей 2** — не объявляй их второй раз и не заводи копию строк. Затем прогнать: ожидается `ПРОВАЛ реакции` с причинами про одинаковые строки, грязную сборку и ненайденный глагол — то есть проверки есть, сборки нет.
 
 - [ ] **Step 4: Реализовать сборку**
 
