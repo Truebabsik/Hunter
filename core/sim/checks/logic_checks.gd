@@ -775,7 +775,7 @@ const D23_CONTENT := {
 	},
 	"tleun": {
 		"weak": [
-			{"types": ["poison"], "ranges": []},
+			{"types": ["pierce"], "ranges": ["ranged"]},
 			{"types": ["ice"], "ranges": []},
 		],
 		"resist": [
