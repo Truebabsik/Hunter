@@ -36,7 +36,10 @@ static func verdict_of(reasons_sum: int) -> StringName:
 
 ## Пунктуация принадлежит СБОРЩИКУ, а не данным: иначе знак пришлось бы дублировать
 ## в каждой строке CSV, и «двойная запятая» стала бы вопросом данных, а не правила.
+## Пробел между носителем и глаголом — тот же случай: это разделитель шаблона, и
+## сторож шва обязан спрашивать ЕГО, а не держать свою копию строки.
 const P_AFTER_INTRO := ". "
+const P_BEFORE_VERB := " "
 const P_BEFORE_WEAPON := " — "
 const P_BEFORE_ELEMENT := ", "
 const P_END := "."
@@ -83,10 +86,15 @@ static func assemble(
 	if intro == null or carrier == null or verb == null or print_weapon == null:
 		return ""
 	var line: String = str(intro.text) + P_AFTER_INTRO \
-		+ str(carrier.text) + " " + str(verb.text) + P_BEFORE_WEAPON + str(print_weapon.text)
+		+ str(carrier.text) + P_BEFORE_VERB + str(verb.text) \
+		+ P_BEFORE_WEAPON + str(print_weapon.text)
 	# Без руны стихийная часть опускается вместе со своей запятой (§5). Это правило
-	# сборщика: отдельные детали «пустой стихии» в пуле не нужны.
-	if weapon.rune_type != &"":
+	# сборщика: отдельные детали «пустой стихии» в пуле не нужны. И только если руна
+	# ДОБАВЛЯЕТ тип: при `rune_type == damage_type` её выбрасывает
+	# `WeaponData.damage_types_with`, второй тип удара не наносится — и стихийная
+	# клауза пообещала бы удар, которого нет. Условие повторяет правило оружия, а не
+	# заводит своё: источник — там же, где `damage_types()`.
+	if weapon.rune_type != &"" and weapon.rune_type != weapon.damage_type:
 		var element := TextGenerator.pick_phrase(
 			&"", &"", SLOT_ELEMENT, StringName(weapon.rune_type), rng)
 		if element != null:

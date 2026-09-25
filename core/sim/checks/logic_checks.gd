@@ -1995,8 +1995,6 @@ static func _hit_reaction() -> Array[String]:
 		# а ветка «без руны» — на чистом.
 		out.append("реакция: молот перед веткой сборки «%s»" % wpn.rune_type)
 		var verdicts := [HitReaction.VERDICT_RESIST, HitReaction.VERDICT_WEAK, HitReaction.VERDICT_NEUTRAL]
-		# Три вердикта идут на ЗАЧАРОВАННОМ молоте — иначе ветка стихии не
-		# исполнялась бы ни разу, и «стихия исчезла» стало бы правдой всегда.
 		var charmed := {}
 		var lines := {}
 		for v in verdicts:
@@ -2015,32 +2013,65 @@ static func _hit_reaction() -> Array[String]:
 			var rng_plain := RandomNumberGenerator.new()
 			rng_plain.seed = 20260925
 			lines[v] = HitReaction.assemble(mon, wpn, StringName(v), 1, false, rng_plain)
+			# Пустая сборка — это «шаблон не собран», а не «строка без точки». Без
+			# этого утверждения дыра в пуле печаталась бы в отчёте строкой
+			# «не заканчивается точкой» — то есть причину пришлось бы угадывать.
+			if str(lines[v]) == "":
+				failures.append("строка вердикта «%s» не собрана: пустой пул в деталях [%s]" % [
+					v, _reaction_parts(mon, wpn, StringName(v))])
 			out.append("реакция: «%s» с огнём → %s" % [v, charmed[v]])
 			out.append("реакция: «%s» без руны → %s" % [v, lines[v]])
 		var fire_parts := Database.phrases_for(&"", &"", HitReaction.SLOT_ELEMENT, MonsterData.TYPE_FIRE)
 		# Стихия — РАЗНИЦА между зачарованной и чистой строкой, и пробы выше сведены
 		# к общему состоянию намеренно: ряд чисел один, история сброшена, значит
 		# вводная, носитель, глагол и отпечаток обязаны совпасть, а вся разница —
-		# лежать в стихийной части. Сравнение полное и посимвольное: оно ловит и
-		# потерянную стихию, и потерянную запятую, и стихию, приписанную к чужой
-		# детали, — не повторяя шаблон сборки второй копией в проверке.
+		# лежать в стихийной части. Ожидание собирается ТЕМИ ЖЕ константами, что и
+		# сборка: вписанный литералом разделитель стал бы второй копией правила, и
+		# подмена константы не красила бы это сравнение.
 		#
-		# Ищем САМУЮ ДЛИННУЮ подошедшую деталь, а не первую: у огня есть «гасит искра»
-		# и глагол «гасит», и поиск «первой попавшейся» нашёл бы глагол — проверка
-		# сравнила бы хвост не с той деталью и краснела бы на верной строке.
+		# Деталь стихии ищем строго в КОНЦЕ строки: детали пересекаются с глаголами
+		# («гасит» — глагол из пула, «гасит искра» — стихия огня), и поиск по
+		# «содержит» нашёл бы глагол, а проверка краснела бы на верной строке.
+		var element_suffix := ""
+		for p in fire_parts:
+			var part := str(p.text)
+			if part.length() > element_suffix.length() and charmed[HitReaction.VERDICT_NEUTRAL].ends_with(
+					part + HitReaction.P_END):
+				element_suffix = part
+		if element_suffix == "":
+			failures.append("зачарованная нейтральная строка потеряла стихию огня: %s" % [
+				charmed[HitReaction.VERDICT_NEUTRAL]])
+		# Сцепка из шаблона §5 разбирается С КОНЦА: сначала отрезается знак конца
+		# («точка»), потом стихия, потом разделитель — и обязан остаться чистый
+		# вариант строки. Константы сборки тут не используются намеренно: сверка
+		# «строка кончается константой» сравнивает константу с константой и подмену
+		# `P_BEFORE_ELEMENT` на «,,» пропускает (её ловит ветка «собрана грязно»),
+		# а шаблон §5 — правило спеки, и у него сторож должен быть свой.
+		if element_suffix == "":
+			failures.append("зачарованная нейтральная строка потеряла стихию огня: %s" % [
+				charmed[HitReaction.VERDICT_NEUTRAL]])
+		else:
+			var mark := ", " + element_suffix + "."
+			for _v in verdicts:
+				var d_line: String = charmed[_v]
+				var d_clean: String = lines[_v]
+				if not d_line.ends_with(mark):
+					failures.append("строка вердикта «%s» не кончается сцепкой «%s»: %s" % [_v, mark, d_line])
+				else:
+					var body: String = d_line.substr(0, d_line.length() - mark.length())
+					if body + "." != d_clean:
+						failures.append("строка вердикта «%s» после снятия «%s» — не чистая строка: «%s» против «%s»" % [
+							_v, mark, body + ".", d_clean])
 		for _v in verdicts:
 			var c_line: String = charmed[_v]
-			var expected: String = lines[_v]
-			var el_text := ""
-			for p in fire_parts:
-				var part := str(p.text)
-				if part.length() > el_text.length() and c_line.contains(part):
-					el_text = part
-			if el_text == "":
-				failures.append("зачарованная строка вердикта «%s» потеряла стихию огня: %s" % [_v, c_line])
-			elif c_line != expected.trim_suffix(".") + ", " + el_text + ".":
-				failures.append("строка вердикта «%s» со стихией — не «чистая плюс , %s.»: «%s» против «%s»" % [
-					_v, el_text, c_line, expected])
+			var expected: String = lines[_v].trim_suffix(HitReaction.P_END) \
+				+ HitReaction.P_BEFORE_ELEMENT + element_suffix + HitReaction.P_END
+			if element_suffix != "" and not c_line.ends_with(
+					HitReaction.P_BEFORE_ELEMENT + element_suffix + HitReaction.P_END):
+				failures.append("строка вердикта «%s» не кончается стихией огня: %s" % [_v, c_line])
+			elif element_suffix != "" and c_line != expected:
+				failures.append("строка вердикта «%s» со стихией — не «чистая плюс %s%s%s»: «%s» против «%s»" % [
+					_v, HitReaction.P_BEFORE_ELEMENT, element_suffix, HitReaction.P_END, c_line, expected])
 		# Сцепка «, <стихия>.» — сравнение строк, а не сборка: она верна, пока в
 		# детали нет запятой. Деталь с запятой сделала бы «двойную запятую» вопросом
 		# данных, а §5 спеки объявляет её вопросом правила.
@@ -2050,6 +2081,19 @@ static func _hit_reaction() -> Array[String]:
 					failures.append("стихийная деталь «%s» руны «%s» содержит запятую — её нельзя сцепить запятой" % [
 						p.text, rune_id])
 		var carriers := Database.phrases_for(mon.id, &"", HitReaction.SLOT_CARRIER, &"")
+		# Разделитель шва обязан быть НЕПУСТЫМ: `substr(0, 0)` от пустой строки равен
+		# ей, и проверка «продолжается разделителем» молча зеленела бы на склейке.
+		if HitReaction.P_BEFORE_VERB == "":
+			failures.append("разделитель носителя и глагола пуст — шаблон склеит слова")
+		# Грязной может быть ЛЮБАЯ строка, и зачарованная — в первую очередь: у неё
+		# два разделителя внутри, и подмена `P_BEFORE_ELEMENT` на «,,» или на «, »
+		# без пробела видна ровно здесь. Пока проверка шла только по чистым строкам,
+		# такая мутация оставалась зелёной — разделитель жил как бы вне сторожа.
+		for kv_charmed in charmed.keys():
+			var c_dirty: String = charmed[kv_charmed]
+			if c_dirty.contains("  ") or c_dirty.contains(",,") or c_dirty.contains("—  —") \
+					or c_dirty.contains("..") or c_dirty.ends_with(" ") or c_dirty.begins_with(" "):
+				failures.append("строка «%s» со стихией собрана грязно: %s" % [kv_charmed, c_dirty])
 		for kv in lines.keys():
 			var line: String = lines[kv]
 			if line.contains("  ") or line.contains(",,") or line.contains("—  —") \
@@ -2063,8 +2107,8 @@ static func _hit_reaction() -> Array[String]:
 			for pc in carriers:
 				# Носитель может встретиться в строке не один раз (например, как часть
 				# отпечатка), поэтому проверяем ВСЕ вхождения: шов за носителем верен,
-				# если хотя бы одно из них продолжается пробелом. Поиск «первого»
-				# вхождения верную строку покрасил бы, а слипшуюся — пропустил.
+				# если хотя бы одно из них продолжается разделителем `P_BEFORE_VERB`.
+				# Поиск «первого» вхождения верную строку покрасил бы, а слипшуюся — пропустил.
 				var from := 0
 				var seen := false
 				var seam_ok := false
@@ -2075,7 +2119,7 @@ static func _hit_reaction() -> Array[String]:
 						break
 					seen = true
 					tail = line.substr(at + str(pc.text).length())
-					if tail.substr(0, 1) == " ":
+					if tail.substr(0, HitReaction.P_BEFORE_VERB.length()) == HitReaction.P_BEFORE_VERB:
 						seam_ok = true
 						break
 					from = at + 1
@@ -2084,7 +2128,13 @@ static func _hit_reaction() -> Array[String]:
 						failures.append("в строке вердикта «%s» за носителем сразу идёт отпечаток, а глагола нет: %s" % [kv, line])
 					else:
 						failures.append("в строке вердикта «%s» носитель слипся с соседним словом: %s" % [kv, line])
-			if not line.ends_with("."):
+			if not line.ends_with(HitReaction.P_END):
+				failures.append("строка вердикта «%s» не кончается знаком конца шаблона: %s" % [kv, line])
+			# Знак конца — из шаблона §5, «точка в конце». Проверка «строка кончается
+			# P_END» сравнивает константу с константой и подмену `P_END` на «!» или на
+			# пусто пропустила бы (проверено мутацией) — а это уже вопрос к шаблону,
+			# а не к сборке, и сторож у него должен быть отдельный.
+			if line != "" and not line.ends_with("."):
 				failures.append("строка вердикта «%s» не заканчивается точкой: %s" % [kv, line])
 		if lines[HitReaction.VERDICT_RESIST] == lines[HitReaction.VERDICT_WEAK]:
 			failures.append("резист и уязвимость дали одну строку — приёмка не выполнена")
@@ -2110,10 +2160,11 @@ static func _hit_reaction() -> Array[String]:
 		var c_neutral: String = charmed[HitReaction.VERDICT_NEUTRAL]
 		if c_neutral == lines[HitReaction.VERDICT_NEUTRAL]:
 			failures.append("зачарованный и чистый молот дали ОДНУ строку — стихия не добавилась: %s" % c_neutral)
-		# Детерминизм: та же соль — та же строка. Окно антиповтора у генератора
-		# СТАТИЧЕСКОЕ и переживает вызовы, поэтому перед каждой пробой историю
-		# сбрасываем: без сброса второй прогон видит фразы первого и меряет окно,
-		# а не соль — и «не детерминирована» было бы правдой о проверке, а не о сборке.
+		# Что здесь утверждается на самом деле: сборка рисует ТОЛЬКО из переданного
+		# генератора — поэтому бой воспроизводим, и строка удара повторяется при том
+		# же (раунд, соль). История антиповтора сюда не входит: она статическая и
+		# намеренно переживает вызовы, поэтому сбрасывается перед каждой пробой.
+		# Свежий генератор на пробу — так сборку и зовут в бою.
 		var rng_a := RandomNumberGenerator.new()
 		rng_a.seed = 7
 		TextGenerator.reset_history()
@@ -2123,12 +2174,22 @@ static func _hit_reaction() -> Array[String]:
 		TextGenerator.reset_history()
 		var two := HitReaction.assemble(mon, wpn, HitReaction.VERDICT_WEAK, 2, false, rng_b)
 		if one != two:
-			failures.append("сборка не детерминирована: «%s» против «%s»" % [one, two])
+			failures.append("сборка не воспроизводима: тот же генератор дал «%s» и «%s»" % [one, two])
 		# Вводная примерки перебивает ступень серии.
 		if HitReaction.intro_role(HitReaction.VERDICT_RESIST, 3, true) != &"swap":
 			failures.append("примерка не перебила ступень серии")
-		# Обход ОБЕИХ сторон порога: «>= 3» и «== 3» на одной пробе run = 3 не
-		# различить, поэтому третья ступень спрашивается и на четвёртой серии.
+		# Обход ВСЕХ ступеней серии, а не только третьей: «>= 3» и «== 3» на одной
+		# пробе run = 3 не различить, а «== 2» и «== 1» не сторожила ни одна проба —
+		# мутация «первая ступень возвращает _again» оставалась бы зелёной.
+		for v in verdicts:
+			var role_first := HitReaction.intro_role(StringName(v), 1, false)
+			var role_second := HitReaction.intro_role(StringName(v), 2, false)
+			out.append("реакция: ступени вводной «%s» — %s / %s" % [v, role_first, role_second])
+			if role_first != StringName(v):
+				failures.append("первая ступень вердикта «%s» дала «%s», а ждали сам вердикт" % [v, role_first])
+			if role_second != StringName("%s_again" % v):
+				failures.append("вторая ступень вердикта «%s» дала «%s», а ждали «%s_again»" % [
+					v, role_second, v])
 		for run_hard in [3, 4]:
 			if HitReaction.intro_role(HitReaction.VERDICT_RESIST, run_hard, false) != &"resist_hard":
 				failures.append("серия из %d ударов не выбрала «resist_hard», а «%s»" % [
@@ -2156,6 +2217,26 @@ static func _hit_reaction() -> Array[String]:
 		out.append("ПРОВАЛ реакции: %s" % "; ".join(failures))
 	Report.write(HIT_REACTION_REPORT, out)
 	return out
+
+
+## Что за детали видит сборка для этой пары «вид × вердикт»: по одной первой фразе из
+## каждого ведра. Нужна только для ПРОВАЛА: «пустая строка» без имени пустого ведра
+## отправляет читателя искать дыру самому, а проверка покрытия живёт в `--validate`
+## и на `--probe` не гоняется.
+static func _reaction_parts(mon: MonsterData, wpn: WeaponData, verdict: StringName) -> String:
+	var parts: Array[String] = []
+	var buckets := {
+		"вводная": Database.phrases_for(&"", &"", HitReaction.SLOT_INTRO,
+			HitReaction.intro_role(verdict, 1, false)),
+		"носитель": Database.phrases_for(mon.id, &"", HitReaction.SLOT_CARRIER, &""),
+		"глагол": Database.phrases_for(&"", &"", HitReaction.SLOT_VERB, verdict),
+		"отпечаток": Database.phrases_for(&"", &"", HitReaction.SLOT_WEAPON, wpn.id),
+		"стихия": Database.phrases_for(&"", &"", HitReaction.SLOT_ELEMENT, wpn.rune_type),
+	}
+	for name in buckets.keys():
+		var pool: Array = buckets[name]
+		parts.append("%s=%s" % [name, pool[0].text if not pool.is_empty() else "ПУСТО"])
+	return ", ".join(parts)
 
 
 ## Расхождение между таблицей ожиданий и тирами заказа: текст ПРОВАЛА или "".
