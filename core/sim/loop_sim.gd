@@ -22,7 +22,11 @@ class_name LoopSim
 ## «none»: состояние покупки совета жило в экране города (`city_screen.advice_bought`),
 ## экран уничтожается при каждом возвращении в город, и прогон без сцен его не видел.
 ## Теперь состояние — в `GameState.advice_bought` (Task 3б), поэтому замер обязан его
-## читать: 6 советов — это 80 монет из 620, и «набор закрыт» без них неправда.
+## читать. Цифры — те, что печатает отчёт: шесть советов стоят 80 монет, а весь набор
+## по прайсу — 675, из которых бот платит 605 (молот, лук и лёгкая броня бесплатны по
+## F3). В первой редакции здесь стояло «80 из 620» — цена набора без бесплатных
+## позиций; числа разъехались потому, что комментарий считали по спеке, а не по прайсу
+## игры. Сторож прайса — сам отчёт: строка «цена по прайсу» печатает факт.
 const MUST_BUY := {
 	"skills": [&"read_signal", &"read_double", &"read_triple",
 		&"wpn_dmg1", &"wpn_dmg2", &"wpn_dmg3",
@@ -91,16 +95,52 @@ const BUY_ORDER := [
 ]
 
 
-## Как играет бот.
+## Политики выбора заказа — ДАННЫЕ, как MUST_BUY и BUY_ORDER. Политика это ВОПРОС,
+## который замер задаёт игре, поэтому она живёт в профиле бота и называется в отчёте,
+## а не спрятана в условии:
+##
+##  * «без тупиков» — высший доступный тир, по которому бот пробьёт слабость своим
+##    стволом (с учётом известных ему рун). Заказ, где выбор оружия ничего не решает,
+##    бот не берёт: штраф за смерть на легендарном тире — 12;
+##  * «всегда высший тир» — высший доступный без оглядки на слабость, включая
+##    легендарный. §14.1 считает Ламанта ПРОХОДИМЫМ («на идеальном чтении все пять
+##    сборок дают 100 % побед»), а тупик у него — по отсутствию ВЫГОДНОЙ пары, не по
+##    проходимости. Значит «не ходить в тупик» может быть слишком строгим, и это
+##    обязано решить измерение, а не рассуждение.
+const ORDER_POLICIES := {
+	"open_weakness": {"title": "заказ без тупиков"},
+	"highest_tier": {"title": "заказ — всегда высший тир"},
+}
+
+
+## Ключи сида бота. Это НЕ подписи, а идентификаторы игры профиля: два профиля с одной
+## игрой (то же чтение, тот же выбор инструмента) обязаны получить ОДНИ броски, иначе
+## разница между политиками смешалась бы с разницей в костях.
+const SEED_NOVICE := "новичок (лук, чтение 45%)"
+const SEED_EXPERT := "опытный (лучший инструмент, чтение 75%)"
+
+
+## Как играет бот. Профиль — это ДАННЫЕ: чтение, выбор инструмента, политика заказа
+## и ключ сида. Политика вынесена в профиль потому, что «не ходить в тупик» — решение
+## ПРОФИЛЯ, а вопрос приёмки звучит иначе: доходит ли до Легенды бот, который берёт
+## высший доступный тир, включая легендарный.
 class Player:
 	var read_accuracy: float
 	var title: String
 	var smart_tools: bool
+	## Имя политики выбора заказа из ORDER_POLICIES.
+	var order_policy: String
+	## Ключ сида: см. SEED_NOVICE / SEED_EXPERT.
+	var seed_key: String
 
-	func _init(p_title: String, p_read: float, p_smart: bool) -> void:
+	func _init(
+		p_title: String, p_read: float, p_smart: bool, p_policy: String, p_seed_key: String
+	) -> void:
 		title = p_title
 		read_accuracy = p_read
 		smart_tools = p_smart
+		order_policy = p_policy
+		seed_key = p_seed_key
 
 
 func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
@@ -127,9 +167,15 @@ func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
 		if not _must_buy_kinds_complete():
 			return
 
+	# Три профиля: неопытный бот и ДВА опытных — с разными политиками заказа и одним
+	# ключом сида. Опытные обязаны играть на одних бросках: иначе замер ответит на
+	# вопрос «повезло ли политике», а не «работает ли политика».
 	var players := [
-		Player.new("новичок (лук, чтение 45%)", 0.45, false),
-		Player.new("опытный (лучший инструмент, чтение 75%)", 0.75, true),
+		Player.new("новичок (лук, чтение 45%)", 0.45, false, "open_weakness", SEED_NOVICE),
+		Player.new("опытный (лучший инструмент, чтение 75%) — заказ без тупиков",
+			0.75, true, "open_weakness", SEED_EXPERT),
+		Player.new("опытный (лучший инструмент, чтение 75%) — всегда высший тир",
+			0.75, true, "highest_tier", SEED_EXPERT),
 	]
 	for p in players:
 		out.append("")
@@ -180,7 +226,9 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	var rng := RandomNumberGenerator.new()
 	# Сид бота зависит и от забега: иначе один и тот же бот читает одинаково
 	# при любом сиде забега, и разброс между сидами получился бы ненастоящим.
-	rng.seed = hash("%s:%d" % [player.title, run_seed])
+	# Берётся `seed_key`, а не подпись: у двух опытных профилей игра одна, значит
+	# и броски обязаны быть одни.
+	rng.seed = hash("%s:%d" % [player.seed_key, run_seed])
 
 	var hunt_no := 0
 	var victories := 0
@@ -216,11 +264,18 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	var order_seen: Dictionary = {}
 	## День, в который достигнута Легенда: главное число для срока богини.
 	var legend_day := 0
+	## Урон за прогон и победы без урона. Нужны, чтобы влияние снаряжения (руна, броня)
+	## было ИЗМЕРЕНО, а не заявлено строкой «руна наложена»: слава за победу включает
+	## бонус «не получил урона» (HuntResult._apply_victory), поэтому броня и руна
+	## двигают не только урон, но и путь до Легенды.
+	var damage_taken_total := 0
+	var damage_dealt_total := 0
+	var flawless_victories := 0
 
 	while hunt_no < max_hunts and GameState.rank < 5:
 		hunt_no += 1
 		_milestone(out, "охота %d: выбор заказа" % hunt_no)
-		var order := _pick_order(order_seen)
+		var order := _pick_order(order_seen, player.order_policy, player.smart_tools)
 		if order.is_empty():
 			out.append("нет доступных заказов — тупик прогрессии")
 			break
@@ -241,12 +296,23 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		if stages.is_empty():
 			out.append("ПРЕДУПРЕЖДЕНИЕ: пустой след для %s" % mon.id)
 
-		# --- Снаряжение: умный бот берёт то, к чему зверь уязвим
-		if player.smart_tools:
-			_equip_best_tool(mon)
+		# --- Снаряжение: ствол под зверя, руна на нём и броня забега
+		#
+		# Одна операция, а не три: руна бессмысленна без ствола, а ствол без руны не
+		# пробьёт то, что бот увидел при выборе заказа. Заодно она выставляет руну
+		# ЯВНО перед каждой охотой — см. `_prepare_weapon` про общий ресурс базы.
+		_prepare_weapon(mon, player.smart_tools)
 		var weapon: WeaponData = Database.weapon(GameState.equipped_weapon)
 		if weapon == null:
 			break
+		var armor: ArmorData = Database.armor(GameState.equipped_armor)
+		# Снаряжение — строкой в отчёт: без неё проверка «бот дерётся тем, что купил»
+		# держалась бы на вере. Здесь видно и руну (типы удара через запятую считает
+		# `CityData.damage_type_names`, а не замер), и броню, которую бот НАДЕЛ.
+		out.append("снаряжение: охота %d — %s (%s, %s, урон %d), броня: %s (поглощение %d)" % [
+			hunt_no, weapon.title, CityData.damage_type_names(weapon),
+			CityData.range_ru(weapon.range_id), weapon.base_damage,
+			armor.title if armor != null else "—", armor.absorption if armor != null else 0])
 
 		_milestone(out, "охота %d: бой" % hunt_no)
 		# Каким оружием бот идёт на зверя и было ли оно у него. Строка нужна как
@@ -262,7 +328,6 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		# Сборка охотника — общая с экраном боя (SkillEffects.build_hunter). Раньше
 		# здесь стояли свои копии _hp_bonus/_armor_bonus/_damage_bonus, и одна
 		# копия уже разошлась: прогон не считал бонус к побегу от навыка и плаща.
-		var armor: ArmorData = Database.armor(GameState.equipped_armor)
 		var hunter := SkillEffects.build_hunter(weapon, armor)
 
 		RNGService.next_battle()
@@ -331,6 +396,10 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 
 		if result.run_over:
 			run_overs += 1
+		damage_taken_total += result.damage_taken
+		damage_dealt_total += result.damage_dealt
+		if result.victory and result.damage_taken == 0:
+			flawless_victories += 1
 		if result.victory:
 			victories += 1
 			if result.switched_weapon:
@@ -421,6 +490,13 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	# Боёв ровно столько же, сколько исходов, поэтому сравниваем с hunt_no.
 	out.append("контроль исходов: сумма исходов %d, боёв %d — %s" % [
 		outcomes_total, hunt_no, "сходится" if outcomes_total == hunt_no else "РАСХОЖДЕНИЕ"])
+	# Бой в числах: урон и победы без урона. Нужны как ИЗМЕРЕНИЕ влияния снаряжения:
+	# «руна наложена» и «броня надета» видны строкой `снаряжение`, а стоит ли это
+	# чего-нибудь — видно здесь, потому что слава за победу включает бонус «не получил
+	# урона» (HuntResult._apply_victory). Проба без рун и без брони сравнивается по
+	# этим числам, а не по наличию строки.
+	out.append("бой: побед без урона %d, урона получено %d, нанесено %d" % [
+		flawless_victories, damage_taken_total, damage_dealt_total])
 	out.append("навыков куплено: %d из %d" % [GameState.skills.size(), SkillsData.SKILLS.size()])
 	# Проверка гейта «Победа одним оружием». Достижение награждает, только если бой
 	# прошёл БЕЗ смены инструмента, поэтому недостаточно увидеть его в списке: на
@@ -478,50 +554,65 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		out.append("  " + rank_history[i])
 
 
-## Какой заказ берём: ВЫСШИЙ ДОСТУПНЫЙ ТИР, по которому бот может ударить слабостью,
-## а внутри тира — вид, на которого ходили РЕЖЕ ВСЕГО.
+## Какой заказ берём. Политика — параметр профиля (см. ORDER_POLICIES), внутри тира
+## вид выбирается по РОТАЦИИ: берём того, на кого ходили РЕЖЕ ВСЕГО.
 ##
-## Почему не «высший тир» безусловно, как было. На ранге 4 высший тир — легендарный
-## (Ламант), и у него валидатор находит тупик: НИ ОДНА пара «тип × дистанция» не
-## проходит без резиста, а штраф за смерть на нём — 12 (вдвое больше элитного). Бот,
-## идущий к Легенде, так не играет: он отдавал славу в стену, и она колебалась 48–63
-## при том, что в кошельке лежали неистраченные 225 монет.
+## Политика «без тупиков» берёт ВЫСШИЙ ДОСТУПНЫЙ ТИР, по которому бот может ударить
+## слабостью, а если таких нет вовсе — низший доступный (фарм славы). Почему не
+## «высший тир» безусловно, как было: на ранге 4 высший тир — легендарный (Ламант),
+## у него валидатор находит тупик, а штраф за смерть на нём — 12 (вдвое больше
+## элитного). Бот отдавал славу в стену, и она колебалась 48–63 при 225 неистраченных
+## монетах в кошельке.
+##
+## Политика «всегда высший тир» — противоположный ответ на тот же вопрос, и она
+## обязана измеряться, а не отвергаться рассуждением: §14.1 считает Ламанта
+## ПРОХОДИМЫМ, а тупик у него — по отсутствию выгодной пары, не по проходимости.
+## Раньше на Ламанта ходили БЕЗ набора (без брони, навыков и рун) — с полным набором
+## ответ может быть другим, и замер обязан его назвать.
 ##
 ## Свойство вида берётся ТО ЖЕ, которым игра выбирает инструмент, —
-## `MonsterData.weakness_modifier(type, range)` по СВОИМ стволам (та же пара
-## «тип И дистанция», см. `_hits_weakness`). Свой список «тупиковых видов» здесь
-## был бы второй копией правила и разошёлся бы с игрой молча — ровно так в проекте
-## уже разъезжались названия типов урона и формулы навыков.
+## `MonsterData.weakness_modifier(type, range)` и `WeaponData.damage_types()` (руна
+## добавляет тип, GDD 12.3; см. `_weakness_type`). Свой список «тупиковых видов»
+## здесь был бы второй копией правила и разошёлся бы с игрой молча.
 ##
-## Если открытых заказов нет вовсе — берётся НИЗШИЙ доступный тир: бот фармит славу
-## тем, что есть, а не стоит на месте. Это видно строкой выбора в отчёте.
-##
-## Почему ротация видов внутри тира. Раньше бот брал `usable[0]` среди заказов
-## высшего тира, то есть вид, который в таблице идёт первым. Это дало за прогон
-## 4 Скорба подряд и 3 Ламента при том, что Пепел-Мать (тот же тир 2) не встретилась
-## ни разу: 907 монет против 767 в кривой спеки. Расхождение было не в ценах, а в ТОМ,
-## ЧТО МЫ МЕРИЛИ: кривая §12.12 описывает путь с ротацией видов. Без ротации бот
-## НИКОГДА не встречает новый вид, а значит не наполняет досье и не проходит через
-## «первую встречу» — проверка, всегда ходящая на одного зверя, меряет одну арену.
+## Ротация нужна по двум причинам. Первая: раньше бот брал `usable[0]` высшего тира,
+## то есть вид, идущий в таблице первым, — 4 Скорба подряд и 3 Ламента, а Пепел-Мать
+## не встретилась ни разу: 907 монет против 767 в кривой спеки. Вторая: без ротации
+## бот НИКОГДА не встречает новый вид, не наполняет досье и не проходит через «первую
+## встречу» — проверка, всегда ходящая на одного зверя, меряет одну арену.
 ##
 ## Фильтр по данным обязателен: в таблице есть виды без файлов, и выбор «пустого»
 ## заказа молча обрывал прогон.
-func _pick_order(order_seen: Dictionary) -> Dictionary:
+func _pick_order(order_seen: Dictionary, policy: String, smart_tools: bool) -> Dictionary:
 	var usable: Array = []
 	for o in CityData.available_monsters(GameState.rank):
 		if Database.monster(StringName(o["monster_id"])) != null:
 			usable.append(o)
 	if usable.is_empty():
 		return {}
-	# Заказы, по которым бот может ударить слабостью СВОИМ оружием. Пара ствола
-	# описывается для отчёта: видно, чем именно открыт тир.
+	# Заказы, по которым бот может ударить слабостью стволом, который он реально может
+	# взять в бой. Пара ствола описывается для отчёта: видно, чем именно открыт тир.
 	var candidates: Array = []
 	for o in usable:
-		var pair := _weakness_pair(o)
-		if not pair.is_empty():
-			candidates.append({"order": o, "pair": pair})
-	var fallback := candidates.is_empty()
-	if fallback:
+		var mon: MonsterData = Database.monster(StringName(o["monster_id"]))
+		var tool := _weakness_tool(mon, smart_tools)
+		if tool != &"":
+			candidates.append({"order": o, "pair": _weakness_label(mon, tool)})
+	var fallback := false
+	if policy == "highest_tier":
+		# Высший доступный тир — без оглядки на слабость. Пару всё равно называем:
+		# пустая пара и есть ответ «выгодной пары нет».
+		candidates.clear()
+		for o in usable:
+			var mon: MonsterData = Database.monster(StringName(o["monster_id"]))
+			var tool := _weakness_tool(mon, smart_tools)
+			candidates.append({
+				"order": o,
+				"pair": "" if tool == &"" else _weakness_label(mon, tool),
+			})
+	elif candidates.is_empty():
+		# Открытых заказов нет вовсе: фармим славу низшим доступным тиром.
+		fallback = true
 		var low_tier := 1 << 30
 		for o in usable:
 			low_tier = mini(low_tier, int(o["tier"]))
@@ -545,30 +636,80 @@ func _pick_order(order_seen: Dictionary) -> Dictionary:
 			best_pair = String(c["pair"])
 	# Причина выбора едет вместе с заказом в отчёт: «почему этот тир» — часть
 	# измерения, и отдельным полем её не подделать.
-	if fallback:
+	if policy == "highest_tier":
+		best["pick_note"] = "высший доступный тир по политике профиля: %s" % (
+			"слабость открыта — %s" % best_pair if not best_pair.is_empty()
+			else "выгодной пары нет (дизайн §14.1 считает такой заказ проходимым)")
+	elif fallback:
 		best["pick_note"] = "низший доступный тир: слабости не открыты ни одним своим стволом"
 	else:
 		best["pick_note"] = "слабость открыта: %s" % best_pair
 	return best
 
 
-## Свой ствол, которым бот пробьёт слабость этого заказа: описание «Молот (дробящий,
-## упор)» или пустая строка, если такого ствола нет.
+## Стволы, которыми бот РЕАЛЬНО может ударить в бою. Умелый бот меняет инструмент под
+## зверя, поэтому выбирает из всего, что куплено; неопытный держит то, что взял
+## (профиль «лук»), и других стволов у него в бою нет.
 ##
-## Перебор идёт по `GameState.owned_weapons`, тем же свойством и в том же порядке, что
-## `_equip_best_tool`: заказ открыт ровно тем оружием, которое бот в бой и возьмёт.
-func _weakness_pair(order: Dictionary) -> String:
-	var mon: MonsterData = Database.monster(StringName(order["monster_id"]))
+## Без этого различия строка выбора называла бы ствол, которого бот в руки не возьмёт:
+## «слабость открыта: Молот» у бота с луком — обещание, которого он не выполнит, и
+## замер отвечал бы не на тот вопрос (так и было до правки ревью).
+func _tools(smart_tools: bool) -> Array[StringName]:
+	if smart_tools:
+		return GameState.owned_weapons
+	return [GameState.equipped_weapon] as Array[StringName]
+
+
+## Ствол, которым бот пробьёт слабость вида: первый по списку доступных ему стволов.
+## Пустой StringName — пробить нечем.
+##
+## Перебор здесь ОДИН на двоих: этим же вызовом `_prepare_weapon` решает, какой ствол
+## взять и какую руну на него наложить. Две копии перебора разошлись бы молча, и
+## «открытый» заказ оказался бы закрыт в бою.
+func _weakness_tool(mon: MonsterData, smart_tools: bool) -> StringName:
 	if mon == null:
-		return ""
-	for id in GameState.owned_weapons:
+		return &""
+	for id in _tools(smart_tools):
 		var w: WeaponData = Database.weapon(id)
 		if w == null:
 			continue
-		if _hits_weakness(mon, w):
-			return "%s (%s, %s)" % [
-				w.title, CityData.type_ru(w.damage_type), CityData.range_ru(w.range_id)]
-	return ""
+		if _weakness_type(mon, w) != &"":
+			return w.id
+	return &""
+
+
+## Тип удара, которым этот ствол пробьёт слабость вида: СВОЙ тип, если он подходит,
+## иначе — известная боту руна (руна добавляет второй тип, а не заменяет базовый,
+## GDD 12.3.1). Пустой StringName — не пробивает ничем.
+##
+## Рун берутся именно ЗНАНИЯ бота (`SkillsData.known_runes` — тот же вызов, что
+## в экране подготовки), а не таблица рун: чужой руной ударить нельзя. Достижимость
+## уязвимости игра считает так же — базовые типы оружия плюс типы рун
+## (content_validator._check_physical_subtypes).
+func _weakness_type(mon: MonsterData, w: WeaponData) -> StringName:
+	if mon == null or w == null:
+		return &""
+	if mon.weakness_modifier(w.damage_type, w.range_id) > 0:
+		return w.damage_type
+	for rune in SkillsData.known_runes(GameState.skills):
+		if mon.weakness_modifier(rune, w.range_id) > 0:
+			return rune
+	return &""
+
+
+## Подпись пары для отчёта: «Молот + руна огня (дробящий, огонь, ближний)» — сначала
+## чем бьём и что наложено, потом типы удара и дистанция. Типы считает игра
+## (`CityData.damage_type_names`), а не замер: своя подпись разошлась бы с уроном.
+func _weakness_label(mon: MonsterData, weapon_id: StringName) -> String:
+	var w: WeaponData = Database.weapon(weapon_id)
+	if w == null:
+		return ""
+	var rune := _weakness_type(mon, w)
+	var rune_note := ""
+	if rune != &"" and rune != w.damage_type:
+		rune_note = " + руна %s" % CityData.rune_title(rune).to_lower()
+	return "%s%s (%s, %s)" % [
+		w.title, rune_note, CityData.damage_type_names(w), CityData.range_ru(w.range_id)]
 
 
 func _simulate_read(
@@ -588,49 +729,51 @@ func _simulate_read(
 	return others[rng.randi_range(0, others.size() - 1)]
 
 
-## Бот берёт инструмент, к которому зверь уязвим НА ЭТОЙ ДИСТАНЦИИ (D23): запись
-## уязвимости — пара «тип И дистанция». Запасного «по типу» здесь нет намеренно, и
-## вот почему: он сравнивал ОДНУ координату — `w.damage_type == hint`, — тогда как
-## запись и оружие совпадают ПАРОЙ. Сравнение одного типа без дистанции запись не
-## выражает, поэтому выбор получался произвольным, а не «по уязвимости»: у Громунa
-## хинт дробящий, но его запись требует ещё и упор; у Тлеуна хинт — яд, а третий тип
-## его записей — колющий, и в хинт не попадает вовсе. Произвольный выбор хуже
-## отсутствия выбора: отчёт баланса показывал бы преимущество, которого механика не
-## даёт. Отсутствие выбора честнее мнимого.
+## Снаряжение охоты: взять ствол под зверя (умелый бот), наложить на него руну,
+## снять руны со всех прочих стволов.
 ##
-## Перебор идёт по `GameState.owned_weapons`, и так было ДО Task 4 (проверено по
-## истории: 038dcab, 1d06879, f6ccc31, 2b6e3e5, d44c312 — цикл везде тот же).
-## Изменился только СПОСОБ выбора пары: раньше брались первый тип и первая
-## дистанция из двух списков, теперь — точная пара из записи.
-func _equip_best_tool(mon: MonsterData) -> void:
-	for id in GameState.owned_weapons:
+## Почему ОДНА функция, а не «выбрать оружие» и «зачаровать» по отдельности: руна
+## бессмысленна без ствола (она живёт на оружии, GDD 11.6), а ствол без руны не
+## пробьёт то, что бот увидел при выборе заказа. Разнести их — значит допустить
+## состояние «ствол выбран, руна ещё нет», в котором `_weakness_type` отвечает не то.
+##
+## Про ОБЩИЙ РЕСУРС БАЗЫ. `WeaponData.rune_type` — поле ресурса из `Database`, а не
+## состояние забега: чары, наложенные одним ботом, остались бы на оружии для
+## следующего (смерть их не снимает — руна есть знание, на этом стоит проверка
+## `_weapon_after_death`). Поэтому руна выставляется ЯВНО перед каждой охотой и на
+## ВСЕХ стволах базы: на подобранном — своя, на остальных — пустая. Иначе замер
+## мерил бы остаток чужой охоты, а не своё решение.
+##
+## Что именно руна делает с ударом, решает не замер, а игра: `WeaponData.damage_types()`
+## (руна добавляет второй тип) и `DamageCalc`, который читает `weapon.rune_type`
+## напрямую. Замер только выбирает, КАКУЮ из известных рун наложить, — и это политика
+## профиля, а не правило игры.
+func _prepare_weapon(mon: MonsterData, smart_tools: bool) -> void:
+	# Снять чары со всех стволов базы: состояние бота не должно достаться следующему.
+	for id in Database.weapons.keys():
 		var w: WeaponData = Database.weapon(id)
-		if w == null:
-			continue
-		if _hits_weakness(mon, w):
-			GameState.equipped_weapon = w.id
-			return
-
-
-## Пробивает ли этот ствол слабость вида: пара «тип И дистанция» оружия попадает
-## хотя бы в одну запись уязвимости. ОДНО правило на двоих — по нему бот выбирает
-## заказ (`_pick_order`) и берёт инструмент в бой (`_equip_best_tool`). Две копии
-## сравнения разошлись бы молча, и «открытый» заказ оказался бы закрыт в бою.
-##
-## Тип берётся базовый (`damage_type`), а не `damage_types()` с руной: замер рун на
-## оружие не накладывает (см. отчёт Task 3в), и широкое сравнение назвало бы пару,
-## которой `_equip_best_tool` в бой не возьмёт, — строка выбора в отчёте стала бы
-## неправдой.
-func _hits_weakness(mon: MonsterData, w: WeaponData) -> bool:
-	return mon.weakness_modifier(w.damage_type, w.range_id) > 0
+		if w != null:
+			w.rune_type = &""
+	var tool := _weakness_tool(mon, smart_tools)
+	if tool == &"":
+		# Пробить нечем: ствол не меняем (умелый бот остаётся с прежним), руну не
+		# накладываем — «руна просто так» в игре не решение, а трата.
+		return
+	if smart_tools:
+		GameState.equipped_weapon = tool
+	var w: WeaponData = Database.weapon(tool)
+	if w == null:
+		return
+	var rune := _weakness_type(mon, w)
+	if rune != &"" and rune != w.damage_type:
+		w.rune_type = rune
 
 
 ## Бот тратит монеты: сначала узкий набор в порядке BUY_ORDER, потом оружие вне набора.
 ##
-## Политика покупок у обоих ботов ОДНА: иначе «набор закрывается» снова мерило бы
-## вкус конкретного бота, а не экономику. Различаются боты чтением и выбором
-## инструмента (`Player.smart_tools`) — это и есть разница между «так играет любой»
-## и «так играет умелый».
+## Политика покупок у всех профилей ОДНА: иначе «набор закрывается» снова мерило бы
+## вкус конкретного бота, а не экономику. Различаются профили чтением, выбором
+## инструмента и политикой заказа.
 func _spend_coins() -> int:
 	var spent := 0
 	for entry in BUY_ORDER:
@@ -640,15 +783,17 @@ func _spend_coins() -> int:
 	# именно на этом прежний замер терял часть набора при полном кошельке.
 	if not _must_buy_complete():
 		return spent
-	var off_set: Array[StringName] = []
+	# Сортируем сами оружия, а не их id: так в компараторе нет ни повторного поиска,
+	# ни разыменования null, которое было бы возможно, если бы ключ базы разошёлся
+	# с содержимым ресурса. По цене от дешёвой — тот же порядок, что у BUY_ORDER.
+	var off_set: Array[WeaponData] = []
 	for id in Database.weapons.keys():
-		off_set.append(StringName(id))
-	# По цене от дешёвой: тот же порядок, что у BUY_ORDER, иначе выбор «что купить
-	# раньше» зависел бы от порядка ключей в словаре базы.
-	off_set.sort_custom(func(a, b): return Database.weapon(a).price < Database.weapon(b).price)
-	for sid in off_set:
-		var w: WeaponData = Database.weapon(sid)
-		if w == null or w.id in GameState.owned_weapons:
+		var w: WeaponData = Database.weapon(id)
+		if w != null:
+			off_set.append(w)
+	off_set.sort_custom(func(a, b): return a.price < b.price)
+	for w in off_set:
+		if w.id in GameState.owned_weapons:
 			continue
 		if w.price > 0 and GameState.spend_coins(w.price):
 			GameState.owned_weapons.append(w.id)
@@ -691,6 +836,12 @@ func _buy_must_buy(kind: String, id: String) -> int:
 			if w == null or w.price <= 0 or not GameState.spend_coins(w.price):
 				return 0
 			GameState.owned_weapons.append(w.id)
+			# Оружие при покупке в руку НЕ берётся: чем бить, решает `_prepare_weapon`
+			# перед каждой охотой — это замерный аналог экрана подготовки («ВЗЯТЬ»),
+			# а не экрана города. Экран города при покупке надевает сам
+			# (`_buy_or_equip_weapon`), и для неопытного профиля это значило бы, что
+			# его инструмент зависит от того, что он купил последним, а профиль
+			# называется «лук». Разница названа в отчёте, а не спрятана.
 			return w.price
 		"armor":
 			if sid in GameState.owned_armors:
@@ -699,6 +850,11 @@ func _buy_must_buy(kind: String, id: String) -> int:
 			if a == null or a.price <= 0 or not GameState.spend_coins(a.price):
 				return 0
 			GameState.owned_armors.append(a.id)
+			# А броня надевается — ровно как в экране города (`_buy_or_equip_armor`).
+			# У брони нет выбора «под зверя», значит покупка и есть решение надеть;
+			# без этой строки бот платил 40 монет за тяжёлую и дрался в лёгкой
+			# (дефект, найденный ревью Task 3в).
+			GameState.equipped_armor = a.id
 			return a.price
 		"advice":
 			# Потраченное берём разницей кошелька: цену читает и списывает
@@ -737,7 +893,9 @@ func _must_buy_source(kind: String) -> String:
 ##  2. у id нет данных в игре (SkillsData.find_skill, Database.weapon/armor,
 ##     CityData.ADVICE_PRICES) — опечатка в id;
 ##  3. BUY_ORDER и MUST_BUY не совпадают множествами — забытая в порядке покупок
-##     позиция не покупалась бы никогда.
+##     позиция не покупалась бы никогда;
+##  4. порядок BUY_ORDER разошёлся с объявленным правилом «ранг, затем цена» — см.
+##     `_buy_order_problems`.
 func _must_buy_data_problems() -> Array[String]:
 	var out: Array[String] = []
 	for kind in MUST_BUY.keys():
@@ -761,7 +919,63 @@ func _must_buy_data_problems() -> Array[String]:
 	for key in in_order.keys():
 		if not in_set.has(key):
 			out.append("позиция «%s» есть в BUY_ORDER, но не в MUST_BUY: бот купит лишнее" % key)
+	out.append_array(_buy_order_problems())
 	return out
+
+
+## Сторож ПОРЯДКА покупок: соседние позиции BUY_ORDER обязаны идти по неубыванию
+## «(требуемый ранг, цена)». Таблица объявляет именно это правило, и без сторожа
+## ручная правка ломает его МОЛЧА: набор по-прежнему покрыт, покрытие зелено, а
+## политика покупок стала другой — тот же класс, что слепое пятно `.get(_, 0)`
+## в стороже штрафа (Task 3б).
+##
+## Ранг и цену берут те же источники, что и покупка: `SkillsData.find_skill` (поле
+## `rank` — по нему решает `SkillsData.can_buy`) и `_must_buy_price`. Вторая копия
+## порядка «что дороже» разошлась бы с покупкой молча.
+func _buy_order_problems() -> Array[String]:
+	var out: Array[String] = []
+	for i in range(1, BUY_ORDER.size()):
+		var prev: Dictionary = BUY_ORDER[i - 1]
+		var cur: Dictionary = BUY_ORDER[i]
+		# Позиция без данных в игре не сравнивается: её ранг и цена — не факт, а ноль,
+		# и «порядок сломан» на таком нуле было бы следствием, а не причиной. Причину
+		# называет проверка id выше, и вторая строка про тот же дефект только путала бы.
+		# Категория без строки в MUST_BUY_KINDS пропускается по той же причине и ещё
+		# потому, что читать её прайс НЕЧЕМ: `_must_buy_price` берёт источник цены из
+		# MUST_BUY_KINDS и падает на неизвестной категории (измерено).
+		if not MUST_BUY_KINDS.has(String(prev["kind"])):
+			continue
+		if not MUST_BUY_KINDS.has(String(cur["kind"])):
+			continue
+		if not _must_buy_missing_source(String(prev["kind"]), String(prev["id"])).is_empty():
+			continue
+		if not _must_buy_missing_source(String(cur["kind"]), String(cur["id"])).is_empty():
+			continue
+		var prev_rank := _must_buy_rank(String(prev["kind"]), String(prev["id"]))
+		var cur_rank := _must_buy_rank(String(cur["kind"]), String(cur["id"]))
+		var prev_price := _must_buy_price(String(prev["kind"]), String(prev["id"]))
+		var cur_price := _must_buy_price(String(cur["kind"]), String(cur["id"]))
+		if cur_rank < prev_rank or (cur_rank == prev_rank and cur_price < prev_price):
+			out.append("порядок покупок сломан: «%s» (ранг %d, цена %d) идёт после «%s» (ранг %d, цена %d), а правило — по возрастанию ранга, затем цены" % [
+				_buy_order_key(cur), cur_rank, cur_price,
+				_buy_order_key(prev), prev_rank, prev_price])
+	return out
+
+
+## Подпись позиции порядка для отчёта: «совет:shipun».
+func _buy_order_key(entry: Dictionary) -> String:
+	return "%s:%s" % [String(entry["kind"]), String(entry["id"])]
+
+
+## Требуемый ранг позиции: у навыка (и у руны — руна это навык) это поле `rank` из
+## SkillsData, у оружия, брони и совета требования ранга нет вовсе — город продаёт их
+## с первого ранга. Источник тот же, что у покупки: `SkillsData.can_buy` спрашивает
+## ровно это поле.
+func _must_buy_rank(kind: String, id: String) -> int:
+	if kind == "skills" or kind == "runes":
+		var s := SkillsData.find_skill(StringName(id))
+		return int(s["rank"]) if not s.is_empty() else 0
+	return 0
 
 
 ## Все ли категории набора описаны в MUST_BUY_KINDS. Отдельная функция, а не проверка
