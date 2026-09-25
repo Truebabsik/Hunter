@@ -35,6 +35,10 @@ const LOOP_SCAN_FULL := "_loop_scan_full.txt"
 ## измерение всех. 200 сидов ≈ 100 секунд — уже заведомо «долгий ручной прогон», а не
 ## проверка.
 const SEED_SCAN_MAX := 200
+## Верхняя граница целого со знаком. Нужна затем, чтобы последний сид скана
+## (`сид + сидов − 1`) не «обернулся» за 64 бита: `_fits_int64` не пускает за границу
+## ОДИН сид, а сумма обязана проверяться сама.
+const INT64_MAX := 9223372036854775807
 
 
 ## Инварианты контента (см. ContentValidator).
@@ -1752,6 +1756,29 @@ static func _fits_int64(raw: String) -> bool:
 	return digits <= limit
 
 
+## Предупреждения о числовых аргументах, которые НЕ приняты, — строки для отчёта.
+##
+## Зачем в отчёт, а не в лог. `_int_arg` на такой аргумент молча берёт значение по
+## умолчанию, а молчаливый откат хуже падения: прогон выглядит снятым на запрошенном
+## сиде (или на запрошенном числе охот), хотя снят на другом. В шапке отчёта сид и
+## число охот названы — предупреждение указывает, что верить надо им.
+##
+## Названо ТОЛЬКО «число, которое не влезло», а не любой следующий токен: следующий за
+## флагом токен-флаг — не ошибка ввода, а штатный случай (`tools\run_headless.ps1`
+## зовёт `--loop --log-file …`), и предупреждение на каждый такой прогон было бы шумом
+## в приёмочном отчёте.
+static func _rejected_int_args(args: PackedStringArray, flags: Array[String]) -> Array[String]:
+	var out: Array[String] = []
+	for i in args.size():
+		if not flags.has(args[i]) or i + 1 >= args.size():
+			continue
+		var raw := args[i + 1]
+		if raw.is_valid_int() and not _fits_int64(raw):
+			out.append("ПРЕДУПРЕЖДЕНИЕ: аргумент %s «%s» не влезает в 64 бита — взято значение по умолчанию (фактические сид и число охот названы в шапке отчёта)" % [
+				args[i], raw])
+	return out
+
+
 ## Симулятор баланса. Аргументы: `--battles N`, `--out путь`.
 ##
 ## По умолчанию 200 боёв, а не 2000. Замер: 200 боёв — 34 секунды, значит 2000 — около
@@ -1794,6 +1821,9 @@ static func loop(args: PackedStringArray) -> String:
 	var run_seed := _int_arg(args, "--seed", 20260922)
 	## Сколько забегов подряд снимать. 0 (нет аргумента) — обычный одиночный прогон.
 	var seeds := _int_arg(args, "--seeds", 0)
+	## Числа, которые не принялись (форма верная, а в 64 бита не влезли): их обязан
+	## назвать отчёт. Молчаливый откат к умолчанию — тот же класс, что молчаливый ноль.
+	var warnings := _rejected_int_args(args, ["--loop", "--seed", "--seeds"])
 	if seeds > SEED_SCAN_MAX:
 		# Отказ, а не подрезка. Подрезанный скан выглядел бы как выполненный запрос, а
 		# его сводка — как разброс по всем запрошенным сидам; это тот же класс, что
@@ -1808,6 +1838,19 @@ static func loop(args: PackedStringArray) -> String:
 		Report.write(LOOP_SCAN_REPORT, refuse)
 		return "ПРОВАЛ: --seeds %d выше предела %d, сводка не снята (%s)" % [
 			seeds, SEED_SCAN_MAX, LOOP_SCAN_REPORT]
+	if seeds > 0 and run_seed > INT64_MAX - seeds + 1:
+		# Последний сид скана — `run_seed + seeds - 1`; за 64 бита он «обернулся» бы, и
+		# сводка мерила бы не те забеги, что просили. Отказ громкий, как и у предела
+		# числа сидов: подрезать запрос нельзя, а молча сдвинуть — тем более.
+		var refuse_seed: Array[String] = [
+			"=== разброс по сидам ===",
+			"скан: --loop %d --seeds %d, сид %d" % [hunts, seeds, run_seed],
+			"ПРОВАЛ СКАНА: сид %d + %d сидов выходят за 64 бита (последний сид «обернулся» бы) — скан не снят" % [
+				run_seed, seeds],
+		]
+		Report.write(LOOP_SCAN_REPORT, refuse_seed)
+		return "ПРОВАЛ: сид %d + %d сидов выходят за 64 бита, сводка не снята (%s)" % [
+			run_seed, seeds, LOOP_SCAN_REPORT]
 
 	var out: Array[String] = []
 	Report.trace(LOOP_TRACE, "вход в loop, hunts=%d, seed=%d, seeds=%d" % [hunts, run_seed, seeds])
@@ -1819,12 +1862,15 @@ static func loop(args: PackedStringArray) -> String:
 	Report.trace(LOOP_TRACE, "объект создан: %s" % str(loop_obj != null))
 	if seeds > 0:
 		var full: Array[String] = []
-		var summary: Array[String] = loop_obj.run_scan(hunts, full, run_seed, seeds)
+		var summary: Array[String] = loop_obj.run_scan(hunts, full, run_seed, seeds, warnings)
 		Report.trace(LOOP_TRACE, "скан завершён, строк сводки: %d" % summary.size())
 		Report.write(LOOP_SCAN_FULL, full)
 		Report.write(LOOP_SCAN_REPORT, summary)
 		return "сидов: %d, охот: %d, строк сводки: %d, отчёт: %s" % [
 			seeds, hunts, summary.size(), LOOP_SCAN_REPORT]
+	# Предупреждения — ПЕРЕД прогоном, то есть первыми строками отчёта: читатель видит
+	# их раньше чисел, которые иначе принял бы за снятые на запрошенном аргументе.
+	out.append_array(warnings)
 	loop_obj.run(hunts, out, run_seed)
 	Report.trace(LOOP_TRACE, "прогон завершён, строк: %d" % out.size())
 	Report.write(LOOP_REPORT, out)
