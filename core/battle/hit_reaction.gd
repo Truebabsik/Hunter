@@ -24,7 +24,6 @@ const SLOT_WEAPON := &"reaction_weapon"
 const SLOT_ELEMENT := &"reaction_element"
 const SLOT_INTRO := &"reaction_intro"
 
-
 ## Вердикт по знаку СУММЫ ПРИЧИН вида («слабость +1 / резист −1») без «+1» элемента
 ## руны (D04). Ноль — взаимодействия нет.
 static func verdict_of(reasons_sum: int) -> StringName:
