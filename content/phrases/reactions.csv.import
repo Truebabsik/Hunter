@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c76nkg0pqcsuy"
+
+[deps]
+
+files=["res://content/phrases/reactions.monster.translation", "res://content/phrases/reactions.slot.translation", "res://content/phrases/reactions.role.translation", "res://content/phrases/reactions.text.translation", "res://content/phrases/reactions.weight.translation", "res://content/phrases/reactions.tags.translation"]
+
+source_file="res://content/phrases/reactions.csv"
+dest_files=["res://content/phrases/reactions.monster.translation", "res://content/phrases/reactions.slot.translation", "res://content/phrases/reactions.role.translation", "res://content/phrases/reactions.text.translation", "res://content/phrases/reactions.weight.translation", "res://content/phrases/reactions.tags.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
