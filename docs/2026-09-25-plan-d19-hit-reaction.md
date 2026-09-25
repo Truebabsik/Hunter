@@ -272,46 +272,46 @@ id,monster,scenario,slot,role,text,weight,tags
 Вводные (единственная часть пула, которой нет в дизайне — она авторская; 4 на группу):
 
 ```csv
-rx.intro.resist.01,,,,reaction_intro,resist,Едва,10,reaction
-rx.intro.resist.02,,,,reaction_intro,resist,Мимо,10,reaction
-rx.intro.resist.03,,,,reaction_intro,resist,Впустую,10,reaction
-rx.intro.resist.04,,,,reaction_intro,resist,Напрасно,10,reaction
-rx.intro.resist_again.01,,,,reaction_intro,resist_again,Опять,10,reaction
-rx.intro.resist_again.02,,,,reaction_intro,resist_again,Снова,10,reaction
-rx.intro.resist_again.03,,,,reaction_intro,resist_again,И снова,10,reaction
-rx.intro.resist_again.04,,,,reaction_intro,resist_again,Всё так же,10,reaction
-rx.intro.resist_hard.01,,,,reaction_intro,resist_hard,Опять в стену,10,reaction
-rx.intro.resist_hard.02,,,,reaction_intro,resist_hard,Снова впустую,10,reaction
-rx.intro.resist_hard.03,,,,reaction_intro,resist_hard,Так и не пробил,10,reaction
-rx.intro.resist_hard.04,,,,reaction_intro,resist_hard,Снова мимо,10,reaction
-rx.intro.weak.01,,,,reaction_intro,weak,Точно,10,reaction
-rx.intro.weak.02,,,,reaction_intro,weak,Наконец-то,10,reaction
-rx.intro.weak.03,,,,reaction_intro,weak,Есть,10,reaction
-rx.intro.weak.04,,,,reaction_intro,weak,Вот так,10,reaction
-rx.intro.weak_again.01,,,,reaction_intro,weak_again,Опять туда же,10,reaction
-rx.intro.weak_again.02,,,,reaction_intro,weak_again,Снова в щель,10,reaction
-rx.intro.weak_again.03,,,,reaction_intro,weak_again,И снова точно,10,reaction
-rx.intro.weak_again.04,,,,reaction_intro,weak_again,Ещё раз в шов,10,reaction
-rx.intro.weak_hard.01,,,,reaction_intro,weak_hard,Снова в то же место,10,reaction
-rx.intro.weak_hard.02,,,,reaction_intro,weak_hard,Опять нашёл,10,reaction
-rx.intro.weak_hard.03,,,,reaction_intro,weak_hard,И опять туда,10,reaction
-rx.intro.weak_hard.04,,,,reaction_intro,weak_hard,Всё туда же,10,reaction
-rx.intro.neutral.01,,,,reaction_intro,neutral,Так,10,reaction
-rx.intro.neutral.02,,,,reaction_intro,neutral,Ровно,10,reaction
-rx.intro.neutral.03,,,,reaction_intro,neutral,Без разницы,10,reaction
-rx.intro.neutral.04,,,,reaction_intro,neutral,Как обычно,10,reaction
-rx.intro.neutral_again.01,,,,reaction_intro,neutral_again,Опять так же,10,reaction
-rx.intro.neutral_again.02,,,,reaction_intro,neutral_again,Снова ровно,10,reaction
-rx.intro.neutral_again.03,,,,reaction_intro,neutral_again,И снова так,10,reaction
-rx.intro.neutral_again.04,,,,reaction_intro,neutral_again,Так же,10,reaction
-rx.intro.neutral_hard.01,,,,reaction_intro,neutral_hard,Снова без отклика,10,reaction
-rx.intro.neutral_hard.02,,,,reaction_intro,neutral_hard,Опять ни то ни это,10,reaction
-rx.intro.neutral_hard.03,,,,reaction_intro,neutral_hard,Ровно, снова,10,reaction
-rx.intro.neutral_hard.04,,,,reaction_intro,neutral_hard,Ни туда ни сюда,10,reaction
-rx.intro.swap.01,,,,reaction_intro,swap,Примеряешься,10,reaction
-rx.intro.swap.02,,,,reaction_intro,swap,Заносишь,10,reaction
-rx.intro.swap.03,,,,reaction_intro,swap,Берёшь на изготовку,10,reaction
-rx.intro.swap.04,,,,reaction_intro,swap,Пробуешь хват,10,reaction
+rx.intro.resist.01,,,reaction_intro,resist,Едва,10,reaction
+rx.intro.resist.02,,,reaction_intro,resist,Мимо,10,reaction
+rx.intro.resist.03,,,reaction_intro,resist,Впустую,10,reaction
+rx.intro.resist.04,,,reaction_intro,resist,Напрасно,10,reaction
+rx.intro.resist_again.01,,,reaction_intro,resist_again,Опять,10,reaction
+rx.intro.resist_again.02,,,reaction_intro,resist_again,Снова,10,reaction
+rx.intro.resist_again.03,,,reaction_intro,resist_again,И снова,10,reaction
+rx.intro.resist_again.04,,,reaction_intro,resist_again,Всё так же,10,reaction
+rx.intro.resist_hard.01,,,reaction_intro,resist_hard,Опять в стену,10,reaction
+rx.intro.resist_hard.02,,,reaction_intro,resist_hard,Снова впустую,10,reaction
+rx.intro.resist_hard.03,,,reaction_intro,resist_hard,Так и не пробил,10,reaction
+rx.intro.resist_hard.04,,,reaction_intro,resist_hard,Снова мимо,10,reaction
+rx.intro.weak.01,,,reaction_intro,weak,Точно,10,reaction
+rx.intro.weak.02,,,reaction_intro,weak,Наконец-то,10,reaction
+rx.intro.weak.03,,,reaction_intro,weak,Есть,10,reaction
+rx.intro.weak.04,,,reaction_intro,weak,Вот так,10,reaction
+rx.intro.weak_again.01,,,reaction_intro,weak_again,Опять туда же,10,reaction
+rx.intro.weak_again.02,,,reaction_intro,weak_again,Снова в щель,10,reaction
+rx.intro.weak_again.03,,,reaction_intro,weak_again,И снова точно,10,reaction
+rx.intro.weak_again.04,,,reaction_intro,weak_again,Ещё раз в шов,10,reaction
+rx.intro.weak_hard.01,,,reaction_intro,weak_hard,Снова в то же место,10,reaction
+rx.intro.weak_hard.02,,,reaction_intro,weak_hard,Опять нашёл,10,reaction
+rx.intro.weak_hard.03,,,reaction_intro,weak_hard,И опять туда,10,reaction
+rx.intro.weak_hard.04,,,reaction_intro,weak_hard,Всё туда же,10,reaction
+rx.intro.neutral.01,,,reaction_intro,neutral,Так,10,reaction
+rx.intro.neutral.02,,,reaction_intro,neutral,Ровно,10,reaction
+rx.intro.neutral.03,,,reaction_intro,neutral,Без разницы,10,reaction
+rx.intro.neutral.04,,,reaction_intro,neutral,Как обычно,10,reaction
+rx.intro.neutral_again.01,,,reaction_intro,neutral_again,Опять так же,10,reaction
+rx.intro.neutral_again.02,,,reaction_intro,neutral_again,Снова ровно,10,reaction
+rx.intro.neutral_again.03,,,reaction_intro,neutral_again,И снова так,10,reaction
+rx.intro.neutral_again.04,,,reaction_intro,neutral_again,Так же,10,reaction
+rx.intro.neutral_hard.01,,,reaction_intro,neutral_hard,Снова без отклика,10,reaction
+rx.intro.neutral_hard.02,,,reaction_intro,neutral_hard,Опять ни то ни это,10,reaction
+rx.intro.neutral_hard.03,,,reaction_intro,neutral_hard,"Ровно, снова",10,reaction
+rx.intro.neutral_hard.04,,,reaction_intro,neutral_hard,Ни туда ни сюда,10,reaction
+rx.intro.swap.01,,,reaction_intro,swap,Примеряешься,10,reaction
+rx.intro.swap.02,,,reaction_intro,swap,Заносишь,10,reaction
+rx.intro.swap.03,,,reaction_intro,swap,Берёшь на изготовку,10,reaction
+rx.intro.swap.04,,,reaction_intro,swap,Пробуешь хват,10,reaction
 ```
 
 - [ ] **Step 2: Дописать носители, глаголы, отпечатки и стихии**
