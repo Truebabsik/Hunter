@@ -6,6 +6,46 @@ class_name LoopSim
 ## здесь вылезает то, что в GDD 12.12 было посчитано на глаз: сколько охот нужно
 ## до Легенды и хватает ли дохода на прокачку.
 
+## --- Узкий набор (must-buy) ---------------------------------------------------
+##
+## Минимум, которым берётся Ламант. Список — ДАННЫЕ, а не условие в коде: цена
+## набора меняется от правок баланса, и замер обязан показывать, что именно
+## куплено и когда, иначе «must-buy сходится» непроверяемо.
+##
+## Оружие в списке есть (молот и лук), хотя на старте оно бесплатно (F3): так
+## отчёт видит, что набор закрыт, не считая его покупкой.
+##
+## Руны читаются через навыки: руна в игре — это навык (`SkillsData.RUNE_SKILLS`),
+## отдельного поля «куплена руна» нет, и выдумывать его замеру незачем.
+##
+## Советы Старика перечислены, хотя замер их НЕ ВИДИТ: состояния покупки совета в
+## GameState нет (оно живёт в экране города, `city_screen.advice_bought`), а прогон
+## цикла идёт без сцен. Поэтому у них источник состояния «none»: в счёт «куплено»
+## они не входят, и отчёт говорит об этом прямо, а не молчит — иначе «куплено N из
+## M» читалось бы как «набор закрыт».
+const MUST_BUY := {
+	"skills": [&"read_signal", &"read_double", &"read_triple",
+		&"wpn_dmg1", &"wpn_dmg2", &"wpn_dmg3",
+		&"surv_armor1", &"surv_armor2", &"surv_armor3"],
+	"weapons": [&"mace", &"bow"],
+	"runes": [&"wpn_mod", &"wpn_crit2"],
+	"armor": [&"light", &"heavy"],
+	"advice": ["shipun", "gromun", "tleun", "skorb", "ashmother", "lament"],
+}
+
+## Как называется и откуда читается каждая категория набора. Одна таблица на всё:
+## `source` — откуда брать «куплено ли» (none = замер этого не видит),
+## `price_from` — откуда брать цену. Категория, добавленная в MUST_BUY без строки
+## здесь, сломает прогон громко, а не посчитает набор молча неполным.
+const MUST_BUY_KINDS := {
+	"skills": {"title": "навык", "prefix": "skill", "source": "skill", "price_from": "skill"},
+	"weapons": {"title": "оружие", "prefix": "weapon", "source": "weapon", "price_from": "weapon"},
+	"runes": {"title": "руна", "prefix": "rune", "source": "skill", "price_from": "skill"},
+	"armor": {"title": "броня", "prefix": "armor", "source": "armor", "price_from": "armor"},
+	"advice": {"title": "совет", "prefix": "advice", "source": "none", "price_from": "advice"},
+}
+
+
 ## Как играет бот.
 class Player:
 	var read_accuracy: float
@@ -56,6 +96,18 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	GameState.coins = 30  # стартовые деньги из GDD 12.12 (первый этап: доход 30)
 	RNGService.start_run(run_seed)
 	TextGenerator.reset_history()
+
+	## Что из узкого набора куплено и на каком ранге: главное число приёмки этапа 3.
+	## Ключ — «категория:id», значение — ранг, на котором позиция впервые появилась.
+	var must_buy_got: Dictionary = {}
+	## Ранг, на котором набор закрыт целиком. -1 — не закрыт.
+	var must_buy_done_at := -1
+	## Что у бота было ДО первой охоты (F3: молот, лук и лёгкая броня). Отделено от
+	## покупок, чтобы отчёт не выдал стартовый набор за приобретение: отметка идёт
+	## на ранге 0, и без этого «куплено на ранге 0» читалось бы как «куплено сразу».
+	var must_buy_start: Dictionary = {}
+	_note_must_buy(must_buy_got)
+	must_buy_start = must_buy_got.duplicate()
 
 	var rng := RandomNumberGenerator.new()
 	# Сид бота зависит и от забега: иначе один и тот же бот читает одинаково
@@ -229,6 +281,11 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		bag_sold += sold
 		bag_lost_value += result.bag_lost
 		coins_spent += _spend_coins(player)
+		# Учёт узкого набора — ПОСЛЕ трат, а не до: иначе позиция, купленная на
+		# этой охоте, была бы записана рангом предыдущей.
+		_note_must_buy(must_buy_got)
+		if must_buy_done_at < 0 and must_buy_got.size() >= _must_buy_total():
+			must_buy_done_at = GameState.rank
 		min_coins = mini(min_coins, GameState.coins)
 		if GameState.rank >= 5 and reached_legend_at < 0:
 			reached_legend_at = hunt_no
@@ -280,6 +337,12 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	else:
 		out.append("контроль экономики: трат %d, минимум на счету %d, остаток %d — в минус не уходили" % [
 			spends, min_coins, GameState.coins])
+	# Узкий набор отдельным блоком: счётчик полноты и таблица «позиция → ранг →
+	# цена». Счётчик без таблицы приёмку «набор закрывается» не доказывает — см.
+	# _must_buy_summary.
+	out.append("--- узкий набор (must-buy): что куплено и на каком ранге ---")
+	for line in _must_buy_summary(must_buy_got, must_buy_start, must_buy_done_at, coins_spent):
+		out.append(line)
 	out.append("достижений открыто: %d из %d" % [
 		GameState.unlocked_achievements(), Achievements.total()])
 	var unlocked: PackedStringArray = PackedStringArray()
@@ -422,3 +485,135 @@ func _spend_coins(player: Player) -> int:
 			GameState.buy_skill(&"surv_armor2", int(s2["price"]))
 			spent += int(s2["price"])
 	return spent
+
+
+## Откуда берётся «куплено ли» для категории набора: none значит «замер этого не
+## видит» (советы Старика — их состояние живёт в экране города, не в GameState).
+func _must_buy_source(kind: String) -> String:
+	return String(MUST_BUY_KINDS[kind]["source"])
+
+
+## Ключ позиции в счётчике: «категория:id». По нему же строится таблица отчёта,
+## поэтому ключ и подпись берутся из одной строки данных и разойтись не могут.
+func _must_buy_key(kind: String, id: String) -> String:
+	return "%s:%s" % [String(MUST_BUY_KINDS[kind]["prefix"]), id]
+
+
+## Куплена ли позиция набора (или была у бота с начала). Источник — GameState, и
+## только он: поле, выдуманное в замере, измерило бы выдумку. Источников ровно три,
+## и они записаны в MUST_BUY_KINDS: навыки (вместе с рунами), оружие, броня.
+func _must_buy_owned(kind: String, id: Variant) -> bool:
+	var sid := StringName(id)
+	match _must_buy_source(kind):
+		"skill":
+			return GameState.has_skill(sid)
+		"weapon":
+			return sid in GameState.owned_weapons
+		"armor":
+			return sid in GameState.owned_armors
+	return false
+
+
+## Цена позиции набора — по ФАКТИЧЕСКИМ данным игры, а не по таблицам гипотез β:
+## тех правок в игре нет. Нужна затем, чтобы отчёт говорил не только «куплено
+## N из M», но и на сколько монет набор закрыт и сколько осталось докупить.
+func _must_buy_price(kind: String, id: String) -> int:
+	match String(MUST_BUY_KINDS[kind]["price_from"]):
+		"skill":
+			var s := SkillsData.find_skill(StringName(id))
+			return int(s["price"]) if not s.is_empty() else 0
+		"weapon":
+			var w: WeaponData = Database.weapon(StringName(id))
+			return w.price if w != null else 0
+		"armor":
+			var a: ArmorData = Database.armor(StringName(id))
+			return a.price if a != null else 0
+		"advice":
+			return CityData.advice_price(StringName(id))
+	return 0
+
+
+## Отмечает купленное из узкого набора: «категория:id» -> ранг, на котором позиция
+## впервые оказалась у бота. Оружие, броня и навыки читаются из GameState — у него
+## есть ВСЁ нужное: `has_skill`, `owned_weapons`, `owned_armors` (проверено
+## разведкой, выдумывать поля не надо).
+##
+## Ранг берётся на момент отметки, то есть на конец охоты, в которой покупка
+## случилась: точнее прогон не знает — бот тратит монеты ПОСЛЕ боя, а ранг к тому
+## моменту уже пересчитан.
+func _note_must_buy(got: Dictionary) -> void:
+	for kind in MUST_BUY.keys():
+		for id in MUST_BUY[kind]:
+			if not _must_buy_owned(kind, id):
+				continue
+			var key := _must_buy_key(kind, String(id))
+			if not got.has(key):
+				got[key] = GameState.rank
+
+
+## Сколько позиций набора замер ОТСЛЕЖИВАЕТ. Советы в счёт не входят (см.
+## MUST_BUY_KINDS.source): «закрыт» по позиции, которой прогон не видит, — не
+## измерение, а объявленный заранее результат.
+func _must_buy_total() -> int:
+	var total := 0
+	for kind in MUST_BUY.keys():
+		if _must_buy_source(kind) == "none":
+			continue
+		total += (MUST_BUY[kind] as Array).size()
+	return total
+
+
+## Блок отчёта об узком наборе: счётчик, деньги и таблица «позиция → ранг → цена».
+##
+## Таблица обязательна рядом со счётчиком. «Куплено N из M» одинаково выглядит и
+## когда набор закрыт по ходу пути, и когда он докупается после Легенды, и когда
+## позиции не покупались вовсе — по счётчику этого не различить, а приёмка этапа
+## спрашивает именно «закрывается ли по ходу». Таблица называет каждую позицию.
+func _must_buy_summary(got: Dictionary, start: Dictionary, done_at: int, spent: int) -> Array[String]:
+	var out: Array[String] = []
+	out.append("узкий набор: куплено %d из %d, закрыт на ранге %d, потрачено %d" % [
+		got.size(), _must_buy_total(), done_at, spent])
+	if done_at < 0:
+		out.append("  (ранг -1 значит: набор целиком не закрыт ни на одном ранге)")
+	var price := 0
+	var closed := 0
+	var paid := 0
+	var unseen_count := 0
+	var unseen_price := 0
+	for kind in MUST_BUY.keys():
+		for id in MUST_BUY[kind]:
+			var kind_title := String(MUST_BUY_KINDS[kind]["title"])
+			var cost := _must_buy_price(kind, String(id))
+			price += cost
+			if _must_buy_source(kind) == "none":
+				unseen_count += 1
+				unseen_price += cost
+				out.append("  %-7s %-12s %4d  НЕ отслеживается (состояния в GameState нет)" % [
+					kind_title, String(id), cost])
+				continue
+			var key := _must_buy_key(kind, String(id))
+			var state := "не куплено"
+			if start.has(key):
+				state = "был с начала (F3), ранг %d" % int(start[key])
+			elif got.has(key):
+				state = "куплен на ранге %d" % int(got[key])
+			out.append("  %-7s %-12s %4d  %s" % [kind_title, String(id), cost, state])
+			if got.has(key):
+				closed += cost
+				if not start.has(key):
+					paid += cost
+	var tracked := price - unseen_price
+	out.append("узкий набор: цена по прайсу %d, отслеживается %d, закрыто на %d (заплачено %d, стартовые по F3 бесплатны), осталось докупить на %d" % [
+		price, tracked, closed, paid, tracked - closed])
+	out.append("узкий набор: НЕ отслеживаются советы Старика — %d позиций на %d: состояния покупки совета в GameState нет (оно живёт в экране города), поэтому в счёте «куплено» их нет" % [
+		unseen_count, unseen_price])
+	# Что докуплено ПОСЛЕ Легенды. Это и есть «набор не закрывается»: если такие
+	# позиции есть, значит узкий набор собирался не по пути, а после цели.
+	var at_legend: Array[String] = []
+	for done_key in got.keys():
+		if int(got[done_key]) >= 5:
+			at_legend.append(String(done_key))
+	at_legend.sort()
+	out.append("докуплено после Легенды (ранг 5): %s" % [
+		"нет" if at_legend.is_empty() else ", ".join(at_legend)])
+	return out
