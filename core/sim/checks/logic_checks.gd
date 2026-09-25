@@ -2025,13 +2025,43 @@ static func _hit_reaction() -> Array[String]:
 		# Стихия — РАЗНИЦА между зачарованной и чистой строкой, и пробы выше сведены
 		# к общему состоянию намеренно: ряд чисел один, история сброшена, значит
 		# вводная, носитель, глагол и отпечаток обязаны совпасть, а вся разница —
-		# лежать в стихийной части. Ожидание собирается ТЕМИ ЖЕ константами, что и
-		# сборка: вписанный литералом разделитель стал бы второй копией правила, и
-		# подмена константы не красила бы это сравнение.
+		# лежать в стихийной части.
 		#
 		# Деталь стихии ищем строго в КОНЦЕ строки: детали пересекаются с глаголами
 		# («гасит» — глагол из пула, «гасит искра» — стихия огня), и поиск по
 		# «содержит» нашёл бы глагол, а проверка краснела бы на верной строке.
+		#
+		# ШАБЛОН §5 — правило спеки, и сторож у него свой. Литералы шаблона написаны
+		# ЗДЕСЬ И ОДИН РАЗ: проверка не имеет права собирать ожидание из тех же
+		# констант, что и сборка, — тогда подмена константы уводит ожидание вместе с
+		# кодом и остаётся зелёной (ИЗМЕРЕНО: `P_END := "!"` в первой редакции
+		# проходил зелёным). Рядом утверждается, что константы сборщика РАВНЫ этим
+		# литералам: подмена любой из пяти краснит пробу ПО ИМЕНИ. Дальше проверки
+		# спрашивают константы — они пришпилены здесь, поэтому «константа против
+		# константы» ниже больше не вакуум.
+		const T_AFTER_INTRO := ". "
+		const T_BEFORE_VERB := " "
+		const T_BEFORE_WEAPON := " — "
+		const T_BEFORE_ELEMENT := ", "
+		const T_END := "."
+		var tpl := {
+			"P_AFTER_INTRO": T_AFTER_INTRO,
+			"P_BEFORE_VERB": T_BEFORE_VERB,
+			"P_BEFORE_WEAPON": T_BEFORE_WEAPON,
+			"P_BEFORE_ELEMENT": T_BEFORE_ELEMENT,
+			"P_END": T_END,
+		}
+		var impl := {
+			"P_AFTER_INTRO": str(HitReaction.P_AFTER_INTRO),
+			"P_BEFORE_VERB": str(HitReaction.P_BEFORE_VERB),
+			"P_BEFORE_WEAPON": str(HitReaction.P_BEFORE_WEAPON),
+			"P_BEFORE_ELEMENT": str(HitReaction.P_BEFORE_ELEMENT),
+			"P_END": str(HitReaction.P_END),
+		}
+		for key in tpl.keys():
+			if impl[key] != tpl[key]:
+				failures.append("разделитель шаблона §5 «%s» — «%s», а сборка берёт «%s»" % [
+					key, tpl[key], impl[key]])
 		var element_suffix := ""
 		for p in fire_parts:
 			var part := str(p.text)
@@ -2041,37 +2071,12 @@ static func _hit_reaction() -> Array[String]:
 		if element_suffix == "":
 			failures.append("зачарованная нейтральная строка потеряла стихию огня: %s" % [
 				charmed[HitReaction.VERDICT_NEUTRAL]])
-		# Сцепка из шаблона §5 разбирается С КОНЦА: сначала отрезается знак конца
-		# («точка»), потом стихия, потом разделитель — и обязан остаться чистый
-		# вариант строки. Константы сборки тут не используются намеренно: сверка
-		# «строка кончается константой» сравнивает константу с константой и подмену
-		# `P_BEFORE_ELEMENT` на «,,» пропускает (её ловит ветка «собрана грязно»),
-		# а шаблон §5 — правило спеки, и у него сторож должен быть свой.
-		if element_suffix == "":
-			failures.append("зачарованная нейтральная строка потеряла стихию огня: %s" % [
-				charmed[HitReaction.VERDICT_NEUTRAL]])
-		else:
-			var mark := ", " + element_suffix + "."
-			for _v in verdicts:
-				var d_line: String = charmed[_v]
-				var d_clean: String = lines[_v]
-				if not d_line.ends_with(mark):
-					failures.append("строка вердикта «%s» не кончается сцепкой «%s»: %s" % [_v, mark, d_line])
-				else:
-					var body: String = d_line.substr(0, d_line.length() - mark.length())
-					if body + "." != d_clean:
-						failures.append("строка вердикта «%s» после снятия «%s» — не чистая строка: «%s» против «%s»" % [
-							_v, mark, body + ".", d_clean])
-		for _v in verdicts:
-			var c_line: String = charmed[_v]
-			var expected: String = lines[_v].trim_suffix(HitReaction.P_END) \
-				+ HitReaction.P_BEFORE_ELEMENT + element_suffix + HitReaction.P_END
-			if element_suffix != "" and not c_line.ends_with(
-					HitReaction.P_BEFORE_ELEMENT + element_suffix + HitReaction.P_END):
-				failures.append("строка вердикта «%s» не кончается стихией огня: %s" % [_v, c_line])
-			elif element_suffix != "" and c_line != expected:
-				failures.append("строка вердикта «%s» со стихией — не «чистая плюс %s%s%s»: «%s» против «%s»" % [
-					_v, HitReaction.P_BEFORE_ELEMENT, element_suffix, HitReaction.P_END, c_line, expected])
+		# Разбора «снять сцепку и сравнить с чистой строкой» здесь НЕТ намеренно, и
+		# это не пропуск. Он был, и механическая сверка артефактов показала, что обе
+		# его ветви недостижимы: место стихии удерживает пришпиливание констант
+		# (подмена любой из пяти краснит его по имени — M15…M19), а «строка длиннее
+		# чистого варианта» уже сказано ветвью «со стихией собрана грязно». Ветвь без
+		# мутации, которая её красит, — это утверждение, которого нет.
 		# Сцепка «, <стихия>.» — сравнение строк, а не сборка: она верна, пока в
 		# детали нет запятой. Деталь с запятой сделала бы «двойную запятую» вопросом
 		# данных, а §5 спеки объявляет её вопросом правила.
@@ -2128,13 +2133,10 @@ static func _hit_reaction() -> Array[String]:
 						failures.append("в строке вердикта «%s» за носителем сразу идёт отпечаток, а глагола нет: %s" % [kv, line])
 					else:
 						failures.append("в строке вердикта «%s» носитель слипся с соседним словом: %s" % [kv, line])
-			if not line.ends_with(HitReaction.P_END):
-				failures.append("строка вердикта «%s» не кончается знаком конца шаблона: %s" % [kv, line])
-			# Знак конца — из шаблона §5, «точка в конце». Проверка «строка кончается
-			# P_END» сравнивает константу с константой и подмену `P_END` на «!» или на
-			# пусто пропустила бы (проверено мутацией) — а это уже вопрос к шаблону,
-			# а не к сборке, и сторож у него должен быть отдельный.
-			if line != "" and not line.ends_with("."):
+			# Литеральный сторож знака конца: шаблон §5 говорит «точка в конце», и
+			# спрашивается здесь ЛИТЕРАЛ шаблона (`T_END`), а не константа сборщика —
+			# иначе проверка сравнивала бы константу с константой и была бы вакуумной.
+			if not line.ends_with(T_END):
 				failures.append("строка вердикта «%s» не заканчивается точкой: %s" % [kv, line])
 		if lines[HitReaction.VERDICT_RESIST] == lines[HitReaction.VERDICT_WEAK]:
 			failures.append("резист и уязвимость дали одну строку — приёмка не выполнена")

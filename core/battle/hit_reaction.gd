@@ -90,11 +90,11 @@ static func assemble(
 		+ P_BEFORE_WEAPON + str(print_weapon.text)
 	# Без руны стихийная часть опускается вместе со своей запятой (§5). Это правило
 	# сборщика: отдельные детали «пустой стихии» в пуле не нужны. И только если руна
-	# ДОБАВЛЯЕТ тип: при `rune_type == damage_type` её выбрасывает
-	# `WeaponData.damage_types_with`, второй тип удара не наносится — и стихийная
-	# клауза пообещала бы удар, которого нет. Условие повторяет правило оружия, а не
-	# заводит своё: источник — там же, где `damage_types()`.
-	if weapon.rune_type != &"" and weapon.rune_type != weapon.damage_type:
+	# ДОБАВЛЯЕТ тип удара: руна, равная базовому типу, второго типа не несёт.
+	# Спрашиваем САМО оружие — «сколько типов у удара», — а не переписываем здесь
+	# правило `damage_types_with` второй копией: одно правило в двух местах
+	# расходится молча (AGENTS.md §4).
+	if weapon.damage_types().size() > 1:
 		var element := TextGenerator.pick_phrase(
 			&"", &"", SLOT_ELEMENT, StringName(weapon.rune_type), rng)
 		if element != null:
