@@ -2310,8 +2310,18 @@ static func _reaction_parts(mon: MonsterData, wpn: WeaponData, verdict: StringNa
 ## второго прогона — и она КРАСНЕЛА на исправленном коде (7 расхождений из 10).
 ## Причина: 40 вытесненных id реакции выбивали из окна прозы фразы, которые первый
 ## прогон ещё не успел взять, то есть проба мерила не бой, а состояние окна, которого
-## игра не создаёт. В бою реакция раунда k стоит МЕЖДУ прозой раунда k и раунда k+1,
-## и ровно так она здесь и собирается.
+## игра не создаёт. Поэтому реакции разнесены по раундам.
+##
+## ЧТО ЭТА ПРОБА МЕРИТ НА САМОМ ДЕЛЕ — ИЗОЛЯЦИЮ ОКОН, А НЕ БОЕВОЙ ПОРЯДОК. Реакция
+## здесь собирается ПЕРЕД прозой раунда, и затем `submit_read` собирает её ВТОРОЙ раз
+## (`battle_engine.gd`, ветвь `read_correct`), то есть на раунд приходится ДВЕ сборки
+## против ОДНОЙ боевой. Порядок «реакция раунда k между прозой k и k+1» — это бой, и
+## он измерен ОТДЕЛЬНО, временным боевым пробоем: 0 расхождений из 10 во всех 14 парах
+## «7 видов × молот/лук» против 1–5 расхождений до правки (артефакт
+## `_probe_mutation_t7_shared_voice_battle_before.txt`). Отличие намеренное: лишняя
+## сборка нагружает окна СИЛЬНЕЕ боевой последовательности, поэтому проба
+## чувствительнее боя, а не равна ему. Ложное утверждение «здесь ровно боевой порядок»
+## стояло в первой редакции этого комментария и убрано: проба — сторож изоляции.
 ##
 ## Почему это проверка ГОЛОСА, а не «проверки воспроизводимости». Числа у обоих
 ## прогонов одни и те же (сид на раунд), меняется только ИСТОРИЯ выбора: во втором
@@ -2327,8 +2337,8 @@ static func _prose_independent_of_reaction(
 		failures.append("нет данных для пробы независимости прозы: вид или оружие")
 		return out
 	# Вид — КОПИЯ: проба меряет ПРОЗУ и не имеет права упереться в смерть зверя.
-	var clean := _prose_rounds(mon, weapon, false)
-	var warmed := _prose_rounds(mon, weapon, true)
+	var clean := _prose_rounds(mon, weapon, false, failures)
+	var warmed := _prose_rounds(mon, weapon, true, failures)
 	var diff := 0
 	var first := 0
 	for i in clean.size():
@@ -2342,9 +2352,16 @@ static func _prose_independent_of_reaction(
 			clean[first - 1], warmed[first - 1]])
 	out.append("проза и реакция: раундов %d, расхождений %d (первое на раунде %d)" % [
 		clean.size(), diff, first])
-	# Вторая половина пробы: механизм обязан быть ЖИВЫМ. Если сборка реакции
-	# перестанет брать фразы (пустой пул, сломанный голос), «расхождений 0» выйдет
-	# даром — окно просто нечем будет вытеснять.
+	# Антивакуумный сторож — и ЧЕГО ОН НЕ СТОРОЖИТ. Он утверждает, что сборка реакции
+	# не выродилась в пустые строки: без этого «расхождений 0» означало бы «вытеснять
+	# нечем». Но НАПОЛНЕНИЕ окна он не сторожит: сделай `_remember` пустышкой — проба
+	# останется зелёной («расхождений 0»), потому что оба прогона теряют историю
+	# ОДИНАКОВО. Наполнение сторожит `--repeat`: там минимальная глубина повтора
+	# падает с 5–12 до 0–4 и каждая строка получает вердикт «ЗАМЕТНО» (измерено
+	# мутацией `_remember` → `return`; артефакт `_probe_mutation_t7_noop_remember.txt`).
+	# Это ЧИСЛА, а не `ПРОВАЛ`: `--repeat` возвращает сводку, и `run_checks` остаётся
+	# `PROBLEMS: 1`. Третьей копии правила здесь не заводится — сторож у наполнения
+	# уже есть, и он назван.
 	var reactions := _reaction_texts(mon, weapon)
 	var non_empty := 0
 	for t in reactions:
@@ -2363,7 +2380,19 @@ static func _prose_independent_of_reaction(
 ## каждого раунда собирается реакция удара ровно тем генератором, которым её собирает
 ## движок (`&"reaction"`). Всё остальное совпадает побайтово: тот же вид-копия, то же
 ## оружие, те же числа.
-static func _prose_rounds(mon: MonsterData, weapon: WeaponData, warm_reactions: bool) -> Array[String]:
+##
+## Сценарий раунда берётся у ВИДА (`find_scenario` по id), а не у движка: второго
+## читателя поля движка ради одной пробы не заводится. Объект тот же самый —
+## `ScenarioPicker.pick` выбирает из `monster.scenarios`, а `mono` и есть тот вид,
+## которым движок настроен. Пустой сценарий — не «нет прозы», а поломка пробы:
+## без этой ветви оба прогона вернули бы по нулю строк и «расхождений 0» вышло бы
+## вакуумным.
+static func _prose_rounds(
+	mon: MonsterData,
+	weapon: WeaponData,
+	warm_reactions: bool,
+	failures: Array[String]
+) -> Array[String]:
 	TextGenerator.reset_history()
 	var mono: MonsterData = mon.duplicate()
 	mono.max_hp = 100000
@@ -2377,11 +2406,16 @@ static func _prose_rounds(mon: MonsterData, weapon: WeaponData, warm_reactions: 
 	for i in PROSE_VOICE_ROUNDS:
 		if engine.is_over():
 			break
+		var scenario: ScenarioData = mono.find_scenario(engine.current_scenario_id())
+		if scenario == null:
+			failures.append("у вида «%s» нет сценария раунда %d — проба независимости прозы не собрана" % [
+				mon.id, engine.round_index])
+			return prose
 		if warm_reactions:
 			HitReaction.assemble(mono, weapon, HitReaction.verdict_of(-1), 1, false,
 				engine._round_rng(engine.round_index, &"reaction"))
 		prose.append(str(TextGenerator.generate(
-			mono, engine.current_scenario(), _text_rng(engine.round_index)).get("prose", "")))
+			mono, scenario, _text_rng(engine.round_index)).get("prose", "")))
 		if engine.submit_read(engine.current_scenario_id(), true).is_empty():
 			break
 		engine.advance_round()
