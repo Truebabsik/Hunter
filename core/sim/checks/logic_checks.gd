@@ -1467,6 +1467,13 @@ static func _status_mechanics() -> Array[String]:
 		if got_penalty != int(d21_penalty_expect.get(pt, 0)):
 			d21_penalty_fail.append("тир %d: штраф %d, а §8.3 ждёт %d" % [
 				pt, got_penalty, int(d21_penalty_expect.get(pt, 0))])
+	# Тир, добавленный в ORDER_RANKS без ключа в ожиданиях, обход выше не заметит:
+	# `get(tier, 0)` вернёт 0, а `death_penalty` для тира без записи в таблице
+	# штрафов тоже 0 — «0 против 0» выглядело бы успехом. Состав таблиц сверяется
+	# отдельно, по числу и по именам, — тот же приём, что у славы («вид пропал»).
+	var d21_penalty_gap := _tier_expect_gap(d21_penalty_expect, "штраф по тирам")
+	if d21_penalty_gap != "":
+		d21_penalty_fail.append(d21_penalty_gap)
 	out.append("штраф за смерть по тирам: %s (§8.3: −3/−6/−9/−9/−12)" % " ".join(d21_penalty_text))
 	if d21_penalty_fail.is_empty():
 		out.append("ок штрафа за смерть: таблица §8.3 сходится по всем тирам")
@@ -1501,11 +1508,103 @@ static func _status_mechanics() -> Array[String]:
 			d21_first_fail.append("тир %d «%s»: первый раз %d, а §8.3 ждёт %d" % [
 				ft, CityData.order_tier_title(ft), got_first,
 				int(d21_first_expect.get(ft, 0))])
+	var d21_first_gap := _tier_expect_gap(d21_first_expect, "первый раз")
+	if d21_first_gap != "":
+		d21_first_fail.append(d21_first_gap)
 	out.append("штраф за смерть, ПЕРВЫЙ раз: %s (§8.3: только Ламант вдвое)" % " ".join(d21_first_text))
 	if d21_first_fail.is_empty():
 		out.append("ок первого раза: половина штрафа только на легендарном тире")
 	else:
 		out.append("ПРОВАЛ первого раза: %s" % "; ".join(d21_first_fail))
+
+	# Побочная встреча смягчает штраф вдвое (§8.3: ×0.5, округление вниз) — и это
+	# ТРЕТИЙ параметр `death_penalty`, который до сих пор не проверял никто: сторож
+	# выше звал функцию с `side_encounter = false`. Проверяем оба сочетания, потому
+	# что множители СКЛАДЫВАЮТСЯ: у Ламанта при первом раза и побочной встрече
+	# выходит четверть от 12, и это не то же самое, что половина от половины.
+	var d21_side_expect := {
+		false: {0: 1, 1: 3, 2: 4, 3: 4, 4: 6},
+		true: {0: 1, 1: 3, 2: 4, 3: 4, 4: 3},
+	}
+	var d21_side_fail: Array[String] = []
+	var d21_side_text: PackedStringArray = PackedStringArray()
+	for side_flag in [false, true]:
+		var side_first := bool(side_flag)
+		var expect_side: Dictionary = d21_side_expect[side_first]
+		var side_row: PackedStringArray = PackedStringArray()
+		for stier in CityData.ORDER_RANKS.keys():
+			var st := int(stier)
+			var got_side := CityData.death_penalty(st, side_first, true)
+			side_row.append("%d:%d" % [st, got_side])
+			if got_side != int(expect_side.get(st, 0)):
+				d21_side_fail.append("тир %d «%s», %s: штраф %d, а §8.3 ждёт %d" % [
+					st, CityData.order_tier_title(st),
+					"первый раз" if side_first else "повторно",
+					got_side, int(expect_side.get(st, 0))])
+		var side_gap := _tier_expect_gap(expect_side, "побочная встреча, %s" % (
+			"первый раз" if side_first else "повторно"))
+		if side_gap != "":
+			d21_side_fail.append(side_gap)
+		d21_side_text.append("%s: %s" % [
+			"первый раз" if side_first else "повторно", " ".join(side_row)])
+	out.append("штраф за смерть, ПОБОЧНАЯ встреча: %s (§8.3: ×0.5 вниз)" % " | ".join(d21_side_text))
+	if d21_side_fail.is_empty():
+		out.append("ок побочной встречи: ×0.5 вниз по всем тирам, складывается с первым разом")
+	else:
+		out.append("ПРОВАЛ побочной встречи: %s" % "; ".join(d21_side_fail))
+
+	# «Первый раз» сквозь НАСТОЯЩИЙ `HuntResult.apply()`: продакшн-предикат —
+	# `GameState.kill_counts(monster_id) == 0` (`hunt_result._apply_defeat`), и его до
+	# сих пор не проверяло ничто: сторож выше зовёт `death_penalty` напрямую и
+	# подставляет `first_time` руками. Цена ошибки здесь не число, а СМЫСЛ правила.
+	#
+	# Смысл этот — «ни разу НЕ ПОБЕЖДЁН», а не «первая смерть», как читается проза
+	# §8.4 («Ламент первый раз: ×0.5»): счётчик считает победы, а не смерти, и после
+	# первой победы над Ламантом КАЖДАЯ следующая смерть стоит полные 12. Это
+	# расхождение формулировок с фактической семантикой — открытый вопрос дизайна,
+	# здесь оно только НАЗВАНО, менять ни правило, ни прозу задача не просит.
+	var e2e_cases := [
+		["ashmother", 3, false, 31],  # тир 3 «мифический»: половины нет ни разу
+		["lament", 4, false, 34],     # верхний тир, ни разу не побеждён → −6
+		["lament", 4, true, 28],      # победа уже была → полные −12
+	]
+	var e2e_fail: Array[String] = []
+	var e2e_text: PackedStringArray = PackedStringArray()
+	for e2e_case in e2e_cases:
+		var e2e_id := StringName(e2e_case[0])
+		var e2e_tier := int(e2e_case[1])
+		var e2e_won := bool(e2e_case[2])
+		var e2e_want := int(e2e_case[3])
+		GameState.reset()
+		GameState.glory = 40
+		if e2e_won:
+			GameState.register_kill(e2e_id, e2e_tier)
+			# Победа над видом открывает достижение «убит …» (+1 славы) ВНУТРИ того же
+			# `apply()`, и слава уехала бы на 29 вместо 28. Гасим этот +1 явно: сторож
+			# проверяет ШТРАФ, а не выплаты Achievements, и краснеть на правке
+			# достижений, к «первому разу» не относящейся, он не должен.
+			GameState.achievements["kill_%s" % e2e_id] = true
+		var e2e_mon: MonsterData = Database.monster(e2e_id)
+		var e2e_name := e2e_mon.title if e2e_mon != null else String(e2e_id)
+		var defeat := HuntResult.new()
+		defeat.monster_id = e2e_id
+		defeat.order_rank = e2e_tier
+		defeat.victory = false
+		defeat.fled = false
+		defeat.apply(false)
+		e2e_text.append("«%s» т%d%s: %+d, слава 40 → %d" % [
+			e2e_name, e2e_tier, " после победы" if e2e_won else "",
+			defeat.glory_delta, GameState.glory])
+		if defeat.glory_delta != e2e_want - 40 or GameState.glory != e2e_want:
+			e2e_fail.append("смерть на «%s» (тир %d)%s: %+d, слава %d, а ждали %+d и %d" % [
+				e2e_name, e2e_tier, " после победы" if e2e_won else "",
+				defeat.glory_delta, GameState.glory, e2e_want - 40, e2e_want])
+	GameState.reset()
+	out.append("первый раз сквозь HuntResult: %s" % " | ".join(e2e_text))
+	if e2e_fail.is_empty():
+		out.append("ок сквозь HuntResult: половина только за ни разу не побеждённого верхнего зверя")
+	else:
+		out.append("ПРОВАЛ сквозь HuntResult: %s" % "; ".join(e2e_fail))
 
 	# Достижение «Победа над легендарным зверем» вешается на счётчик `kills_tier3`,
 	# а он ставится при `order_rank >= 3` — то есть после раздела тира выдаётся за
@@ -1560,6 +1659,32 @@ static func _status_mechanics() -> Array[String]:
 			str(GameState.advice_bought.get("lament", false))])
 	GameState.reset()
 	return out
+
+
+## Расхождение между таблицей ожиданий и тирами заказа: текст ПРОВАЛА или "".
+##
+## Нужна потому, что проверки штрафов обходят `ORDER_RANKS` и читают ожидание через
+## `get(tier, 0)`. Тир, добавленный в `ORDER_RANKS` без ключа в ожиданиях, дал бы
+## `death_penalty = 0` против ожидания `0` — и молчаливое «0 против 0» вместо
+## провала. Пустая таблица ожиданий на непустом `ORDER_RANKS` — тот же случай.
+##
+## Состав сверяется и по числу, и по именам: числа хватает, чтобы поймать расхождение,
+## но назвать виновника — работа имён, а «ПРОВАЛ» без имени снова отправляет читателя
+## искать причину самому. `label` различает строки одной проверки (таблиц ожиданий у
+## побочной встречи две), чтобы в отчёте было видно, какая именно не сходится.
+static func _tier_expect_gap(expect: Dictionary, label: String = "") -> String:
+	var tiers := CityData.ORDER_RANKS.size()
+	if expect.size() == tiers:
+		return ""
+	var without: Array[String] = []
+	for key in CityData.ORDER_RANKS.keys():
+		if not expect.has(int(key)):
+			without.append(str(int(key)))
+	var note := ""
+	if not without.is_empty():
+		note = " (без ожидания: %s)" % ", ".join(without)
+	return "%sтиров в ORDER_RANKS %d, а в ожиданиях %d%s" % [
+		"" if label.is_empty() else "%s: " % label, tiers, expect.size(), note]
 
 
 ## Аргумент-число, идущий СРАЗУ за флагом. Если следующего токена нет или это другой

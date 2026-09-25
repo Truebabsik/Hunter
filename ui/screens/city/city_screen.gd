@@ -602,14 +602,23 @@ func _build_tavern() -> void:
 	for id in Database.monsters.keys():
 		var mon: MonsterData = Database.monsters[id]
 		var price := CityData.advice_price(mon.id)
+		# Купленный совет — состояние ЗАБЕГА, а экран города пересоздаётся при каждом
+		# возвращении: без этой ветки строка предлагала бы цену и покупку уже
+		# услышанного совета до конца забега. Бесплатный совет Хруза — та же логика:
+		# «бесплатно» тоже значило бы «спроси ещё раз».
+		var heard := GameState.advice_bought.has(String(mon.id))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var info := Label.new()
-		info.text = "%s — %s" % [mon.title, "бесплатно" if price == 0 else "%d монет" % price]
+		if heard:
+			info.text = "%s — уже слышал" % mon.title
+		else:
+			info.text = "%s — %s" % [mon.title, "бесплатно" if price == 0 else "%d монет" % price]
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(info)
 		var b := Button.new()
-		b.text = "СПРОСИТЬ"
+		b.text = "УСЛЫШАНО" if heard else "СПРОСИТЬ"
+		b.disabled = heard
 		b.pressed.connect(_ask_advice.bind(mon.id))
 		row.add_child(b)
 		content.add_child(row)
@@ -623,6 +632,11 @@ func _build_tavern() -> void:
 ## Две причины отказа различаются ТЕКСТОМ, а не повтором проверки: `buy_advice`
 ## возвращает только «не купилось», и что именно случилось, спрашивают у состояния.
 ## Цена в экран не передаётся: её читает `buy_advice` из `CityData` — одна копия.
+##
+## После удачной покупки вкладка перестраивается тем же приёмом, что и у покупок
+## Мастера (`_buy_skill` → `_show_tab("master")`): строка обязана перестать
+## предлагать купленное СРАЗУ, а не после следующего захода в город. `_say` пишет в
+## `log_label`, а `_show_tab` чистит только `content`, поэтому сказанное выживает.
 func _ask_advice(monster_id: StringName) -> void:
 	if not GameState.buy_advice(monster_id):
 		if bool(GameState.advice_bought.get(String(monster_id), false)):
@@ -632,7 +646,7 @@ func _ask_advice(monster_id: StringName) -> void:
 		return
 	var mon: MonsterData = Database.monster(monster_id)
 	_say(_advice_text(mon))
-	_refresh_status()
+	_show_tab("tavern")
 
 
 ## Совет — это опыт, а не подсказка (GDD 9.3): он называет опорные сигналы
