@@ -16,7 +16,7 @@
 - Разделитель `--` перед режимом **обязателен**; отчёты читать **файлами** (`Get-Content <файл> -Encoding UTF8`), **удалять перед прогоном**.
 - `core/` — чистый GDScript: ни `Node`, ни `SceneTree`, ни сцен. Отступы — **табы**.
 - Правки `.gd`/`.tres`/`.csv` — **только инструментами `edit`/`write`**. `Set-Content` по `.gd` в этом проекте уже склеивал файл в одну строку.
-- **Ни одно число боя не меняется.** Замер `--loop 25` остаётся побайтово прежним (эталон SHA256 `AD17FB96B388B35D2C79779B630866E6F548E57FC5EEBB880FD89A7A21DB5F58`), `--sim --battles 200` совпадает по ключам `monster|loadout_id|read_level`.
+- **Ни одно число боя не меняется.** Замер `--loop 25` остаётся побайтово прежним (эталон SHA256 `AD17FB96B388B35D2C79779B630866E6F548E57FC5EEBB880FD89A7A21DB5F58`); `--sim --battles 200` сверяется с зафиксированной базой `_sim_before_d19.json` (SHA256 `877F760679DDE2D8508B8A2A0D5112A2AAFF6A084EB741108D8CA0110FA65CC1`, снята до первой правки D19; на коде задач 1–2 повторный прогон совпал побайтово).
 - Ожидаемый красный `--validate` — **ровно три ламантовы строки** (§14.1). Не глушить и не «чинить».
 - Обёртка проверок читает вердикт внутри отчётов: строка, начинающаяся с «ПРОВАЛ», маркеры `VALIDATION FAILED`/`SMOKE FAILED`/`LOAD FAILED` и `SCRIPT ERROR` на stderr ломают вердикт.
 - **Чужие незакоммиченные файлы не трогать**: `art/monsters/hruz.png`, `docs/ART_*.md`, `docs/dizain_hunter_old.md`, `*.bat`.
@@ -395,6 +395,8 @@ git commit -m "D19: пул деталей реакции (посев) и про�
 **Interfaces:**
 - Consumes: `Database.phrases_for(monster_id, scenario_id, slot, role) -> Array`; `TextGenerator.pick_phrase(...)`.
 - Produces: `HitReaction.assemble(monster: MonsterData, weapon: WeaponData, verdict: StringName, run: int, is_swap: bool, rng: RandomNumberGenerator) -> String`; `HitReaction.intro_role(verdict: StringName, run: int, is_swap: bool) -> StringName`.
+
+**Первый аргумент `pick_phrase` — не везде id вида, иначе пул не выберется.** `Database.phrases_for` откатывается **только по сценарию**: `monster_id` остаётся в обоих ключах (`autoload/database.gd:120–124`), поэтому общие детали — они лежат в CSV с пустым `monster` — достижимы **лишь при `monster = &""`**. Значит при сборке `TextGenerator.pick_phrase(monster.id, …)` — **только** для носителя (`HitReaction.SLOT_CARRIER`); для глагола, отпечатка удара, стихийной окраски и вводной первый аргумент обязан быть `&""`. Ошибка здесь молчит: `pick_phrase` вернёт `null`, `assemble` — пустую строку, и проверка сборки покраснеет «пустым пулом» вместо внятной «одной строки». Слоты и вердикты берутся из `HitReaction` (`SLOT_*` / `VERDICT_*` — константы уже объявлены там, второй копии строк быть не должно); ключи и смысл колонок — таблица «Посев» §4 спеки.
 
 - [ ] **Step 1: Открыть взвешенный выбор наружу — без второй реализации**
 
@@ -830,7 +832,7 @@ cmd /c "F:\WORK\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe --he
 cmd /c "F:\WORK\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe --headless --path F:\WORK\hunter --quit-after 1800 -- --sim --battles 200 --log-file F:\WORK\hunter\_glog.txt"
 ```
 
-Ожидается совпадение `sim_report.json` с прежним **по ключам** `monster|loadout_id|read_level` (подписи сборок сравнивать нельзя).
+**База сравнения зафиксирована заранее:** `_sim_before_d19.json` — копия `sim_report.json`, снятая до первой правки D19, SHA256 `877F760679DDE2D8508B8A2A0D5112A2AAFF6A084EB741108D8CA0110FA65CC1`. На коде задач 1–2 повторный прогон дал **побайтово тот же** отчёт, то есть числа боя не двигались. Ожидание: и сейчас `sim_report.json` совпадает с этой базой побайтово. Если не совпадёт — сравнивать **по ключам** `monster|loadout_id|read_level` (подписи сборок сравнивать нельзя: их ломает переименование) и назвать изменившиеся случаи поимённо.
 
 - [ ] **Step 3: Записать результат приёмки в спеку**
 

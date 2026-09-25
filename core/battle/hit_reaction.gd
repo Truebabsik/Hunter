@@ -13,6 +13,17 @@ const VERDICT_RESIST := &"resist"
 const VERDICT_WEAK := &"weak"
 const VERDICT_NEUTRAL := &"neutral"
 
+## Слоты пула деталей реакции (D19). Идентификаторы живут ЗДЕСЬ, а не литералами
+## у каждого читателя: сборка (Task 3) и проверка покрытия спрашивают одни и те же
+## ведра, и вторая копия строки «reaction_verb» разошлась бы с первой молча
+## (AGENTS.md §4). Значения обязаны совпадать с колонкой `slot` в
+## `content/phrases/reactions.csv`.
+const SLOT_CARRIER := &"reaction_carrier"
+const SLOT_VERB := &"reaction_verb"
+const SLOT_WEAPON := &"reaction_weapon"
+const SLOT_ELEMENT := &"reaction_element"
+const SLOT_INTRO := &"reaction_intro"
+
 
 ## Вердикт по знаку СУММЫ ПРИЧИН вида («слабость +1 / резист −1») без «+1» элемента
 ## руны (D04). Ноль — взаимодействия нет.
