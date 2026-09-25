@@ -1358,6 +1358,114 @@ static func _status_mechanics() -> Array[String]:
 			content_species, content_rules])
 	else:
 		out.append("ПРОВАЛ D23 содержание: %s" % "; ".join(content_fail))
+
+	# Ранги заказов (§8.1 + спека этапа 3 §3): доступ к тиру открывается ПОРОГОМ
+	# ранга, а не правилом «ранг = тир». Старое правило делало Ламанта достижимым
+	# на ранге 3 («Ветеран»), а ранг 4 («Мастер») не открывал ничего нового.
+	#
+	# Префикс `d21_` взят из кода брифа и здесь означает только «D21-блок этапа 3»:
+	# решение D21 дизайна — про резисты, к рангам заказов оно отношения не имеет.
+	var d21_orders := {
+		0: [], 1: [], 2: ["skorb"], 3: ["ashmother"], 4: ["lament"], 5: [],
+	}
+	var d21_orders_fail: Array[String] = []
+	for r in range(0, 6):
+		var ids: Array = []
+		for o in CityData.available_monsters(r):
+			ids.append(String(o["monster_id"]))
+		var must_gain: Array = d21_orders[r]
+		for m in must_gain:
+			if not ids.has(m):
+				d21_orders_fail.append("ранг %d: «%s» недоступен, а обязан быть" % [r, m])
+		# Ламант обязан появляться ТОЛЬКО на ранге 4 и выше.
+		if r < 4 and ids.has("lament"):
+			d21_orders_fail.append("ранг %d: Ламант доступен раньше срока" % r)
+		# Ранг 5 новых заказов не открывает: доступ совпадает с рангом 4.
+		if r == 5:
+			var prev: Array = []
+			for o in CityData.available_monsters(4):
+				prev.append(String(o["monster_id"]))
+			if ids.size() != prev.size():
+				d21_orders_fail.append("ранг 5 открывает новые заказы (%d против %d)" % [
+					ids.size(), prev.size()])
+		# Ранг 1 новых заказов тоже не открывает: доступ совпадает с рангом 0
+		# (§8.1 v1.10.6: продвинутые — с ранга 2; спека §3: «ранги 0–1 — стартовые»).
+		#
+		# Зачем эта строка, если бриф её не называл. Без неё сторож НЕ краснеет на
+		# возврате правила `max_tier = rank` — а именно эту красноту требует приёмка
+		# задачи. Причина: пороги тиров 0/2/2/3/4 совпадают с «ранг ≥ номер тира»
+		# для рангов 2–4, поэтому старое правило даёт верные наборы везде, кроме
+		# ранга 1, где оно открывает продвинутых. Замер: см. отчёт Task 2, шаг 6.
+		if r == 1:
+			var first_size := CityData.available_monsters(0).size()
+			if ids.size() != first_size:
+				d21_orders_fail.append("ранг 1 открывает новые заказы (%d против %d на ранге 0)" % [
+					ids.size(), first_size])
+	out.append("заказы по рангам: 0:%d 1:%d 2:%d 3:%d 4:%d 5:%d видов" % [
+		CityData.available_monsters(0).size(), CityData.available_monsters(1).size(),
+		CityData.available_monsters(2).size(), CityData.available_monsters(3).size(),
+		CityData.available_monsters(4).size(), CityData.available_monsters(5).size()])
+	if d21_orders_fail.is_empty():
+		out.append("ок заказов: доступ открывается по шести рангам (§8.1)")
+	else:
+		out.append("ПРОВАЛ заказов: %s" % "; ".join(d21_orders_fail))
+
+	# Слава за тир (§8.2 + спека этапа 3 §3). `victory_glory` читает ТИР заказа, а
+	# не вид, поэтому разделение элитного тира надвое (Task 2) обязано сохранить
+	# обоим элитным видам по 4 славы, а Ламанту — 10. Ошибка здесь не видна по
+	# одному бою: она тихо сдвигает всю лестницу до Легенды.
+	#
+	# Ждём ПО ВИДАМ, а не по номерам тиров, и это существенно: номер тира — как раз
+	# то, что задача меняет, и ожидание по номерам покраснело бы на ВЕРНОЙ старой
+	# таблице, ничего не сказав о славе. Вид же — устойчивая привязка §4/§8.2:
+	# «победа над элитным +4» относится к Скорбу и Пепел-Матери, кто бы в каком
+	# тире ни лежал. Заодно сторож ловит вид, уехавший не в свой тир.
+	#
+	# Ключ, забытый при расширении таблицы, `victory_glory` молча подменяет
+	# запасной единицей (`get(rank, 1)`), и «мифический» давал бы 1 славу вместо 4.
+	var d21_glory_want := {
+		"hruz": 1, "shipun": 1,        # стартовые (§8.2)
+		"gromun": 2, "tleun": 2,       # продвинутые
+		"skorb": 4, "ashmother": 4,    # оба элитных — по 4
+		"lament": 10,                  # легендарный
+	}
+	var d21_glory_fail: Array[String] = []
+	var d21_glory_text: PackedStringArray = PackedStringArray()
+	var d21_glory_species := 0
+	for tier in CityData.ORDER_RANKS.keys():
+		var t := int(tier)
+		var species: Array = CityData.ORDER_RANKS[tier]["monsters"]
+		var glory := CityData.victory_glory(t, false, false, false)
+		d21_glory_text.append("%d:%d(%s)" % [t, glory, ", ".join(species)])
+		for m in species:
+			var mid := String(m)
+			d21_glory_species += 1
+			var want_glory := int(d21_glory_want.get(mid, -1))
+			if glory != want_glory:
+				d21_glory_fail.append("«%s» в тире %d «%s»: слава %d, а ждали %d" % [
+					mid, t, CityData.order_tier_title(t), glory, want_glory])
+	# Вид, пропавший из ORDER_RANKS, обход не заметит — сверяем число с таблицей.
+	if d21_glory_species != d21_glory_want.size():
+		d21_glory_fail.append("в заказах %d видов, а в таблице славы %d — вид пропал" % [
+			d21_glory_species, d21_glory_want.size()])
+	out.append("слава по тирам: %s" % " ".join(d21_glory_text))
+	if d21_glory_fail.is_empty():
+		out.append("ок славы заказов: оба элитных вида дают 4, легендарный — 10 (§8.2)")
+	else:
+		out.append("ПРОВАЛ славы заказов: %s" % "; ".join(d21_glory_fail))
+
+	# Штраф за смерть — ЗАМЕР без вердикта. Правило здесь линейное (тир × 3), а §8.3
+	# даёт −3 / −6 / −9 / −12 на четыре тира: при пяти тирах это таблица, а не
+	# умножение, и на «первом элитном» (тир 2) линейное правило даёт −6 вместо −9.
+	# Спека этапа 3 (§3) этого не требует, поэтому здесь только числа: менять
+	# штрафы — отдельное решение, а тихо «поправить» их значило бы сдвинуть
+	# прогрессию мимо приёмки.
+	var d21_penalty_text: PackedStringArray = PackedStringArray()
+	for ptier in CityData.ORDER_RANKS.keys():
+		var pt := int(ptier)
+		d21_penalty_text.append("%d:%d" % [pt, CityData.death_penalty(pt, false, false)])
+	out.append("штраф за смерть по тирам: %s (правило: тир × %d)" % [
+		" ".join(d21_penalty_text), CityData.DEATH_PENALTY_PER_RANK])
 	return out
 
 
