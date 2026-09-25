@@ -415,38 +415,57 @@ static func smoke(host: Node) -> String:
 		(GameState.dossier_entry(&"hruz")["decoys"] as Array).size(),
 		(GameState.dossier_entry(&"hruz")["weaknesses"] as Array).size()])
 	out.append("уровень досье: %d (0 нет / 1 наблюдение / 2 анализ / 3 мастерство)" % GameState.dossier_level(&"hruz"))
-	# D19, ветвь «читать нечего»: реакция обязана показываться и в тумане — она факт о
-	# ТВОЁМ ударе, а не наблюдение за зверем, и без неё игрок в тумане не увидел бы
-	# ответа на свой удар вовсе. Ветвь `lines.is_empty()` в главном бою не исполняется
-	# ни разу: у `hruz` тумана нет (`fog_enabled` в `hruz_monster.tres` отсутствует —
-	# значит false). Туман есть у `tleun` (`fog_enabled = true`), на нём и проверяем —
-	# ОТДЕЛЬНЫМ экраном, чтобы не сдвигать раунды, счётчики и досье главного боя.
-	var fog_screen: Node = (load("res://ui/screens/battle/battle_screen.tscn") as PackedScene).instantiate()
-	host.add_child(fog_screen)
+	# D19, ветвь «читать нечего»: реакция обязана показываться и когда улик в раунде
+	# нет — она факт о ТВОЁМ ударе, а не наблюдение за зверем, и без неё игрок не
+	# увидел бы ответа на свой удар вовсе.
+	#
+	# Ветвь `lines.is_empty()` в главном бою не исполняется ни разу: у `hruz` тумана
+	# нет (`fog_enabled` в `hruz_monster.tres` отсутствует — значит false). Раньше
+	# здесь стоял ВТОРОЙ экран с Тлеуном (`fog_enabled = true`), но подсистема D19
+	# сужена до стартового вида, и на Тлеуне реакции не бывает по построению —
+	# улики скрыты, а строка не собирается, то есть проба проверяла бы выключенность
+	# подсистемы. Поэтому тот же вид (Хруз) переводится в состояние «читать нечего»
+	# СЛЕПОТОЙ: статус `blind` у зверя чистит `lines` тем же правилом, что и туман
+	# (`BattleEngine.advance_round`, `blind_hides`), и оставляет работающую реакцию.
+	#
+	# Статус ставится прямо в словарь движка, а не «руками экрана», потому что
+	# другого пути его выставить из боя нет: комбо со статусом `blind` в контенте
+	# отсутствует. Это СОСТОЯНИЕ БОЯ, а не подпорка пробы: `advance_round` его тикает
+	# и снимает сам, как любой статус.
+	var blind_screen: Node = (load("res://ui/screens/battle/battle_screen.tscn") as PackedScene).instantiate()
+	host.add_child(blind_screen)
 	await host.get_tree().process_frame
-	fog_screen.setup_hunt(&"tleun", 0)
+	blind_screen.setup_hunt(&"hruz", 0)
 	await host.get_tree().process_frame
-	var fog_engine: BattleEngine = fog_screen.engine
-	var fog_lines: Array = fog_engine.current_prose().get("lines", [])
-	out.append("реакция в тумане: улик в раунде %d, туман %s" % [
-		fog_engine.round_index, str(fog_engine.fog_active)])
+	var blind_engine: BattleEngine = blind_screen.engine
+	# Два хода срока: `advance_round` тикнет статус на −1 и оставит его живым ровно
+	# на проверяемый раунд, а снимется он сам, как в игре.
+	blind_engine.monster_statuses[BattleEngine.STATUS_BLIND] = {"rounds": 2, "text": "проба: зверь ослеп"}
+	blind_engine.advance_round()
+	await host.get_tree().process_frame
+	blind_screen._refresh()
+	var blind_lines: Array = blind_engine.current_prose().get("lines", [])
+	out.append("реакция при скрытых уликах: улик в раунде %d, слеп %s, туман %s" % [
+		blind_engine.round_index,
+		str(blind_engine.monster_statuses.has(BattleEngine.STATUS_BLIND)),
+		str(blind_engine.fog_active)])
 	# Первый вопрос пробы — про САМУ ветвь, а не про показ: если улики в этом раунде не
 	# скрыты, то ветвь «читать нечего» не исполняется, и зелёный показ строки доказывал
 	# бы обычную ветвь, уже проверенную в главном бою. Это провал пробы, а не тихий пропуск.
-	if not fog_lines.is_empty():
-		out.append("ПРОВАЛ пробы тумана: улики не скрыты — ветвь «читать нечего» не проверена")
+	if not blind_lines.is_empty():
+		out.append("ПРОВАЛ пробы слепоты: улики не скрыты — ветвь «читать нечего» не проверена")
 	else:
-		fog_screen.selected_guess = fog_engine.current_scenario_id()
-		fog_screen._submit_guess()
+		blind_screen.selected_guess = blind_engine.current_scenario_id()
+		blind_screen._submit_guess()
 		await host.get_tree().process_frame
-		var fog_reaction := str(fog_screen.pending_outcome.get("reaction", ""))
-		if fog_reaction.is_empty():
-			out.append("ПРОВАЛ реакции в тумане: удар не дал строки")
-		elif fog_screen.prose_label.text.contains(fog_reaction):
-			out.append("ок реакции в тумане: «%s» показана при скрытых уликах" % fog_reaction)
+		var blind_reaction := str(blind_screen.pending_outcome.get("reaction", ""))
+		if blind_reaction.is_empty():
+			out.append("ПРОВАЛ реакции при скрытых уликах: удар не дал строки")
+		elif blind_screen.prose_label.text.contains(blind_reaction):
+			out.append("ок реакции при скрытых уликах: «%s» показана при пустых уликах" % blind_reaction)
 		else:
-			out.append("ПРОВАЛ реакции в тумане: строки «%s» нет в панели" % fog_reaction)
-	fog_screen.queue_free()
+			out.append("ПРОВАЛ реакции при скрытых уликах: строки «%s» нет в панели" % blind_reaction)
+	blind_screen.queue_free()
 	Report.write(SMOKE_REPORT, out)
 	return "фаза %s, раундов %d, фактов в досье %d" % [engine.phase, engine.round_index, gained]
 

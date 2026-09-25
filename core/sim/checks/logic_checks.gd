@@ -2250,18 +2250,35 @@ static func _hit_reaction() -> Array[String]:
 
 	# Мост «правило → исход»: до этой задачи `submit_read` не заполнял ни вердикта,
 	# ни строки, поэтому охват и серия проверяются НАСТОЯЩИМ боем, а не сборкой.
+	#
+	# Вид — ХРУЗ, а не Громун: подсистема D19 сужена до стартового вида решением
+	# пользователя, и на любом другом виде движок теперь молчит по построению —
+	# проба на Громунe сторожила бы не работу системы, а её выключенность.
 	out.append_array(_reaction_in_battle(
-		Database.monster(&"gromun"),
+		Database.monster(&"hruz"),
 		Database.weapon(&"bow"),
 		Database.weapon(&"mace"),
+		Database.armor(&"light"),
+		failures))
+
+	# Граница области включения: у не-стартового вида реакции нет ни в каком виде,
+	# хотя его данные дали бы вердикт (у Громунa лук — резист, у Хруза — нейтрально).
+	out.append_array(_reaction_scopes(
+		Database.monster(&"hruz"),
+		Database.monster(&"gromun"),
+		Database.weapon(&"bow"),
 		Database.armor(&"light"),
 		failures))
 
 	# Независимость прозы раунда от сборки реакции. Живёт ЗДЕСЬ, а не в `--prose`:
 	# связь проявляется только в настоящем бою (окно антиповтора наполняется обоими
 	# голосами подряд), а `--prose` и `--repeat` боя не запускают вовсе.
+	#
+	# Вид здесь тоже ХРУЗ: сборка реакции в прогоне — движковая часть той же
+	# подсистемы, и на выключенном виде `submit_read` не собирает ничего, то есть
+	# «проза не сдвинулась» доказывалось бы выключенностью, а не изоляцией окон.
 	out.append_array(_prose_independent_of_reaction(
-		Database.monster(&"gromun"),
+		Database.monster(&"hruz"),
 		Database.weapon(&"bow"),
 		failures))
 
@@ -2458,6 +2475,16 @@ static func _text_rng(round_index: int) -> RandomNumberGenerator:
 
 ## Реакция и серия в настоящем бою (D19): мост «правило → исход».
 ##
+## Вид — СТАРТОВЫЙ (Хруз): подсистема сужена до него решением пользователя, и на
+## остальных видах движок молчит по построению (сторож границы — `_reaction_scopes`).
+## Оружие поэтому подобрано по Хрузу, и ожидания вердиктов ЗАМЕРЕНЫ, а не выведены
+## из записи защит: у Хруза запись слабости `{"ranges": ["ranged"], "types": ["ice"]}`
+## требует И дальности, И стихии сразу (`MonsterData.rule_applies`), поэтому лук сам
+## по себе — pierce без стихии — даёт НЕ уязвимость, а нейтраль (измерено). Резист
+## даёт молот с руной огня (дробящий нейтрален, огонь в резисте), уязвимость — лук
+## с руной льда, и обе стороны правила здесь названы, чтобы «резист» не выглядел
+## единственным возможным вердиктом.
+##
 ## Сборка проверяется отдельно и без боя; здесь утверждается то, чего сборка не
 ## докажет: `submit_read` кладёт в исход вердикт, ступень и строку, промах не даёт
 ## НИЧЕГО, ступень растёт на одинаковых вердиктах, сбрасывается сменой вердикта и
@@ -2471,13 +2498,58 @@ static func _reaction_in_battle(
 ) -> Array[String]:
 	var out: Array[String] = []
 	if mon == null or bow == null or mace == null or armor == null:
-		failures.append("нет данных для боя: gromun/bow/mace/light")
+		failures.append("нет данных для боя: hruz/bow/mace/light")
 		return out
 
+	# Руна НЕ накладывается на общий ресурс базы: `enchant` пишет поле в сам ресурс,
+	# и зачарованный огнём молот утёк бы в чужие пробы (на этом в этой ветке уже
+	# спотыкались — см. комментарий в `_hit_reaction`). Работаем копиями; `duplicate()`
+	# копирует и руну, поэтому чистый молот берётся из базы, пока она чиста, — это
+	# и проверяет строка ниже, называя состояние, а не веря в него.
+	var mace_rune_before := mace.rune_type
+	out.append("реакция в бою: молот базы до зачарования копии «%s»" % mace_rune_before)
+	if mace_rune_before != &"":
+		failures.append("общий молот базы пришёл в пробу зачарованным «%s»: ожидания вердиктов посчитаны для чистого" % mace_rune_before)
+	var mace_hit: WeaponData = mace.duplicate()
+	var mace_fire: WeaponData = mace.duplicate()
+	mace_fire.enchant(MonsterData.TYPE_FIRE)
+	var bow_ice: WeaponData = bow.duplicate()
+	bow_ice.enchant(MonsterData.TYPE_ICE)
+
+	# --- Область включения: правило принадлежит `HitReaction`, и проба спрашивает
+	# ЕГО, а не держит второй список видов у себя (AGENTS.md §4).
+	if not HitReaction.enabled_for(mon):
+		failures.append("вид «%s» вне области включения подсистемы — проба боя настроена не на том виде" % mon.id)
+	if HitReaction.enabled_for(null):
+		failures.append("enabled_for(null) разрешил реакцию: пустой вид не имеет права считаться включённым")
+
+	# --- Ожидания вердиктов: ЗАМЕР, а не вывод из брифа. Каждое — из чистого
+	# правила на данных вида, до боя: оружие не меняется, значит вердикт обязан
+	# повторяться из раунда в раунд (у Хруза фазы резистов не трогают, D21.E).
+	var verdict_want := {
+		"молот (дробящий, без руны)": [mace_hit, HitReaction.VERDICT_NEUTRAL],
+		"молот + руна огня": [mace_fire, HitReaction.VERDICT_RESIST],
+		"лук + руна льда": [bow_ice, HitReaction.VERDICT_WEAK],
+	}
+	for label in verdict_want.keys():
+		var pair: Array = verdict_want[label]
+		var wpn: WeaponData = pair[0]
+		var want: StringName = pair[1]
+		var probe_dmg := DamageCalc.player_damage(
+			wpn, mon, DamageCalc.Reading.COUNTER, false, 0, 0, {}, 0.0, null)
+		var probe_verdict := HitReaction.verdict_of(probe_dmg.type_reasons_sum)
+		out.append("реакция в бою: %s → сумма причин %+d, вердикт «%s»" % [
+			label, probe_dmg.type_reasons_sum, probe_verdict])
+		if probe_verdict != want:
+			failures.append("вид «%s»: %s дал вердикт «%s», а ждали «%s»" % [
+				mon.id, label, probe_verdict, want])
+
 	# --- Охват: удар даёт вердикт, ступень и строку.
+	# Берётся РЕЗИСТ, а не нейтраль: строка резиста несёт стихийную часть (руна
+	# добавила второй тип удара), и охват проверяется на самой полной форме шаблона.
 	var engine := BattleEngine.new()
 	engine.seed_source = SeedSource.new(4242, 1)
-	engine.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	engine.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	engine.advance_round()
 	var hit := engine.submit_read(engine.current_scenario_id(), true)
 	var hit_run := int(hit.get("verdict_run", 0))
@@ -2485,7 +2557,8 @@ static func _reaction_in_battle(
 	out.append("реакция в бою: удар — вердикт «%s», серия %d, строка «%s»" % [
 		hit.get("verdict", &""), hit_run, hit_text])
 	if StringName(hit.get("verdict", &"")) != HitReaction.VERDICT_RESIST:
-		failures.append("лук по громуну дал вердикт «%s», а ждали резист" % hit.get("verdict", &""))
+		failures.append("молот с руной огня по «%s» дал вердикт «%s», а ждали резист" % [
+			mon.id, hit.get("verdict", &"")])
 	if hit_run != 1:
 		failures.append("первый удар дал серию %d, а ждали 1" % hit_run)
 	if not hit_text.ends_with(HitReaction.P_END):
@@ -2508,25 +2581,18 @@ static func _reaction_in_battle(
 			failures.append("примерка не взяла вводную группы «swap»: «%s»" % swap_text)
 
 	# --- Промах: расчёта нет, значит нет ни вердикта, ни ступени, ни строки.
-	var misser := BattleEngine.new()
-	misser.seed_source = SeedSource.new(4242, 1)
-	misser.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
-	misser.advance_round()
-	var miss := misser.submit_read(_other_scenario(mon, misser.current_scenario_id()), true)
-	var miss_verdict := StringName(miss.get("verdict", &""))
-	var miss_text := str(miss.get("reaction", ""))
-	var miss_run := int(miss.get("verdict_run", 0))
+	var miss := _missed_outcome(mon, mace_fire, armor)
 	out.append("реакция в бою: промах — вердикт «%s», серия %d, строка «%s»" % [
-		miss_verdict, miss_run, miss_text])
-	if miss_verdict != &"" or miss_text != "" or miss_run != 0:
+		miss["verdict"], miss["run"], miss["text"]])
+	if StringName(miss["verdict"]) != &"" or str(miss["text"]) != "" or int(miss["run"]) != 0:
 		failures.append("промах дал реакцию, а не должен: вердикт «%s», серия %d, строка «%s»" % [
-			miss_verdict, miss_run, miss_text])
+			miss["verdict"], miss["run"], miss["text"]])
 
 	# --- Серия: ступени 1 → 2 → 3 на ОДНОМ вердикте, и вводная каждой ступени
 	# действительно доходит до строки — иначе ступень считалась бы, но не читалась.
 	var series := BattleEngine.new()
 	series.seed_source = SeedSource.new(99, 3)
-	series.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	series.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	var steps: Array[int] = []
 	var series_texts: Array[String] = []
 	for i in 3:
@@ -2547,18 +2613,20 @@ static func _reaction_in_battle(
 			failures.append("строка ступени %d не начинается вводной роли «%s»: %s" % [
 				steps[i], role, series_texts[i]])
 
-	# --- Смена вердикта возвращает ПЕРВУЮ ступень: молот бьёт в слабость ближнего боя,
-	# лук — в резист дистанции. Без этого серия росла бы на любом чередовании.
+	# --- Смена вердикта возвращает ПЕРВУЮ ступень. Пары вердиктов ЗАМЕРЕНЫ по Хрузу:
+	# молот с руной огня — резист, лук с руной льда — уязвимость (у лука БЕЗ руны
+	# вердикт не отличается от молота: оба нейтральны, и такая пара правило не
+	# проверила бы вовсе, а выглядела бы проверяющей).
 	var flip := BattleEngine.new()
 	flip.seed_source = SeedSource.new(11, 9)
-	flip.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	flip.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	flip.advance_round()
 	var flip_first := StringName(flip.submit_read(flip.current_scenario_id(), true).get("verdict", &""))
 	var flip_second := &""
 	var flip_run := 0
 	if not flip.is_over():
 		flip.advance_round()
-		flip.equip_weapon(mace)
+		flip.equip_weapon(bow_ice)
 		var o2 := flip.submit_read(flip.current_scenario_id(), true)
 		flip_second = StringName(o2.get("verdict", &""))
 		flip_run = int(o2.get("verdict_run", 0))
@@ -2571,9 +2639,11 @@ static func _reaction_in_battle(
 
 	# --- Промах серию НЕ сбрасывает: он не проверяет оружие, значит стену не отменяет.
 	# Чистой функцией этого не показать — правило живёт в порядке ветвей `submit_read`.
+	# Серия идёт на РЕЗИСТЕ: у Хруза это молот с руной огня, и промах между двумя
+	# такими ударами обязан оставить вторую ступень второй.
 	var streak := BattleEngine.new()
 	streak.seed_source = SeedSource.new(7, 5)
-	streak.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	streak.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	var before := 0
 	var after := 0
 	if not streak.is_over():
@@ -2592,10 +2662,10 @@ static func _reaction_in_battle(
 	# увидел бы «снова» на первом же ударе.
 	var reused := BattleEngine.new()
 	reused.seed_source = SeedSource.new(3, 4)
-	reused.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	reused.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	reused.advance_round()
 	var first_battle := int(reused.submit_read(reused.current_scenario_id(), true).get("verdict_run", 0))
-	reused.setup(mon, SkillEffects.build_hunter(bow, armor), bow)
+	reused.setup(mon, SkillEffects.build_hunter(mace_fire, armor), mace_fire)
 	reused.advance_round()
 	var second_battle := int(reused.submit_read(reused.current_scenario_id(), true).get("verdict_run", 0))
 	out.append("реакция в бою: новая битва тем же движком — серия %d, затем %d" % [
@@ -2605,6 +2675,87 @@ static func _reaction_in_battle(
 			first_battle, second_battle])
 
 	return out
+
+
+## Сторож ГРАНИЦЫ ОБЛАСТИ ВКЛЮЧЕНИЯ (D19): реакция существует только у видов из
+## `HitReaction.ENABLED_SPECIES` (сейчас — стартовый, Хруз).
+##
+## Почему это отдельная проба, а не строка внутри боя. Правило «кому положена
+## реакция» живёт ОДНИМ условием в движке (`HitReaction.enabled_for`), и проба на
+## Хрузе его не сторожит вовсе: она зелена и когда условие есть, и когда его нет.
+## Мутация «условие снято» краснит ровно эту пробу, и она называет ВИД, а не просто
+## «реакции нет».
+##
+## Проба не объявляет «у Громунa реакции нет» свойством Громунa: она берёт ДВА вида,
+## у которых данные разные (у Громунa лук даёт резист, у Хруза — нейтраль), и
+## утверждает, что включённость решает СПИСОК, а не данные вида. Поэтому выключенный
+## вид не может быть спутан с «данные не дали вердикта», а вакуумность (оба вида без
+## реакции) названа провалом, а не тихим пропуском.
+static func _reaction_scopes(
+	enabled: MonsterData,
+	other: MonsterData,
+	weapon: WeaponData,
+	armor: ArmorData,
+	failures: Array[String]
+) -> Array[String]:
+	var out: Array[String] = []
+	if enabled == null or other == null or weapon == null or armor == null:
+		failures.append("нет данных для границы области: hruz/gromun/bow/light")
+		return out
+	if enabled.id == other.id:
+		failures.append("граница области не проверена: оба вида — «%s»" % enabled.id)
+		return out
+	out.append("граница области: список включённых — %s" % str(HitReaction.ENABLED_SPECIES))
+	for m in [enabled, other]:
+		out.append("граница области: вид «%s» включён %s (enabled_for)" % [
+			m.id, str(HitReaction.enabled_for(m))])
+	if not HitReaction.enabled_for(enabled):
+		failures.append("стартовый вид «%s» выпал из области включения" % enabled.id)
+
+	var hit := _hit_outcome(enabled, weapon, armor)
+	var other_hit := _hit_outcome(other, weapon, armor)
+	out.append("граница области: удар по «%s» — вердикт «%s», серия %d, строка «%s»" % [
+		other.id, other_hit["verdict"], other_hit["run"], other_hit["text"]])
+	out.append("граница области: удар по «%s» — вердикт «%s», серия %d, строка «%s»" % [
+		enabled.id, hit["verdict"], hit["run"], hit["text"]])
+	if StringName(other_hit["verdict"]) != &"" or int(other_hit["run"]) != 0 \
+			or str(other_hit["text"]) != "":
+		failures.append("удар по виду «%s» вне области включения дал реакцию: вердикт «%s», серия %d, строка «%s»" % [
+			other.id, other_hit["verdict"], other_hit["run"], other_hit["text"]])
+	# Вакуумность — провал пробы, а не тихий пропуск: если бы удар по включённому
+	# виду тоже не дал реакции, «вне области реакции нет» выполнялось бы даром.
+	if StringName(hit["verdict"]) == &"" or str(hit["text"]) == "":
+		failures.append("проба границы вакуумна: удар по включённому виду «%s» не дал реакции" % enabled.id)
+	return out
+
+
+## Исход одного удара настоящим боем: тот же путь, что у игрока (верное чтение и
+## удар). Возвращает вердикт, серию и строку — по одному имени на поле.
+static func _hit_outcome(mon: MonsterData, weapon: WeaponData, armor: ArmorData) -> Dictionary:
+	var engine := BattleEngine.new()
+	engine.seed_source = SeedSource.new(4242, 1)
+	engine.setup(mon, SkillEffects.build_hunter(weapon, armor), weapon)
+	engine.advance_round()
+	return _fields(engine.submit_read(engine.current_scenario_id(), true))
+
+
+## Исход промаха настоящим боем: игрок называет ЧУЖОЙ сценарий, поэтому расчёта нет.
+static func _missed_outcome(mon: MonsterData, weapon: WeaponData, armor: ArmorData) -> Dictionary:
+	var engine := BattleEngine.new()
+	engine.seed_source = SeedSource.new(4242, 1)
+	engine.setup(mon, SkillEffects.build_hunter(weapon, armor), weapon)
+	engine.advance_round()
+	return _fields(engine.submit_read(_other_scenario(mon, engine.current_scenario_id()), true))
+
+
+## Поля исхода реакции одним словарём: читать их в трёх местах по-разному — значит
+## завести три толкования одного исхода (AGENTS.md §4).
+static func _fields(outcome: Dictionary) -> Dictionary:
+	return {
+		"verdict": StringName(outcome.get("verdict", &"")),
+		"run": int(outcome.get("verdict_run", 0)),
+		"text": str(outcome.get("reaction", "")),
+	}
 
 
 ## Начинается ли строка вводной ИМЕННО этой роли. Сравнивается с ПУЛОМ, а не с

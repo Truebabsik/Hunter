@@ -453,9 +453,11 @@ func submit_read(guess_scenario: StringName, attack: bool = true) -> Dictionary:
 		"second_wind": 0,
 		"phoenix": false,
 		"phase_id": String(current_phase_id),
-		# Реакция на удар (D19). Объявлены пустыми ПО УМОЛЧАНИЮ, и ветки для промаха
-		# нет намеренно: промах не считает урона, значит не знает ни вердикта, ни
-		# ступени, и оставить их пустыми — то же самое, что «не дал реакции».
+		# Реакция на удар (D19). Объявлены пустыми ПО УМОЛЧАНИЮ, и ветки для них
+		# нет намеренно: пустыми они остаются в двух случаях — промах и вид вне
+		# области включения подсистемы (`HitReaction.ENABLED_SPECIES`), — и в обоих
+		# «не дал реакции» и есть верный ответ. Заполняет их единственная ветка
+		# ниже, под `HitReaction.enabled_for(monster)`.
 		"verdict": &"",
 		"verdict_run": 0,
 		"reaction": "",
@@ -540,21 +542,29 @@ func submit_read(guess_scenario: StringName, attack: bool = true) -> Dictionary:
 		# сумма причин остаётся отрицательной, и проза обязана сказать «резист».
 		# Путь один для удара и примерки: отличается только `not attack`.
 		#
+		# ОБЛАСТЬ ВКЛЮЧЕНИЯ — один вопрос и одно место: `HitReaction.enabled_for`.
+		# Подсистема сужена до СТАРТОВОГО вида (Хруз): остальным видам деталей ещё
+		# никто не писал, и показанная им реакция была бы обещанием без исполнения.
+		# Второго условия здесь нет намеренно (AGENTS.md §4); при выключенной
+		# подсистеме поля исхода остаются объявленными пустыми — ровно как при
+		# промахе, и отдельной ветки для этого не заводится.
+		#
 		# Соль `&"reaction"` — ОТДЕЛЬНАЯ, не `&"text"`. `SeedSource.round_rng` создаёт
 		# свежий генератор на каждую пару (раунд, соль), поэтому дело не в «расходе
 		# потока», а в независимости: с общей солью правка в прозе раунда молча
 		# сдвигала бы слова реакции.
-		var verdict := HitReaction.verdict_of(dmg.type_reasons_sum)
-		if verdict == _last_verdict:
-			_verdict_run += 1
-		else:
-			_last_verdict = verdict
-			_verdict_run = 1
-		outcome["verdict"] = verdict
-		outcome["verdict_run"] = _verdict_run
-		outcome["reaction"] = HitReaction.assemble(
-			monster, weapon, verdict, _verdict_run, not attack,
-			_round_rng(round_index, &"reaction"))
+		if HitReaction.enabled_for(monster):
+			var verdict := HitReaction.verdict_of(dmg.type_reasons_sum)
+			if verdict == _last_verdict:
+				_verdict_run += 1
+			else:
+				_last_verdict = verdict
+				_verdict_run = 1
+			outcome["verdict"] = verdict
+			outcome["verdict_run"] = _verdict_run
+			outcome["reaction"] = HitReaction.assemble(
+				monster, weapon, verdict, _verdict_run, not attack,
+				_round_rng(round_index, &"reaction"))
 	else:
 		# Промах: зверь бьёт своим сценарием. Броня смягчает урон и здесь (GDD 12.6),
 		# кроме непробиваемых сценариев — от них спасает только чтение (GDD 4.4).
