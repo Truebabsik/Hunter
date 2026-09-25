@@ -63,7 +63,7 @@ rx.carrier.lament.03,lament,,reaction_carrier,,дыхание,10,reaction
 rx.verb.resist.01,,,reaction_verb,resist,смеётся,10,reaction
 rx.verb.resist.02,,,reaction_verb,resist,отбрасывает,10,reaction
 rx.verb.resist.03,,,reaction_verb,resist,гасит,10,reaction
-rx.verb.resist.04,,,reaction_verb,resist,равнодушен к,10,reaction
+rx.verb.resist.04,,,reaction_verb,resist,держит удар,10,reaction
 rx.verb.weak.01,,,reaction_verb,weak,входит мягко,10,reaction
 rx.verb.weak.02,,,reaction_verb,weak,проваливается,10,reaction
 rx.verb.weak.03,,,reaction_verb,weak,расступается,10,reaction
