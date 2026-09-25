@@ -1,0 +1,101 @@
+id,monster,scenario,slot,role,text,weight,tags
+rx.intro.resist.01,,,reaction_intro,resist,Едва,10,reaction
+rx.intro.resist.02,,,reaction_intro,resist,Мимо,10,reaction
+rx.intro.resist.03,,,reaction_intro,resist,Впустую,10,reaction
+rx.intro.resist.04,,,reaction_intro,resist,Напрасно,10,reaction
+rx.intro.resist_again.01,,,reaction_intro,resist_again,Опять,10,reaction
+rx.intro.resist_again.02,,,reaction_intro,resist_again,Снова,10,reaction
+rx.intro.resist_again.03,,,reaction_intro,resist_again,И снова,10,reaction
+rx.intro.resist_again.04,,,reaction_intro,resist_again,Всё так же,10,reaction
+rx.intro.resist_hard.01,,,reaction_intro,resist_hard,Опять в стену,10,reaction
+rx.intro.resist_hard.02,,,reaction_intro,resist_hard,Снова впустую,10,reaction
+rx.intro.resist_hard.03,,,reaction_intro,resist_hard,Так и не пробил,10,reaction
+rx.intro.resist_hard.04,,,reaction_intro,resist_hard,Снова мимо,10,reaction
+rx.intro.weak.01,,,reaction_intro,weak,Точно,10,reaction
+rx.intro.weak.02,,,reaction_intro,weak,Наконец-то,10,reaction
+rx.intro.weak.03,,,reaction_intro,weak,Есть,10,reaction
+rx.intro.weak.04,,,reaction_intro,weak,Вот так,10,reaction
+rx.intro.weak_again.01,,,reaction_intro,weak_again,Опять туда же,10,reaction
+rx.intro.weak_again.02,,,reaction_intro,weak_again,Снова в щель,10,reaction
+rx.intro.weak_again.03,,,reaction_intro,weak_again,И снова точно,10,reaction
+rx.intro.weak_again.04,,,reaction_intro,weak_again,Ещё раз в шов,10,reaction
+rx.intro.weak_hard.01,,,reaction_intro,weak_hard,Снова в то же место,10,reaction
+rx.intro.weak_hard.02,,,reaction_intro,weak_hard,Опять нашёл,10,reaction
+rx.intro.weak_hard.03,,,reaction_intro,weak_hard,И опять туда,10,reaction
+rx.intro.weak_hard.04,,,reaction_intro,weak_hard,Всё туда же,10,reaction
+rx.intro.neutral.01,,,reaction_intro,neutral,Так,10,reaction
+rx.intro.neutral.02,,,reaction_intro,neutral,Ровно,10,reaction
+rx.intro.neutral.03,,,reaction_intro,neutral,Без разницы,10,reaction
+rx.intro.neutral.04,,,reaction_intro,neutral,Как обычно,10,reaction
+rx.intro.neutral_again.01,,,reaction_intro,neutral_again,Опять так же,10,reaction
+rx.intro.neutral_again.02,,,reaction_intro,neutral_again,Снова ровно,10,reaction
+rx.intro.neutral_again.03,,,reaction_intro,neutral_again,И снова так,10,reaction
+rx.intro.neutral_again.04,,,reaction_intro,neutral_again,Так же,10,reaction
+rx.intro.neutral_hard.01,,,reaction_intro,neutral_hard,Снова без отклика,10,reaction
+rx.intro.neutral_hard.02,,,reaction_intro,neutral_hard,Опять ни то ни это,10,reaction
+rx.intro.neutral_hard.03,,,reaction_intro,neutral_hard,"Ровно, снова",10,reaction
+rx.intro.neutral_hard.04,,,reaction_intro,neutral_hard,Ни туда ни сюда,10,reaction
+rx.intro.swap.01,,,reaction_intro,swap,Примеряешься,10,reaction
+rx.intro.swap.02,,,reaction_intro,swap,Заносишь,10,reaction
+rx.intro.swap.03,,,reaction_intro,swap,Берёшь на изготовку,10,reaction
+rx.intro.swap.04,,,reaction_intro,swap,Пробуешь хват,10,reaction
+rx.carrier.gromun.01,gromun,,reaction_carrier,,камень,10,reaction
+rx.carrier.gromun.02,gromun,,reaction_carrier,,гарпун,10,reaction
+rx.carrier.gromun.03,gromun,,reaction_carrier,,наковальня,10,reaction
+rx.carrier.hruz.01,hruz,,reaction_carrier,,раковина,10,reaction
+rx.carrier.hruz.02,hruz,,reaction_carrier,,берег,10,reaction
+rx.carrier.hruz.03,hruz,,reaction_carrier,,волна,10,reaction
+rx.carrier.shipun.01,shipun,,reaction_carrier,,капюшон,10,reaction
+rx.carrier.shipun.02,shipun,,reaction_carrier,,тень,10,reaction
+rx.carrier.shipun.03,shipun,,reaction_carrier,,кобра,10,reaction
+rx.carrier.tleun.01,tleun,,reaction_carrier,,панцирь,10,reaction
+rx.carrier.tleun.02,tleun,,reaction_carrier,,туман,10,reaction
+rx.carrier.tleun.03,tleun,,reaction_carrier,,брюхо,10,reaction
+rx.carrier.skorb.01,skorb,,reaction_carrier,,кость,10,reaction
+rx.carrier.skorb.02,skorb,,reaction_carrier,,башня,10,reaction
+rx.carrier.skorb.03,skorb,,reaction_carrier,,челюсть,10,reaction
+rx.carrier.ashmother.01,ashmother,,reaction_carrier,,рой,10,reaction
+rx.carrier.ashmother.02,ashmother,,reaction_carrier,,матка,10,reaction
+rx.carrier.ashmother.03,ashmother,,reaction_carrier,,крыло,10,reaction
+rx.carrier.lament.01,lament,,reaction_carrier,,пустота,10,reaction
+rx.carrier.lament.02,lament,,reaction_carrier,,пасть,10,reaction
+rx.carrier.lament.03,lament,,reaction_carrier,,дыхание,10,reaction
+rx.verb.resist.01,,,reaction_verb,resist,смеётся,10,reaction
+rx.verb.resist.02,,,reaction_verb,resist,отбрасывает,10,reaction
+rx.verb.resist.03,,,reaction_verb,resist,гасит,10,reaction
+rx.verb.resist.04,,,reaction_verb,resist,равнодушен к,10,reaction
+rx.verb.weak.01,,,reaction_verb,weak,входит мягко,10,reaction
+rx.verb.weak.02,,,reaction_verb,weak,проваливается,10,reaction
+rx.verb.weak.03,,,reaction_verb,weak,расступается,10,reaction
+rx.verb.weak.04,,,reaction_verb,weak,находит щель,10,reaction
+rx.verb.neutral.01,,,reaction_verb,neutral,попадает в плечо,10,reaction
+rx.verb.neutral.02,,,reaction_verb,neutral,скользит по чешуе,10,reaction
+rx.verb.neutral.03,,,reaction_verb,neutral,оставляет засечку,10,reaction
+rx.verb.neutral.04,,,reaction_verb,neutral,не замечает,10,reaction
+rx.weapon.mace.01,,,reaction_weapon,mace,боёк сминает,10,reaction
+rx.weapon.mace.02,,,reaction_weapon,mace,плющит,10,reaction
+rx.weapon.mace.03,,,reaction_weapon,mace,оставляет вмятину,10,reaction
+rx.weapon.blade.01,,,reaction_weapon,blade,лезвие режет,10,reaction
+rx.weapon.blade.02,,,reaction_weapon,blade,распарывает,10,reaction
+rx.weapon.blade.03,,,reaction_weapon,blade,полосует,10,reaction
+rx.weapon.spear.01,,,reaction_weapon,spear,наконечник входит,10,reaction
+rx.weapon.spear.02,,,reaction_weapon,spear,прокалывает,10,reaction
+rx.weapon.spear.03,,,reaction_weapon,spear,достаёт до шва,10,reaction
+rx.weapon.bow.01,,,reaction_weapon,bow,оперённый жгут,10,reaction
+rx.weapon.bow.02,,,reaction_weapon,bow,стрела скользит,10,reaction
+rx.weapon.bow.03,,,reaction_weapon,bow,жало находит,10,reaction
+rx.weapon.sling.01,,,reaction_weapon,sling,снаряд бьёт,10,reaction
+rx.weapon.sling.02,,,reaction_weapon,sling,камень отлетает,10,reaction
+rx.weapon.sling.03,,,reaction_weapon,sling,гул от попадания,10,reaction
+rx.weapon.chakram.01,,,reaction_weapon,chakram,кольцо рубит,10,reaction
+rx.weapon.chakram.02,,,reaction_weapon,chakram,вращение рассекает,10,reaction
+rx.weapon.chakram.03,,,reaction_weapon,chakram,плоскость свистит,10,reaction
+rx.element.fire.01,,,reaction_element,fire,жжёт,10,reaction
+rx.element.fire.02,,,reaction_element,fire,плавит,10,reaction
+rx.element.fire.03,,,reaction_element,fire,гасит искра,10,reaction
+rx.element.ice.01,,,reaction_element,ice,холодит поверхность,10,reaction
+rx.element.ice.02,,,reaction_element,ice,крошится,10,reaction
+rx.element.ice.03,,,reaction_element,ice,иней по краю,10,reaction
+rx.element.poison.01,,,reaction_element,poison,входит глубже,10,reaction
+rx.element.poison.02,,,reaction_element,poison,находит шов,10,reaction
+rx.element.poison.03,,,reaction_element,poison,сочится,10,reaction

@@ -9,6 +9,15 @@ class_name ContentValidator
 
 const SLOTS := ["pose", "gear", "sound", "gaze", "environment"]
 const MIN_SYNONYMS := 3
+## Минимум вариантов детали реакции на удар (D19). Для носителей, отпечатков и
+## стихий это тот же порог, что у видовых пулов (MIN_SYNONYMS, GDD 13.2) — три.
+## Для глаголов и вводных порог свой: §11.10 даёт по четыре глагола на категорию,
+## и вводные написаны по четыре на группу.
+##
+## Это ПОРОГ, а не точный счёт: посев расширяемый (четвёртый носитель у вида или
+## пятая вводная — не поломка). Проверка сторожит дыру, а не замораживает объём.
+const REACTION_MIN_VERB := 4
+const REACTION_MIN_INTRO := 4
 
 
 ## Имена статусов движка строками — для сообщений проверки.
@@ -27,6 +36,7 @@ func validate_all() -> Array:
 	problems.append_array(_check_runes())
 	problems.append_array(_check_rune_damage())
 	problems.append_array(_check_physical_subtypes())
+	problems.append_array(_check_reactions())
 	problems.append_array(_check_dossier_render())
 	problems.append_array(_check_city_tables())
 	return problems
@@ -199,6 +209,62 @@ func _check_physical_subtypes() -> Array:
 			if not cells.has(cell):
 				out.append("каталог: ячейка «%s» пуста — этой роли нет ни одного оружия" % cell)
 
+	return out
+
+
+## Покрытие пула реакции на удар (D19). Дыра здесь — не мелочь: сборщик не имеет
+## права печатать обрубок, а игрок — не получить обещанную фразу, поэтому
+## недостающая деталь называется по имени.
+##
+## Проверка спрашивает базу ТЕМИ ЖЕ ключами, которыми будет спрашивать сборка
+## (Task 3): слот плюс роль. Поэтому опечатка в id вида или оружия не молчит, а
+## краснеет по имени: строка с опечаткой в CSV остаётся, но её ведро пусто, и
+## здесь называется вид (оружие, руна), у которого детали нет.
+##
+## Роль носителя — пустая (в CSV пустая колонка `role` → `&""`), поэтому и
+## спрашивается пустой: иначе строка «есть» в файле и «нет» в базе разошлись бы
+## молча, ровно там, где проверка обязана назвать дыру.
+##
+## Пустое ведро и неполное называются РАЗНЫМИ словами намеренно: «нет ни одного» и
+## «только два из трёх» — разные поломки, и по отчёту должно быть видно, какая
+## именно. Без порога проверка ловила бы только полное исчезновение детали:
+## удаление одной строки носителя из трёх оставляло бы её зелёной (измерено).
+func _check_reactions() -> Array:
+	var out: Array = []
+	# Деталь пула: ключ ведра (вид|сценарий|слот|роль), две подписи дыры и порог.
+	var parts: Array = []
+	for v in ["resist", "weak", "neutral"]:
+		parts.append([&"", &"", &"reaction_verb", StringName(v),
+			"нет ни одного глагола для вердикта «%s»" % v,
+			"у вердикта «%s» мало глаголов" % v, REACTION_MIN_VERB])
+		for step in ["", "_again", "_hard"]:
+			var role := StringName("%s%s" % [v, step])
+			parts.append([&"", &"", &"reaction_intro", role,
+				"нет вводных для группы «%s»" % role,
+				"у группы вводных «%s» мало строк" % role, REACTION_MIN_INTRO])
+	parts.append([&"", &"", &"reaction_intro", &"swap",
+		"нет вводных для примерки («swap»)",
+		"у примерки («swap») мало вводных", REACTION_MIN_INTRO])
+	for id in Database.monsters.keys():
+		parts.append([StringName(id), &"", &"reaction_carrier", &"",
+			"у вида «%s» нет носителя" % id,
+			"у вида «%s» мало носителей" % id, MIN_SYNONYMS])
+	for id in Database.weapons.keys():
+		parts.append([&"", &"", &"reaction_weapon", StringName(id),
+			"у оружия «%s» нет отпечатка удара" % id,
+			"у оружия «%s» мало отпечатков удара" % id, MIN_SYNONYMS])
+	for rune in SkillsData.RUNE_SKILLS.values():
+		parts.append([&"", &"", &"reaction_element", StringName(rune),
+			"у руны «%s» нет стихийной окраски" % rune,
+			"у руны «%s» мало стихийных окрасок" % rune, MIN_SYNONYMS])
+	for part in parts:
+		var pool: Array = Database.phrases_for(part[0], part[1], part[2], part[3])
+		var need := int(part[6])
+		if pool.is_empty():
+			out.append("реакция: %s" % part[4])
+		elif pool.size() < need:
+			out.append("реакция: %s — только %d, нужно минимум %d" % [
+				part[5], pool.size(), need])
 	return out
 
 
