@@ -78,7 +78,8 @@ core/ui_data/      CityData (заказы, навыки, цены), HuntTrail (�
 content/monsters/  *.tres — Хруз и Шипун
 content/phrases/   *.csv  — пулы фраз
 content/trails/    trail.txt — нарратив «следа» (правится как текст, не в инспекторе)
-content/weapons/   *.tres — клинок, лук, арбалет + варианты стихий
+content/weapons/   *.tres — шесть стволов матрицы 3×2: молот, меч, копьё,
+                   лук, праща, чакрам (D20); руна на оружии даёт второй тип
 content/armor/     *.tres — лёгкая, тяжёлая
 ui/                game_root (переходы) + screens: city, trail, battle, result
 ```

@@ -58,7 +58,7 @@ static func prep(host: Node) -> String:
 	checks += 1
 	scr._on_take(&"blade")
 	if GameState.equipped_weapon == &"blade":
-		out.append("ок: оружие сменено на клинок")
+		out.append("ок: оружие сменено на меч")
 	else:
 		failed += 1
 		out.append("ПРОВАЛ: оружие не сменилось (в руке «%s»)" % GameState.equipped_weapon)
@@ -331,7 +331,7 @@ static func smoke(host: Node) -> String:
 			# Настоящий ход экрана, а не обход: так проверяются и учёт, и запись
 			# в досье — то, что раньше тест делал за экран руками.
 			screen._submit_swap(Database.weapon(&"blade"))
-			out.append("на раунде %d сменил оружие на клинок" % rounds)
+			out.append("на раунде %d сменил оружие на меч" % rounds)
 			if screen._switched_any_weapon:
 				out.append("ок учёта: смена на раунде %d запомнена за бой" % rounds)
 			else:
