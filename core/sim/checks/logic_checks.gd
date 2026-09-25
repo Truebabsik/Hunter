@@ -1483,6 +1483,82 @@ static func _status_mechanics() -> Array[String]:
 		out.append("ок пола славы: смерть обнуляет славу, но не уводит в минус")
 	else:
 		out.append("ПРОВАЛ пола славы: слава стала %d после списания −12 от единицы" % floored)
+
+	# «Первый раз» — половина штрафа — по §8.3 положен ТОЛЬКО Ламанту («−12 (−6
+	# первый раз)»). Порог `order_rank >= 3` писался, когда тиров было четыре и
+	# третий был верхним; после раздела элитного тира надвое третий — «мифический»
+	# (Пепел-Мать), и половина штрафа досталась ей. Сторож обязан звать
+	# `death_penalty` с `first_time = true`: прежний звал только с `false` и ветку
+	# деления не трогал вовсе.
+	var d21_first_expect := {0: 3, 1: 6, 2: 9, 3: 9, 4: 6}
+	var d21_first_fail: Array[String] = []
+	var d21_first_text: PackedStringArray = PackedStringArray()
+	for ftier in CityData.ORDER_RANKS.keys():
+		var ft := int(ftier)
+		var got_first := CityData.death_penalty(ft, true, false)
+		d21_first_text.append("%d:%d" % [ft, got_first])
+		if got_first != int(d21_first_expect.get(ft, 0)):
+			d21_first_fail.append("тир %d «%s»: первый раз %d, а §8.3 ждёт %d" % [
+				ft, CityData.order_tier_title(ft), got_first,
+				int(d21_first_expect.get(ft, 0))])
+	out.append("штраф за смерть, ПЕРВЫЙ раз: %s (§8.3: только Ламант вдвое)" % " ".join(d21_first_text))
+	if d21_first_fail.is_empty():
+		out.append("ок первого раза: половина штрафа только на легендарном тире")
+	else:
+		out.append("ПРОВАЛ первого раза: %s" % "; ".join(d21_first_fail))
+
+	# Достижение «Победа над легендарным зверем» вешается на счётчик `kills_tier3`,
+	# а он ставится при `order_rank >= 3` — то есть после раздела тира выдаётся за
+	# победу над ПЕПЕЛ-МАТЬЮ («мифический»), хотя титул называет легендарного зверя
+	# (Ламант, тир 4). Проверяем обе стороны: тир 3 не должен открывать достижение,
+	# тир 4 — должен.
+	var legend_beast := "no_potions_named_legend"
+	GameState.reset()
+	var ach_mid := HuntResult.new()
+	ach_mid.monster_id = &"ashmother"
+	ach_mid.order_rank = 3
+	ach_mid.victory = true
+	ach_mid.fled = false
+	ach_mid.apply(false)
+	var got_mid: bool = GameState.achievements.has(legend_beast)
+	GameState.reset()
+	var ach_top := HuntResult.new()
+	ach_top.monster_id = &"lament"
+	ach_top.order_rank = 4
+	ach_top.victory = true
+	ach_top.fled = false
+	ach_top.apply(false)
+	var got_top: bool = GameState.achievements.has(legend_beast)
+	GameState.reset()
+	out.append("достижение «легендарный зверь»: за Пепел-Мать %s, за Ламанта %s" % [
+		str(got_mid), str(got_top)])
+	if not got_mid and got_top:
+		out.append("ок достижения: «легендарный зверь» — только за легендарный тир")
+	else:
+		out.append("ПРОВАЛ достижения: за Пепел-Мать %s (ждали false), за Ламанта %s (ждали true)" % [
+			str(got_mid), str(got_top)])
+
+	# Совет Старика: покупка — правило экономики, а не состояние экрана. Раньше оно
+	# жило в `city_screen.advice_bought`, а экран города уничтожается при каждом
+	# возвращении (`game_root._swap`), поэтому совет можно было купить повторно, а
+	# замер цикла его покупок не видел вовсе (прогон идёт без сцен).
+	GameState.reset()
+	GameState.coins = 100
+	var advice_id := &"lament"
+	var advice_price := CityData.advice_price(advice_id)
+	var bought_first: bool = GameState.buy_advice(advice_id)
+	var wallet_after_first := GameState.coins
+	var bought_second: bool = GameState.buy_advice(advice_id)
+	out.append("совет: первая покупка %s, кошелёк %d (было 100), цены %d, вторая покупка %s" % [
+		str(bought_first), wallet_after_first, advice_price, str(bought_second)])
+	if bought_first and not bought_second and wallet_after_first == 100 - advice_price \
+			and bool(GameState.advice_bought.get("lament", false)):
+		out.append("ок совета: покупка списывает монеты один раз и живёт в GameState")
+	else:
+		out.append("ПРОВАЛ совета: первая %s, вторая %s, кошелёк %d, запись %s" % [
+			str(bought_first), str(bought_second), wallet_after_first,
+			str(GameState.advice_bought.get("lament", false))])
+	GameState.reset()
 	return out
 
 

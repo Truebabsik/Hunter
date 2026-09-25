@@ -40,6 +40,13 @@ var bag: Dictionary = {}
 ## Купленные навыки: skill_id -> true. Навыки не сгорают при смерти (GDD 7.1).
 var skills: Dictionary = {}
 
+## Купленные советы Старика: monster_id -> true. Совет — ОПЫТ, а не подсказка
+## (GDD 9.3), поэтому он не сгорает при смерти, как навыки (GDD 7.1), и его нельзя
+## купить дважды. Живёт здесь, а не в экране города: экран уничтожается при каждом
+## возвращении в город (`game_root._swap`), и правило покупки исчезало вместе с ним —
+## один и тот же совет можно было оплатить повторно.
+var advice_bought: Dictionary = {}
+
 ## Купленное снаряжение.
 ##
 ## Полей owned_modifiers / equipped_modifier здесь больше нет: они остались от
@@ -115,6 +122,7 @@ func reset() -> void:
 	dossier.clear()
 	bag.clear()
 	skills.clear()
+	advice_bought.clear()
 	owned_weapons = [&"bow", &"mace"]
 	owned_armors = [&"light"]
 	equipped_weapon = &"bow"
@@ -257,6 +265,24 @@ func buy_skill(skill_id: StringName, price: int) -> bool:
 		return false
 	skills[String(skill_id)] = true
 	counters["bought_any_skill"] = int(counters["bought_any_skill"]) + 1
+	return true
+
+
+## Купить совет. Возвращает true, если покупка состоялась. Правило цены — в
+## CityData.advice_price (один источник), списание — через spend_coins.
+##
+## Повторная покупка отклоняется ДО списания: экран города уничтожается и
+## создаётся заново при каждом возвращении, поэтому «уже куплено» обязано жить
+## в состоянии забега, а не в экране, — иначе один и тот же совет (Ламант, 25
+## монет) оплачивался сколько угодно раз.
+func buy_advice(monster_id: StringName) -> bool:
+	var key := String(monster_id)
+	if advice_bought.has(key):
+		return false
+	var price := CityData.advice_price(monster_id)
+	if not spend_coins(price):
+		return false
+	advice_bought[key] = true
 	return true
 
 

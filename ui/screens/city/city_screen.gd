@@ -23,9 +23,6 @@ var veil: ColorRect
 ## Окно вида для досье: одно на экран, создаётся при первом открытии.
 var dossier_window: DossierWindow
 
-## Какую мысль Старика игрок уже купил: monster_id -> true.
-var advice_bought: Dictionary = {}
-
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -613,20 +610,26 @@ func _build_tavern() -> void:
 		row.add_child(info)
 		var b := Button.new()
 		b.text = "СПРОСИТЬ"
-		b.pressed.connect(_ask_advice.bind(mon.id, price))
+		b.pressed.connect(_ask_advice.bind(mon.id))
 		row.add_child(b)
 		content.add_child(row)
 	_add_text("Совет не записывается в досье. Помни сам.")
 
 
-func _ask_advice(monster_id: StringName, price: int) -> void:
-	if advice_bought.has(String(monster_id)):
-		_say("Ты это уже слышал.")
+## Совет — правило экономики, а не состояние экрана: покупка живёт в
+## `GameState.buy_advice`, потому что экран города уничтожается при каждом
+## возвращении (`game_root._swap`) и копил бы «уже слышал» заново.
+##
+## Две причины отказа различаются ТЕКСТОМ, а не повтором проверки: `buy_advice`
+## возвращает только «не купилось», и что именно случилось, спрашивают у состояния.
+## Цена в экран не передаётся: её читает `buy_advice` из `CityData` — одна копия.
+func _ask_advice(monster_id: StringName) -> void:
+	if not GameState.buy_advice(monster_id):
+		if bool(GameState.advice_bought.get(String(monster_id), false)):
+			_say("Ты это уже слышал.")
+		else:
+			_say("[color=#c96a4a]Старик: «Приходи, когда будет чем платить.»[/color]")
 		return
-	if not GameState.spend_coins(price):
-		_say("[color=#c96a4a]Старик: «Приходи, когда будет чем платить.»[/color]")
-		return
-	advice_bought[String(monster_id)] = true
 	var mon: MonsterData = Database.monster(monster_id)
 	_say(_advice_text(mon))
 	_refresh_status()

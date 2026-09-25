@@ -101,7 +101,17 @@ func _update_counters() -> void:
 			c["kills_flawless"] = int(c.get("kills_flawless", 0)) + 1
 		if not saw_hint:
 			c["kills_without_hint"] = int(c.get("kills_without_hint", 0)) + 1
-		if order_rank >= 3:
+		# Счётчик достижения «Победа над легендарным зверем» (Achievements,
+		# `no_potions_named_legend`) — про ВЕРХНИЙ, легендарный тир. Имя ключа
+		# осталось от четырёхтировой шкалы, когда верхним был тир 3; переименование
+		# в `kills_legendary` не сделано: ключ читает один `achievements.gd`, и это
+		# была бы правка ради имени, а не правила.
+		#
+		# Порог — 4, а не 3: титул называет ЛЕГЕНДАРНОГО зверя, а легендарный тир
+		# после раздела элитного надвое — четвёртый (Ламант). Тир 3 «мифический» —
+		# это Пепел-Мать, и достижение за неё выдавалось бы не за то, что обещает
+		# название, — молча, потому что по одной победе этого не видно.
+		if order_rank >= 4:
 			c["kills_tier3"] = int(c.get("kills_tier3", 0)) + 1
 
 
@@ -186,7 +196,9 @@ func _apply_escape(mon: MonsterData) -> void:
 
 func _apply_defeat(side_encounter: bool) -> void:
 	var mon: MonsterData = Database.monster(monster_id)
-	# Штраф = ранг заказа × 3 (GDD 8.4), с модификаторами.
+	# Штраф берётся ТАБЛИЦЕЙ по тиру заказа (§8.3), а не формулой «ранг заказа × 3»:
+	# формула давала 0 на стартовом тире вместо −3 и не умела дать одно число двум
+	# тирам одной категории. Числа и модификаторы — в CityData.death_penalty.
 	var first_time := GameState.kill_counts(monster_id) == 0
 	var penalty := CityData.death_penalty(order_rank, first_time, side_encounter)
 	glory_delta = -penalty
