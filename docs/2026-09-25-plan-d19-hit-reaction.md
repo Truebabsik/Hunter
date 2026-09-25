@@ -149,7 +149,7 @@ static func _hit_reaction() -> Array[String]:
 	if runed.total <= bare.total:
 		failures.append("проба не воспроизводит случай: руна не подняла урон (%d против %d)" % [
 			runed.total, bare.total])
-	if runed.type_multiplier >= 0:
+	if runed.type_multiplier != 0:
 		failures.append("проба не воспроизводит расхождение: множитель %+d не обнулился, значит элемент не погасил штраф" % runed.type_multiplier)
 	plain.disenchant()
 
