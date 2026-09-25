@@ -1454,18 +1454,35 @@ static func _status_mechanics() -> Array[String]:
 	else:
 		out.append("ПРОВАЛ славы заказов: %s" % "; ".join(d21_glory_fail))
 
-	# Штраф за смерть — ЗАМЕР без вердикта. Правило здесь линейное (тир × 3), а §8.3
-	# даёт −3 / −6 / −9 / −12 на четыре тира: при пяти тирах это таблица, а не
-	# умножение, и на «первом элитном» (тир 2) линейное правило даёт −6 вместо −9.
-	# Спека этапа 3 (§3) этого не требует, поэтому здесь только числа: менять
-	# штрафы — отдельное решение, а тихо «поправить» их значило бы сдвинуть
-	# прогрессию мимо приёмки.
+	# Штраф за смерть — по таблице тиров (§8.3, дизайн 1.10.7). Раньше здесь стояла
+	# формула `тир × 3`, и она расходилась с таблицей: на стартовом давала 0 вместо −3.
+	# Проверяем ИМЕННО таблицу, чтобы правка штрафов не прошла молча.
+	var d21_penalty_expect := {0: 3, 1: 6, 2: 9, 3: 9, 4: 12}
 	var d21_penalty_text: PackedStringArray = PackedStringArray()
+	var d21_penalty_fail: Array[String] = []
 	for ptier in CityData.ORDER_RANKS.keys():
 		var pt := int(ptier)
-		d21_penalty_text.append("%d:%d" % [pt, CityData.death_penalty(pt, false, false)])
-	out.append("штраф за смерть по тирам: %s (правило: тир × %d)" % [
-		" ".join(d21_penalty_text), CityData.DEATH_PENALTY_PER_RANK])
+		var got_penalty := CityData.death_penalty(pt, false, false)
+		d21_penalty_text.append("%d:%d" % [pt, got_penalty])
+		if got_penalty != int(d21_penalty_expect.get(pt, 0)):
+			d21_penalty_fail.append("тир %d: штраф %d, а §8.3 ждёт %d" % [
+				pt, got_penalty, int(d21_penalty_expect.get(pt, 0))])
+	out.append("штраф за смерть по тирам: %s (§8.3: −3/−6/−9/−9/−12)" % " ".join(d21_penalty_text))
+	if d21_penalty_fail.is_empty():
+		out.append("ок штрафа за смерть: таблица §8.3 сходится по всем тирам")
+	else:
+		out.append("ПРОВАЛ штрафа за смерть: %s" % "; ".join(d21_penalty_fail))
+	# Слава не уходит в минус: списание идёт через add_glory с полом нуля. Проверяем
+	# это на живом GameState — иначе «нельзя упасть в отрицательное» осталось бы словом.
+	var saved_glory := GameState.glory
+	GameState.glory = 1
+	GameState.add_glory(-12)
+	var floored := GameState.glory
+	GameState.glory = saved_glory
+	if floored == 0:
+		out.append("ок пола славы: смерть обнуляет славу, но не уводит в минус")
+	else:
+		out.append("ПРОВАЛ пола славы: слава стала %d после списания −12 от единицы" % floored)
 	return out
 
 
