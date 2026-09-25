@@ -22,6 +22,19 @@ const PROSE_REPORT := "_prose_out.txt"
 const PROBE_REPORT := "_probe_out.txt"
 const LOOP_REPORT := "_loop_out.txt"
 const LOOP_TRACE := "_loop_trace.txt"
+## Сводка скана по сидам и полные отчёты всех его прогонов. Два файла, а не один:
+## сводку читают и цитируют (числа в спеке этапа 3), а полные отчёты — то, чем её
+## можно проверить. Сводка без первичных отчётов проверяема не более, чем число,
+## названное по памяти.
+const LOOP_SCAN_REPORT := "_loop_seed_scan.txt"
+const LOOP_SCAN_FULL := "_loop_scan_full.txt"
+## Предел скана по сидам. Не «на глаз»: скан стоит `сиды × 3` прогонов (измерено:
+## 90 прогонов за ~14 секунд, то есть ~0,16 с на профиль), а `--quit-after 2000` в
+## `tools\run_headless.ps1` — страховка от вечного цикла: слишком долгий скан
+## оборвался бы ею молча, и на диске осталась бы сводка по части сидов, читаемая как
+## измерение всех. 200 сидов ≈ 100 секунд — уже заведомо «долгий ручной прогон», а не
+## проверка.
+const SEED_SCAN_MAX := 200
 
 
 ## Инварианты контента (см. ContentValidator).
@@ -1703,8 +1716,8 @@ static func _tier_expect_gap(expect: Dictionary, label: String = "") -> String:
 		CityData.ORDER_RANKS.size(), expect.size(), "; ".join(parts)]
 
 
-## Аргумент-число, идущий СРАЗУ за флагом. Если следующего токена нет или это другой
-## флаг — возвращается `fallback`.
+## Аргумент-число, идущий СРАЗУ за флагом. Если следующего токена нет, это другой флаг
+## или запись не влезает в 64 бита — возвращается `fallback`.
 ##
 ## Зачем так, а не `int(args[i + 1])` напрямую. Прямое приведение дало уже один тихий
 ## баг: `--loop --log-file X` превращалось в `hunts = 0`, потому что `int("--log-file")`
@@ -1714,9 +1727,29 @@ static func _int_arg(args: PackedStringArray, flag: String, fallback: int) -> in
 	for i in args.size():
 		if args[i] == flag and i + 1 < args.size():
 			var raw := args[i + 1]
-			if raw.is_valid_int():
+			if raw.is_valid_int() and _fits_int64(raw):
 				return int(raw)
 	return fallback
+
+
+## Влезает ли запись целого в 64 бита. `is_valid_int()` проверяет ФОРМУ, а не диапазон:
+## «99999999999999999999» для неё — верное число, а `int()` на нём пишет ERROR в stderr
+## и отдаёт INT64_MAX. Измерено: `--loop 25 --seed 99999999999999999999` давал в stderr
+## «Cannot represent … as a 64-bit signed integer» и прогон на сиде 9223372036854775807.
+## То есть аргумент принимался с ошибкой движка в логе и означал не то, что просили:
+## для сида это чужой разброс, для `--seeds` — запрос на «бесконечное» число прогонов.
+static func _fits_int64(raw: String) -> bool:
+	var trimmed := raw.strip_edges()
+	var digits := trimmed.lstrip("+-").lstrip("0")
+	# Девятнадцать цифр — единственная длина, где нужна сверка: восемнадцать цифр
+	# вмещает любой int64, двадцать не вмещает ни один. Сравнение строк на равной
+	# длине совпадает с числовым порядком (цифры одного разряда).
+	if digits.length() < 19:
+		return true
+	if digits.length() > 19:
+		return false
+	var limit := "9223372036854775808" if trimmed.begins_with("-") else "9223372036854775807"
+	return digits <= limit
 
 
 ## Симулятор баланса. Аргументы: `--battles N`, `--out путь`.
@@ -1739,29 +1772,61 @@ static func sim(args: PackedStringArray) -> String:
 
 ## Полный цикл «город → заказ → след → бой → итог → город» без графики. Это и
 ## проверка связки, и способ посмотреть на прогрессию в числах: сколько охот нужно
-## до Легенды и сколько монет накопит живой игрок. Аргументы: `--loop N`, `--seed S`.
+## до Легенды и сколько монет накопит живой игрок. Аргументы: `--loop N`, `--seed S`,
+## `--seeds K`.
 ##
 ## По умолчанию 25 охот, а не 10. Причина: `tools\run_checks.cmd` зовёт `--loop` БЕЗ
 ## числа, значит полный прогон перезаписывал приёмочный артефакт десятиохотным, где
 ## «Легенда за 10–15 охот» проверить нечем: срок богини — 45 дней при трёх днях за
 ## поход — истекает только на 15-й охоте, а до Легенды нужно 100 славы. Двадцать
 ## пять — не запас «на глаз»: столько требует спека этапа 3 (§4.3.3).
+##
+## `--seeds K` включает СКАН: K прогонов подряд, сиды `S … S + K - 1`, сводка — в
+## `_loop_seed_scan.txt`, полные отчёты — в `_loop_scan_full.txt`. Без `--seeds`
+## (и при `K <= 0`) режим работает как раньше: один прогон в `_loop_out.txt`.
+## Скан намеренно НЕ стоит в `tools\run_checks.cmd`: 30 сидов — это ~14 секунд против
+## секунды у обычного прогона, а приёмочный артефакт обязан сниматься быстро и на
+## одном сиде. Команда для разброса названа в спеке этапа 3 (§4.4 и §7.6) и в сводке.
 static func loop(args: PackedStringArray) -> String:
 	var hunts := _int_arg(args, "--loop", 25)
 	## Сид забега. Нужен, чтобы измерить РАЗБРОС: срок богини (GDD 1.3.1) имеет смысл
 	## только вместе с разбросом, иначе одно удачное число выдаётся за норму.
 	var run_seed := _int_arg(args, "--seed", 20260922)
+	## Сколько забегов подряд снимать. 0 (нет аргумента) — обычный одиночный прогон.
+	var seeds := _int_arg(args, "--seeds", 0)
+	if seeds > SEED_SCAN_MAX:
+		# Отказ, а не подрезка. Подрезанный скан выглядел бы как выполненный запрос, а
+		# его сводка — как разброс по всем запрошенным сидам; это тот же класс, что
+		# стухший отчёт. Предел нужен по двум причинам: скан стоит `сиды × 3` прогонов
+		# (200 сидов ≈ 100 секунд), и `--quit-after` обёртки оборвал бы более долгий
+		# скан МОЛЧА, оставив сводку по части сидов.
+		var refuse: Array[String] = [
+			"=== разброс по сидам ===",
+			"скан: --loop %d --seeds %d, сид %d" % [hunts, seeds, run_seed],
+			"ПРОВАЛ СКАНА: запрошено %d сидов, предел %d — скан не снят" % [seeds, SEED_SCAN_MAX],
+		]
+		Report.write(LOOP_SCAN_REPORT, refuse)
+		return "ПРОВАЛ: --seeds %d выше предела %d, сводка не снята (%s)" % [
+			seeds, SEED_SCAN_MAX, LOOP_SCAN_REPORT]
 
 	var out: Array[String] = []
-	Report.trace(LOOP_TRACE, "вход в loop, hunts=%d, seed=%d" % [hunts, run_seed])
+	Report.trace(LOOP_TRACE, "вход в loop, hunts=%d, seed=%d, seeds=%d" % [hunts, run_seed, seeds])
 	var script: Resource = load("res://core/sim/loop_sim.gd")
 	Report.trace(LOOP_TRACE, "скрипт загружен: %s" % str(script != null))
 	if script == null:
 		return "скрипт прогона не загрузился"
 	var loop_obj: RefCounted = script.new()
 	Report.trace(LOOP_TRACE, "объект создан: %s" % str(loop_obj != null))
+	if seeds > 0:
+		var full: Array[String] = []
+		var summary: Array[String] = loop_obj.run_scan(hunts, full, run_seed, seeds)
+		Report.trace(LOOP_TRACE, "скан завершён, строк сводки: %d" % summary.size())
+		Report.write(LOOP_SCAN_FULL, full)
+		Report.write(LOOP_SCAN_REPORT, summary)
+		return "сидов: %d, охот: %d, строк сводки: %d, отчёт: %s" % [
+			seeds, hunts, summary.size(), LOOP_SCAN_REPORT]
 	loop_obj.run(hunts, out, run_seed)
 	Report.trace(LOOP_TRACE, "прогон завершён, строк: %d" % out.size())
 	Report.write(LOOP_REPORT, out)
 	Report.trace(LOOP_TRACE, "отчёт записан")
-	return "охот: %d, строк отчёта: %d" % [hunts, out.size()]
+	return "охот: %d, сид: %d, строк отчёта: %d" % [hunts, run_seed, out.size()]

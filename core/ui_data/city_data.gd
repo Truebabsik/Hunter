@@ -201,6 +201,13 @@ static func damage_type_names(weapon: WeaponData) -> String:
 	return DossierText.damage_type_names(weapon)
 
 
+## Подпись типов для руны, которая ещё НЕ наложена: см.
+## `DossierText.damage_type_names_with_rune`. Нужна замеру, который называет
+## выбранную пару до `_prepare_weapon`.
+static func damage_type_names_with_rune(weapon: WeaponData, rune: StringName) -> String:
+	return DossierText.damage_type_names_with_rune(weapon, rune)
+
+
 static func rune_title(rune_type: StringName) -> String:
 	return DossierText.rune_title(rune_type)
 

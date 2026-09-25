@@ -143,7 +143,14 @@ class Player:
 		seed_key = p_seed_key
 
 
-func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
+func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> Array[Dictionary]:
+	# Параметры прогона — ПЕРВЫМИ строками отчёта, а не только в трассе. Без них
+	# артефакт не отвечает на вопрос «чем это снято», а приёмочные числа этапа 3
+	# обязаны воспроизводиться командой: сид жил в `_loop_trace.txt`, и повторить
+	# отчёт можно было, только заглянув в трассу.
+	out.append("--- прогон ---")
+	out.append("прогон: --loop %d, сид %d (три профиля)" % [hunts, run_seed])
+
 	# Проверка ДАННЫХ набора — один раз на прогон, а не на каждого бота: опечатка в
 	# MUST_BUY, в MUST_BUY_KINDS или в BUY_ORDER от игрока не зависит, и печатать её
 	# дважды значило бы прятать её в повторе.
@@ -165,7 +172,7 @@ func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
 		# измерение остаётся осмысленным, а строка «ПРОВАЛ набора» называет, какая
 		# именно позиция выпала.
 		if not _must_buy_kinds_complete():
-			return
+			return []
 
 	# Три профиля: неопытный бот и ДВА опытных — с разными политиками заказа и одним
 	# ключом сида. Опытные обязаны играть на одних бросках: иначе замер ответит на
@@ -177,10 +184,157 @@ func run(hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
 		Player.new("опытный (лучший инструмент, чтение 75%) — всегда высший тир",
 			0.75, true, "highest_tier", SEED_EXPERT),
 	]
+	## Числа каждого профиля в машинном виде — их читает скан по сидам (`run_scan`).
+	## Возвращаются наружу, а не пересчитываются: см. `_run_player`.
+	var facts: Array[Dictionary] = []
 	for p in players:
 		out.append("")
 		out.append("========== %s ==========" % p.title)
-		_run_player(p, hunts, out, run_seed)
+		facts.append(_run_player(p, hunts, out, run_seed))
+	return facts
+
+
+## Разброс по сидам: `seeds` прогонов подряд (сиды `base_seed … base_seed + seeds - 1`),
+## в каждом — те же три профиля, что и у одного `run`.
+##
+## Зачем отдельный режим. «30 сидов» в спеке этапа 3 существовали артефактом РУЧНЫХ
+## прогонов: замер умел один сид, и разброс нельзя было повторить командой — то есть
+## доказательство нельзя было проверить. Здесь сиды перебирает тот же замер, поэтому
+## разброс снимается одной командой:
+##
+##     godot --headless --path <проект> -- --loop 25 --seeds 30
+##
+## Скан ВТОРИЧЕН и приёмку не заменяет: приёмочные числа сняты одним прогоном на сиде
+## по умолчанию, а скан говорит, насколько они устойчивы. Это сказано и в сводке —
+## иначе «25 из 30 забегов дошли до Легенды» прочиталось бы как приёмка.
+##
+## Полные отчёты каждого прогона пишутся в `full_out`, сводка возвращается. Сводка без
+## первичных отчётов не проверяема (число не с чем сверить), а первичные без сводки не
+## читаются. Файлы раскладывает вызывающий: куда писать — дело проверки, а не замера.
+func run_scan(
+	hunts: int, full_out: Array[String], base_seed: int, seeds: int
+) -> Array[String]:
+	var out: Array[String] = []
+	out.append("=== разброс по сидам ===")
+	out.append("скан: --loop %d --seeds %d, сиды %d..%d, три профиля в каждом" % [
+		hunts, seeds, base_seed, base_seed + seeds - 1])
+	out.append("скан — ВТОРИЧНЫЙ замер вокруг приёмочного прогона: приёмка снята ОДНИМ сидом (--loop N --seed S), и разброс её не заменяет, а показывает, насколько она устойчива.")
+
+	var facts: Array[Dictionary] = []
+	for i in range(seeds):
+		var seed_value := base_seed + i
+		full_out.append("")
+		full_out.append("########## сид %d ##########" % seed_value)
+		facts.append_array(run(hunts, full_out, seed_value))
+
+	# Раскладываем факты по подписям профилей, а не по числу «три»: второй копии
+	# этого числа здесь быть не должно, а порядок берём из первого встреченного —
+	# так сводка называет профили теми же словами, что отчёт.
+	var order: Array[String] = []
+	var by_profile: Dictionary = {}
+	for f in facts:
+		var title := String(f["title"])
+		if not by_profile.has(title):
+			by_profile[title] = []
+			order.append(title)
+		(by_profile[title] as Array).append(f)
+
+	# Число фактов обязано быть ровно `seeds × профилей`. Расхождение означает, что
+	# прогон оборвался (например, данные набора перестали сходиться и `run` вышел
+	# раньше) — тогда сводка была бы посчитана по ЧАСТИ сидов и выглядела бы
+	# измерением. Молчаливый неполный скан — тот же класс, что стухший отчёт.
+	if order.is_empty() or facts.size() != seeds * order.size():
+		out.append("ПРОВАЛ СКАНА: фактов %d на %d сидов и %d профилей — прогон оборвался, полные отчёты в _loop_scan_full.txt" % [
+			facts.size(), seeds, order.size()])
+		return out
+
+	for title in order:
+		var rows: Array = by_profile[title]
+		var legend: Array[int] = []
+		var legend_days: Array[int] = []
+		var over: Array[int] = []
+		var closed_ranks: Array[int] = []
+		var mins: Array[int] = []
+		var ends: Array[int] = []
+		var incomes: Array[int] = []
+		var spent: Array[int] = []
+		var closed := 0
+		var marks: PackedStringArray = PackedStringArray()
+		for row in rows:
+			var f: Dictionary = row
+			if int(f["legend_hunt"]) > 0:
+				legend.append(int(f["legend_hunt"]))
+				legend_days.append(int(f["legend_day"]))
+			if int(f["run_over_hunt"]) > 0:
+				over.append(int(f["run_over_hunt"]))
+			if int(f["closed_rank"]) >= 0 and int(f["must_buy_got"]) >= int(f["must_buy_total"]):
+				closed += 1
+				closed_ranks.append(int(f["closed_rank"]))
+			mins.append(int(f["min_coins"]))
+			ends.append(int(f["coins_end"]))
+			incomes.append(int(f["income"]))
+			spent.append(int(f["spent"]))
+			marks.append(_scan_mark(f))
+		out.append("")
+		out.append("профиль: %s" % title)
+		out.append("  Легенда: %d из %d забегов%s%s" % [
+			legend.size(), rows.size(),
+			_scan_range("охота", legend), _scan_range("дней", legend_days)])
+		out.append("  окончательная смерть: %d из %d%s" % [
+			over.size(), rows.size(), _scan_range("охота", over)])
+		out.append("  узкий набор: закрыт в %d из %d%s" % [
+			closed, rows.size(), _scan_range("ранг закрытия", closed_ranks)])
+		out.append("  минимум на счету %s; остаток в кошельке %s" % [
+			_scan_range("", mins), _scan_range("", ends)])
+		out.append("  доход %s; траты %s" % [_scan_range("", incomes), _scan_range("", spent)])
+		out.append("  по сидам (охота до Легенды; «—» не дошёл, «†N» забег кончился на охоте N, «*» набор не закрыт):")
+		out.append("    " + ", ".join(marks))
+
+	# ПРОВАЛы, которые поймали сами прогоны сидов, обязаны быть видны и в сводке:
+	# иначе «30 из 30 дошли» рядом с красным отчётом одного сида читается как успех.
+	var fails := 0
+	for line in full_out:
+		if String(line).begins_with("ПРОВАЛ"):
+			fails += 1
+	if fails > 0:
+		out.append("ПРОВАЛ СКАНА: в отчётах сидов %d строк «ПРОВАЛ» — скан зелёным не считается" % fails)
+	else:
+		out.append("отчёты сидов: строк «ПРОВАЛ» нет")
+	return out
+
+
+## Отметка одного забега для строки «по сидам»: номер охоты, на которой взята Легенда,
+## «—» если не взята, «†N» — забег кончился окончательной смертью на охоте N, «*» —
+## узкий набор не закрыт. Компактная строка показывает, ЧЕМ сделан разброс, а не
+## только его крайние числа: «25, 21, 23…» и «—, —, 23…» читаются по-разному.
+func _scan_mark(f: Dictionary) -> String:
+	var mark := "—"
+	if int(f["legend_hunt"]) > 0:
+		mark = str(int(f["legend_hunt"]))
+	if int(f["run_over_hunt"]) > 0:
+		mark += "†%d" % int(f["run_over_hunt"])
+	if int(f["closed_rank"]) < 0:
+		mark += "*"
+	return mark
+
+
+## Хвост сводки по списку чисел: «, охота 17..25, медиана 20». Пустой список не даёт
+## ничего: строка «охота .. » на пустоте читалась бы как измерение нуля, которого не
+## было, а «нет ни в одном забеге» дублировало бы счётчик рядом. Медиана — ВЕРХНЯЯ из
+## двух средних при чётном числе забегов: половинка охоты выглядела бы точностью,
+## которой у целых охот нет.
+##
+## Форма зависит от метки: с меткой строка — ХВОСТ фразы (ведущая запятая, «Легенда:
+## 22 из 30 забегов, охота 17..25»), без метки — подстановка в готовую фразу
+## («минимум на счету 0..5, медиана 0»).
+func _scan_range(label: String, values: Array[int]) -> String:
+	if values.is_empty():
+		return ""
+	var sorted := values.duplicate()
+	sorted.sort()
+	var tail := "%d..%d, медиана %d" % [
+		sorted[0], sorted[sorted.size() - 1], sorted[sorted.size() / 2]]
+	return tail if label.is_empty() else ", %s %s" % [label, tail]
 
 
 ## Веха: пишется в отчёт и в отдельный файл, чтобы при зависании было видно шаг.
@@ -205,7 +359,7 @@ func _trace(text: String) -> void:
 	f.close()
 
 
-func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: int = 20260922) -> void:
+func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: int = 20260922) -> Dictionary:
 	GameState.reset()
 	GameState.coins = 30  # стартовые деньги из GDD 12.12 (первый этап: доход 30)
 	RNGService.start_run(run_seed)
@@ -384,8 +538,10 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 		result.last_scenario_label = engine.scenario_label_for(engine.current_scenario_id())
 		result.order_rank = int(order["tier"])
 		# «Сменил ли инструмент за бой» — из сравнения с оружием на входе. Экран боя
-		# ведёт для этого отдельный флаг, потому что там смену делает игрок; здесь
-		# её делает _equip_best_tool, и достаточно сравнить начало и конец.
+		# ведёт для этого отдельный флаг, потому что там смену делает игрок; в прогоне
+		# смены в бою нет вовсе — ствол выбран ДО охоты (`_prepare_weapon`), поэтому
+		# ожидаемое значение здесь ноль. Сравнение оставлено контролем: если флаг
+		# когда-нибудь станет единицей, это будет смена, которой экран не видел.
 		tally.apply_to(result, engine.weapon != null and engine.weapon.id != weapon_at_start, false)
 		result.apply(false)
 		# Диагностика исхода: при побеге и смерти видно, сколько добычи потеряно,
@@ -508,19 +664,38 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	if victories_with_switch > 0 and victories_with_switch == victories \
 			and GameState.achievements.has("one_weapon"):
 		out.append("ПРОВАЛ ДОСТИЖЕНИЙ: «Победа одним оружием» выдана, хотя ВСЕ победы со сменой инструмента")
-	# Контроль экономики. Два условия, и оба обязательны:
+	# Контроль экономики. Три условия, и все обязательны:
 	#  1) кошелёк не уходил в минус — значит цену проверяли ДО списания;
 	#  2) траты вообще были — иначе первое условие зелено на прогоне, где бот
 	#     ничего не купил, то есть не проверилось ничего. Ровно так «проверка»
-	#     строкового рендера досье сторожила функцию, которой никто не пользовался.
+	#     строкового рендера досье сторожила функцию, которой никто не пользовался;
+	#  3) у УМЕЛОГО профиля кошелёк нигде не упирался в ноль — вторая половина
+	#     свойства приёмки «буфер положителен» («не висит в нуле»).
+	#
+	# Про (3). До этого шага красным считался только минус, а «минимум на счету»
+	# печатался: свойство жило СЛОВОМ, и его вторая половина не проверялась вовсе —
+	# отчёт с нулём в минимуме выглядел здоровым. Теперь ноль у умелого профиля
+	# краснеет: он означает, что бот потратил последнюю монету, то есть доход шёл
+	# впритык к узкому набору.
+	#
+	# Почему только у умелого. «Набор закрывается» и «буфер» — свойства пути, которым
+	# игра проходится (§1.3.1: срок для неумелого не «сложен», а недостижим), и замер
+	# это подтверждает: у новичка минимум 0 при закрытом наборе. Сторожить ноль у
+	# новичка значило бы краснеть на состоянии, которое замер и должен показать.
+	# Числа обоих профилей всё равно в отчёте — рядом со строкой контроля.
 	var spends := int(GameState.counters.get("coins_spent", 0))
 	if min_coins < 0:
 		out.append("ПРОВАЛ ЭКОНОМИКИ: кошелёк уходил в минус (минимум %d) — где-то цена проверялась отдельно от списания" % min_coins)
 	elif spends == 0:
 		out.append("ПРОВАЛ ЭКОНОМИКИ: ни одной траты за прогон — инвариант кошелька не проверился")
+	elif player.smart_tools and min_coins <= 0:
+		out.append("ПРОВАЛ ЭКОНОМИКИ: умелый профиль упирался в ноль (минимум на счету %d, остаток %d) — буфер не положителен: доход идёт впритык к узкому набору" % [
+			min_coins, GameState.coins])
 	else:
-		out.append("контроль экономики: трат %d, минимум на счету %d, остаток %d — в минус не уходили" % [
-			spends, min_coins, GameState.coins])
+		out.append("контроль экономики: трат %d, минимум на счету %d, остаток %d — в минус не уходили, %s" % [
+			spends, min_coins, GameState.coins,
+			"буфер положителен (минимум выше нуля)" if player.smart_tools
+			else "ноль в минимуме новичка свойством не считается: свойство сторожится у умелого профиля"])
 	# Узкий набор отдельным блоком: счётчик полноты и таблица «позиция → ранг →
 	# цена». Счётчик без таблицы приёмку «набор закрывается» не доказывает — см.
 	# _must_buy_summary.
@@ -552,6 +727,30 @@ func _run_player(player: Player, max_hunts: int, out: Array[String], run_seed: i
 	var start := maxi(0, rank_history.size() - 8)
 	for i in range(start, rank_history.size()):
 		out.append("  " + rank_history[i])
+
+	# Числа отчёта в МАШИННОМ виде — для скана по сидам (`run_scan`). Собираются из
+	# ТЕХ ЖЕ локальных величин, что печатают строки выше, а не пересчитываются: скан
+	# не разбирает текст отчёта, поэтому не может «прочитать» число, которого в
+	# отчёте нет, и не разойдётся с ним при правке формата. Ранг закрытия набора и
+	# минимум на счету уже посчитаны выше для строк отчёта — здесь они только
+	# переносятся.
+	var facts := {
+		"title": player.title,
+		"hunts": hunt_no,
+		"run_over_hunt": run_over_hunt,
+		"legend_hunt": reached_legend_at,
+		"legend_day": legend_day,
+		"closed_rank": must_buy_done_at,
+		"must_buy_got": must_buy_got.size(),
+		"must_buy_total": _must_buy_total(),
+		"min_coins": min_coins,
+		"coins_end": GameState.coins,
+		"income": total_income,
+		"spent": coins_spent,
+		"rank": GameState.rank,
+		"glory": GameState.glory,
+	}
+	return facts
 
 
 ## Какой заказ берём. Политика — параметр профиля (см. ORDER_POLICIES), внутри тира
@@ -700,6 +899,13 @@ func _weakness_type(mon: MonsterData, w: WeaponData) -> StringName:
 ## Подпись пары для отчёта: «Молот + руна огня (дробящий, огонь, ближний)» — сначала
 ## чем бьём и что наложено, потом типы удара и дистанция. Типы считает игра
 ## (`CityData.damage_type_names`), а не замер: своя подпись разошлась бы с уроном.
+##
+## Руна в подписи — ВЫБРАННАЯ (`_weakness_type`), а не живая `w.rune_type`. Разница
+## не косметическая: `_pick_order` идёт РАНЬШЕ `_prepare_weapon`, поэтому живая руна
+## в момент подписи — либо остаток ПРОШЛОЙ охоты, либо (на первой охоте с руной)
+## пусто. Измерено: строка выбора говорила «Лук + руна огонь (колющий, дальний)», а
+## строка снаряжения той же охоты — «Лук (колющий, огонь, дальний)». Читатель видел
+## две разные картины одного выбора, и обе выглядели фактом.
 func _weakness_label(mon: MonsterData, weapon_id: StringName) -> String:
 	var w: WeaponData = Database.weapon(weapon_id)
 	if w == null:
@@ -709,7 +915,8 @@ func _weakness_label(mon: MonsterData, weapon_id: StringName) -> String:
 	if rune != &"" and rune != w.damage_type:
 		rune_note = " + руна %s" % CityData.rune_title(rune).to_lower()
 	return "%s%s (%s, %s)" % [
-		w.title, rune_note, CityData.damage_type_names(w), CityData.range_ru(w.range_id)]
+		w.title, rune_note, CityData.damage_type_names_with_rune(w, rune),
+		CityData.range_ru(w.range_id)]
 
 
 func _simulate_read(
@@ -811,7 +1018,7 @@ func _spend_coins() -> int:
 ## расходилась цена совета.
 ##
 ## Оружие бот НЕ берёт в руки при покупке: у неопытного бота инструмент остаётся тем,
-## чем он назван (лук), а опытный выбирает пару под зверя в `_equip_best_tool`.
+## чем он назван (лук), а опытный выбирает пару под зверя в `_prepare_weapon`.
 func _buy_must_buy(kind: String, id: String) -> int:
 	var sid := StringName(id)
 	match kind:
@@ -854,6 +1061,23 @@ func _buy_must_buy(kind: String, id: String) -> int:
 			# У брони нет выбора «под зверя», значит покупка и есть решение надеть;
 			# без этой строки бот платил 40 монет за тяжёлую и дрался в лёгкой
 			# (дефект, найденный ревью Task 3в).
+			#
+			# ЧТО БОТ ЗА ЭТО ПОЛУЧАЕТ (измерено, `--loop` + данные игры). Тяжёлая
+			# броня (40 монет) — это **−1 инициативы без прироста поглощения**:
+			# `HunterState.total_absorption` режет по `ABSORPTION_CAP = 3`, а +3 к
+			# поглощению даёт навык `surv_armor3` ИЗ ТОГО ЖЕ НАБОРА, поэтому 1+3 и 3+3
+			# оба упираются в потолок 3. Остаётся `initiative_penalty = 1`
+			# (`content/armor/heavy.tres`), и он доезжает до боя:
+			# `skill_effects.gd:build_hunter` → `hunter_state.gd:initiative()` →
+			# `battle_engine.gd:apply_preemptive_strike` (зверь с инициативой 5 бьёт
+			# первым). Вопрос «оставлять ли предмет в §4.2 спеки» — открытый, с числами
+			# записан в §14.1 дизайна; правка здесь была бы правкой баланса, а этап 3
+			# про каталог, ранги и экономику.
+			#
+			# «Купил = носишь до конца забега» — решение ЗАМЕРА, а не правило игры:
+			# игрок вправе бесплатно вернуть лёгкую (`city_screen.gd:_buy_or_equip_armor`
+			# для уже купленной брони надевает без списания). Профиль бота так не делает,
+			# потому что иначе «набор закрыт» мерило бы его политику снятия брони.
 			GameState.equipped_armor = a.id
 			return a.price
 		"advice":
@@ -923,42 +1147,51 @@ func _must_buy_data_problems() -> Array[String]:
 	return out
 
 
-## Сторож ПОРЯДКА покупок: соседние позиции BUY_ORDER обязаны идти по неубыванию
+## Сторож ПОРЯДКА покупок: позиции BUY_ORDER обязаны идти по неубыванию
 ## «(требуемый ранг, цена)». Таблица объявляет именно это правило, и без сторожа
 ## ручная правка ломает его МОЛЧА: набор по-прежнему покрыт, покрытие зелено, а
 ## политика покупок стала другой — тот же класс, что слепое пятно `.get(_, 0)`
 ## в стороже штрафа (Task 3б).
+##
+## Сравниваются две ПОСЛЕДОВАТЕЛЬНЫЕ ИЗМЕРЕННЫЕ позиции, а не соседние строки
+## таблицы. Позиция без данных в игре пропускается — её ранг и цена не факт, а ноль,
+## и «порядок сломан» на таком нуле было бы следствием, а не причиной (причину
+## называет проверка id выше). Но пропуск цепочку НЕ рвёт: раньше сравнение шло по
+## соседним строкам, и инверсия через пропущенную позицию терялась — две измеренные
+## позиции расходились с правилом, а сторож молчал. Цепочки достаточно: если каждая
+## измеренная позиция не меньше предыдущей ИЗМЕРЕННОЙ, вся последовательность
+## неубывающая (сравнение соседних в цепочке транзитивно).
 ##
 ## Ранг и цену берут те же источники, что и покупка: `SkillsData.find_skill` (поле
 ## `rank` — по нему решает `SkillsData.can_buy`) и `_must_buy_price`. Вторая копия
 ## порядка «что дороже» разошлась бы с покупкой молча.
 func _buy_order_problems() -> Array[String]:
 	var out: Array[String] = []
-	for i in range(1, BUY_ORDER.size()):
-		var prev: Dictionary = BUY_ORDER[i - 1]
-		var cur: Dictionary = BUY_ORDER[i]
-		# Позиция без данных в игре не сравнивается: её ранг и цена — не факт, а ноль,
-		# и «порядок сломан» на таком нуле было бы следствием, а не причиной. Причину
-		# называет проверка id выше, и вторая строка про тот же дефект только путала бы.
-		# Категория без строки в MUST_BUY_KINDS пропускается по той же причине и ещё
-		# потому, что читать её прайс НЕЧЕМ: `_must_buy_price` берёт источник цены из
-		# MUST_BUY_KINDS и падает на неизвестной категории (измерено).
-		if not MUST_BUY_KINDS.has(String(prev["kind"])):
+	# Последняя позиция, у которой ранг и цена — ФАКТ. Пустая — ни одной ещё не было.
+	var prev: Dictionary = {}
+	var prev_rank := 0
+	var prev_price := 0
+	for entry in BUY_ORDER:
+		var kind := String(entry["kind"])
+		# Категория без строки в MUST_BUY_KINDS пропускается ещё и потому, что читать
+		# её прайс НЕЧЕМ: `_must_buy_price` берёт источник цены из MUST_BUY_KINDS и
+		# падает на неизвестной категории (измерено).
+		if not MUST_BUY_KINDS.has(kind):
 			continue
-		if not MUST_BUY_KINDS.has(String(cur["kind"])):
+		var id := String(entry["id"])
+		if not _must_buy_missing_source(kind, id).is_empty():
 			continue
-		if not _must_buy_missing_source(String(prev["kind"]), String(prev["id"])).is_empty():
-			continue
-		if not _must_buy_missing_source(String(cur["kind"]), String(cur["id"])).is_empty():
-			continue
-		var prev_rank := _must_buy_rank(String(prev["kind"]), String(prev["id"]))
-		var cur_rank := _must_buy_rank(String(cur["kind"]), String(cur["id"]))
-		var prev_price := _must_buy_price(String(prev["kind"]), String(prev["id"]))
-		var cur_price := _must_buy_price(String(cur["kind"]), String(cur["id"]))
-		if cur_rank < prev_rank or (cur_rank == prev_rank and cur_price < prev_price):
+		var cur_rank := _must_buy_rank(kind, id)
+		var cur_price := _must_buy_price(kind, id)
+		if not prev.is_empty() and (
+			cur_rank < prev_rank or (cur_rank == prev_rank and cur_price < prev_price)
+		):
 			out.append("порядок покупок сломан: «%s» (ранг %d, цена %d) идёт после «%s» (ранг %d, цена %d), а правило — по возрастанию ранга, затем цены" % [
-				_buy_order_key(cur), cur_rank, cur_price,
+				_buy_order_key(entry), cur_rank, cur_price,
 				_buy_order_key(prev), prev_rank, prev_price])
+		prev = entry
+		prev_rank = cur_rank
+		prev_price = cur_price
 	return out
 
 

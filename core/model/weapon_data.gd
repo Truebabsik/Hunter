@@ -46,7 +46,20 @@ func accent() -> Color:
 ## в CityData, из-за чего ядро зависело от модуля интерфейса, а подбор комбо брал
 ## «главный» тип и терял второй.
 func damage_types() -> Array[StringName]:
+	return damage_types_with(rune_type)
+
+
+## Типы удара для ЗАДАННОЙ руны, а не для той, что лежит на оружии сейчас. Нужно
+## там, где решение принято, но ещё не применено: замер выбирает руну в
+## `_pick_order`, а накладывает её `_prepare_weapon` — позже. Живая `rune_type` в
+## этот момент принадлежит ПРОШЛОЙ охоте, и подпись выбора показывала удар, которого
+## в бою не будет (измерено: «Лук + руна огонь (колющий, дальний)» в выборе против
+## «(колющий, огонь, дальний)» в снаряжении — одной и той же пары).
+##
+## Правило «руна добавляет второй тип, а не заменяет» остаётся в ОДНОМ месте: живой
+## `damage_types()` — тонкая обёртка над этой функцией, а не вторая его копия.
+func damage_types_with(rune: StringName) -> Array[StringName]:
 	var out: Array[StringName] = [damage_type]
-	if rune_type != &"" and rune_type != damage_type:
-		out.append(rune_type)
+	if rune != &"" and rune != damage_type:
+		out.append(rune)
 	return out

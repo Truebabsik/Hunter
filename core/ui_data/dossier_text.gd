@@ -28,8 +28,21 @@ static func damage_types_title(weapon: WeaponData) -> String:
 ## Названия типов урона через запятую, без «+». Нужно там, где рядом уже стоит
 ## дальность и «+» читался бы как сложение: «дальний бой, физика, огонь».
 static func damage_type_names(weapon: WeaponData) -> String:
+	return damage_type_names_with_rune(weapon, weapon.rune_type if weapon != null else &"")
+
+
+## То же, но для руны, которая на оружие ещё НЕ наложена. Нужно для подписи выбора в
+## замере (`LoopSim._weakness_label`): она называет пару ДО `_prepare_weapon`, и
+## живой `rune_type` в этот момент — остаток прошлой охоты. Своя сборка списка типов
+## в замере разошлась бы с уроном молча, поэтому имена берутся здесь и из
+## `WeaponData.damage_types_with` — тем же правилом, что и в бою.
+static func damage_type_names_with_rune(weapon: WeaponData, rune: StringName) -> String:
+	# Пустое оружие подписывается как раньше — через `CityData.damage_types`, а не
+	# своим «пусто»: у этого случая уже есть одно место, и второе разошлось бы.
+	var types: Array[StringName] = (weapon.damage_types_with(rune) if weapon != null
+		else CityData.damage_types(null))
 	var names := PackedStringArray()
-	for t in CityData.damage_types(weapon):
+	for t in types:
 		names.append(CityData.type_ru(t))
 	return ", ".join(names)
 
